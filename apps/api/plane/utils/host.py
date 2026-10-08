@@ -27,6 +27,13 @@ def base_host(
     if not base_origin:
         raise ImproperlyConfigured("APP_BASE_URL or WEB_URL is not set")
 
+    # Redirect back to the origin the request came from when it is an allowed
+    # origin (e.g. localhost on the desktop vs. a LAN or VPN host name on a phone).
+    request_origin = f"{request.scheme}://{request.get_host()}"
+    origin_allowed = request_origin in getattr(settings, "CORS_ALLOWED_ORIGINS", [])
+    if origin_allowed:
+        base_origin = request_origin
+
     # Admin redirection
     if is_admin:
         admin_base_path = getattr(settings, "ADMIN_BASE_PATH", None)
@@ -59,7 +66,7 @@ def base_host(
 
     # App Redirection
     if is_app:
-        if settings.APP_BASE_URL:
+        if settings.APP_BASE_URL and not origin_allowed:
             return settings.APP_BASE_URL
         else:
             return base_origin
