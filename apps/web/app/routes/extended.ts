@@ -8,9 +8,10 @@ import type { RouteConfigEntry } from "@react-router/dev/routes";
 import { mergeRoutes } from "./helper";
 // jira-parity feature routes (each file is owned by its feature)
 import { projectCategoriesRoutes } from "./extended/project-categories";
+import { teamsRoutes } from "./extended/teams";
 import { workItemTypesRoutes } from "./extended/work-item-types";
 
-const JIRA_PARITY_ROUTES: RouteConfigEntry[][] = [workItemTypesRoutes, projectCategoriesRoutes];
+const JIRA_PARITY_ROUTES: RouteConfigEntry[][] = [workItemTypesRoutes, teamsRoutes, projectCategoriesRoutes];
 
 export const extendedRoutes: RouteConfigEntry[] = JIRA_PARITY_ROUTES.reduce<RouteConfigEntry[]>(
   (mergedRoutes, featureRoutes) => mergeRoutes(mergedRoutes, featureRoutes),

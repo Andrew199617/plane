@@ -36,6 +36,7 @@ export const NAMESPACES = [
   // jira-parity
   "jp-common",
   "jp-work-item-types",
+  "jp-teams",
   "jp-project-categories",
   "jp-time-tracking",
   "jp-priorities",
