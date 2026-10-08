@@ -74,6 +74,11 @@ from plane.utils.order_queryset import order_issue_queryset
 from plane.utils.paginator import GroupedOffsetPaginator, SubGroupedOffsetPaginator
 from plane.utils.timezone_converter import user_timezone_converter
 from plane.utils.workflow import assert_state_transition_allowed  # Jira-parity workflows
+from plane.utils.jira_parity.description_migration import (  # Jira-parity: editor id-only saves
+    audit_snapshot,
+    is_description_migration_update,
+    restore_audit_fields,
+)
 
 from .. import BaseAPIView, BaseViewSet
 
@@ -682,6 +687,8 @@ class IssueViewSet(BaseViewSet):
             return Response({"error": "Issue not found"}, status=status.HTTP_404_NOT_FOUND)
 
         current_instance = json.dumps(IssueDetailSerializer(issue).data, cls=DjangoJSONEncoder)
+        # Jira-parity: an editor id-only description save keeps updated_at/updated_by
+        audit_before = audit_snapshot(issue) if is_description_migration_update(request.data, skip_activity) else None
 
         requested_data = json.dumps(self.request.data, cls=DjangoJSONEncoder)
         serializer = IssueCreateSerializer(issue, data=request.data, partial=True, context={"project_id": project_id})
@@ -691,6 +698,7 @@ class IssueViewSet(BaseViewSet):
                 issue=issue, to_state_id=serializer.validated_data.get("state"), user=request.user
             )
             serializer.save()
+            restore_audit_fields(Issue, issue.pk, audit_before)
             # Check if the update is a migration description update
             is_migration_description_update = skip_activity and is_description_update
             # Log all the updates
