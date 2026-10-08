@@ -12,6 +12,7 @@ import { EmptyStateDetailed } from "@plane/blocks/empty-state";
 import { ContentWrapper } from "@plane/blocks/layout";
 // components
 import { calculateTotalFilters } from "@plane/utils";
+import { ProjectCategoryCardGroups } from "@/components/jira-parity/project-categories/project-list-groups";
 import { ProjectsLoader } from "@/components/ui/loader/projects-loader";
 // hooks
 import { useCommandPalette } from "@/hooks/store/use-command-palette";
@@ -102,13 +103,18 @@ export const ProjectCardList = observer(function ProjectCardList(props: TProject
 
   return (
     <ContentWrapper>
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-        {filteredProjectIds.map((projectId) => {
-          const projectDetails = getProjectById(projectId);
-          if (!projectDetails) return;
-          return <ProjectCard key={projectDetails.id} project={projectDetails} />;
-        })}
-      </div>
+      {/* jira-parity: grouped by project category (flat grid when the workspace has no categories) */}
+      <ProjectCategoryCardGroups projectIds={filteredProjectIds}>
+        {(projectIds) => (
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
+            {projectIds.map((projectId) => {
+              const projectDetails = getProjectById(projectId);
+              if (!projectDetails) return;
+              return <ProjectCard key={projectDetails.id} project={projectDetails} />;
+            })}
+          </div>
+        )}
+      </ProjectCategoryCardGroups>
     </ContentWrapper>
   );
 });

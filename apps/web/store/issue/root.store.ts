@@ -39,6 +39,9 @@ import type { IWorkspaceIssues } from "./workspace/issue.store";
 import { WorkspaceIssues } from "./workspace/issue.store";
 import type { IWorkspaceDraftIssues, IWorkspaceDraftIssuesFilter } from "./workspace-draft";
 import { WorkspaceDraftIssues, WorkspaceDraftIssuesFilter } from "./workspace-draft";
+// jira-parity (project-categories master boards)
+import type { ICategoryBoardIssues, ICategoryBoardIssuesFilter } from "@/store/jira-parity/category-board";
+import { CategoryBoardIssues, CategoryBoardIssuesFilter } from "@/store/jira-parity/category-board";
 
 export interface IIssueRootStore {
   currentUserId: string | undefined;
@@ -106,6 +109,10 @@ export interface IIssueRootStore {
 
   projectEpicsFilter: IProjectIssuesFilter;
   projectEpics: IProjectIssues;
+
+  // jira-parity (project-categories master boards)
+  categoryBoardIssuesFilter: ICategoryBoardIssuesFilter;
+  categoryBoardIssues: ICategoryBoardIssues;
 }
 
 export class IssueRootStore implements IIssueRootStore {
@@ -174,6 +181,10 @@ export class IssueRootStore implements IIssueRootStore {
 
   projectEpicsFilter: IProjectIssuesFilter;
   projectEpics: IProjectIssues;
+
+  // jira-parity (project-categories master boards)
+  categoryBoardIssuesFilter: ICategoryBoardIssuesFilter;
+  categoryBoardIssues: ICategoryBoardIssues;
 
   constructor(rootStore: RootStore, serviceType: TIssueServiceType = EIssueServiceType.ISSUES) {
     makeObservable(this, {
@@ -265,5 +276,9 @@ export class IssueRootStore implements IIssueRootStore {
 
     this.projectEpicsFilter = new ProjectIssuesFilter(this);
     this.projectEpics = new ProjectIssues(this, this.projectEpicsFilter);
+
+    // jira-parity (project-categories master boards)
+    this.categoryBoardIssuesFilter = new CategoryBoardIssuesFilter(this);
+    this.categoryBoardIssues = new CategoryBoardIssues(this, this.categoryBoardIssuesFilter);
   }
 }

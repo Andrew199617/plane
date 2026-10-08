@@ -19,6 +19,8 @@ import type { TIssueLayout } from "./layout";
 export type TIssueFilterKeys = "priority" | "state" | "labels";
 
 export enum EServerGroupByToFilterOptions {
+  // jira-parity: oxlint reports the duplicate below ("state__name" = "state") on this first occurrence
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   "state_id" = "state",
   "priority" = "priority",
   "labels__id" = "labels",
@@ -29,6 +31,10 @@ export enum EServerGroupByToFilterOptions {
   "target_date" = "target_date",
   "project_id" = "project",
   "created_by" = "created_by",
+  // jira-parity (project-categories master boards): placeholder mapping; the category board filter store
+  // replaces it with the server's `state_name` filter when paging a single status column.
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
+  "state__name" = "state",
   // jira-parity (work item types): legacy `issue_type` param when paging a single type group
   "type_id" = "issue_type",
 }
@@ -303,6 +309,67 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
         display_filters: {
           order_by: ["-created_at", "-updated_at", "start_date", "-priority"],
           group_by: ["state", "priority", "assignees", null],
+        },
+        extra_options: {
+          access: true,
+          values: ["sub_issue"],
+        },
+      },
+    },
+  },
+  // jira-parity: project-category master boards (/:workspaceSlug/boards/:categoryId)
+  category_board: {
+    filters: [
+      "project_id",
+      "type_id",
+      "priority",
+      "assignee_id",
+      "state_group",
+      "label_id",
+      "created_by_id",
+      "start_date",
+      "target_date",
+    ],
+    layoutOptions: {
+      list: {
+        display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
+        display_filters: {
+          group_by: [
+            "state__name",
+            "state_detail.group",
+            "issue_type",
+            "priority",
+            "project",
+            "assignees",
+            "labels",
+            null,
+          ],
+          order_by: ["sort_order", "-created_at", "-updated_at", "start_date", "-priority", "target_date"],
+          type: ["active", "backlog"],
+        },
+        extra_options: {
+          access: true,
+          values: ["show_empty_groups", "sub_issue"],
+        },
+      },
+      kanban: {
+        display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
+        display_filters: {
+          group_by: ["state__name", "state_detail.group", "issue_type", "priority", "project", "assignees", "labels"],
+          sub_group_by: ["state__name", "issue_type", "priority", "project", "assignees", "labels", null],
+          order_by: ["sort_order", "-created_at", "-updated_at", "start_date", "-priority", "target_date"],
+          type: ["active", "backlog"],
+        },
+        extra_options: {
+          access: true,
+          values: ["show_empty_groups", "sub_issue"],
+        },
+      },
+      spreadsheet: {
+        display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
+        display_filters: {
+          order_by: ["sort_order", "-created_at", "-updated_at", "start_date", "-priority"],
+          type: ["active", "backlog"],
         },
         extra_options: {
           access: true,

@@ -12,13 +12,15 @@
 // EIssueGroupByToServerOptions / EIssueGroupBYServerToProperty / EServerGroupByToFilterOptions /
 // ISSUE_GROUP_BY_OPTIONS (packages/constants). "state__name" is offered on category master boards only.
 import type { IGroupByColumn, TGetColumns } from "@plane/types";
+import { getStateNameGroupByColumns } from "./project-categories/group-by";
 import { getWorkItemTypeGroupByColumns } from "./work-item-types/group-by";
 
-export type TJiraParityGroupByKey = "issue_type";
+export type TJiraParityGroupByKey = "state__name" | "issue_type";
 
 export const JIRA_PARITY_GROUP_BY_COLUMNS: Record<
   TJiraParityGroupByKey,
   (params: TGetColumns) => IGroupByColumn[] | undefined
 > = {
+  state__name: getStateNameGroupByColumns,
   issue_type: getWorkItemTypeGroupByColumns,
 };

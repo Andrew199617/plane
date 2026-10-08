@@ -77,6 +77,10 @@ import {
 import { JIRA_PARITY_GROUP_BY_COLUMNS } from "@/components/jira-parity/group-by";
 import type { TJiraParityGroupByKey } from "@/components/jira-parity/group-by";
 import {
+  resolveStateNameGroupDrop,
+  scopeProjectColumnIdsToCategoryBoard,
+} from "@/components/jira-parity/project-categories/group-by";
+import {
   SpreadsheetOriginalEstimateColumn,
   SpreadsheetRemainingEstimateColumn,
 } from "@/components/jira-parity/time-tracking/spreadsheet-columns";
@@ -109,6 +113,8 @@ export const isWorkspaceLevel = (type: EIssuesStoreType) =>
     EIssuesStoreType.TEAM_VIEW,
     EIssuesStoreType.TEAM_PROJECT_WORK_ITEMS,
     EIssuesStoreType.WORKSPACE_DRAFT,
+    // jira-parity (project-categories master boards)
+    EIssuesStoreType.CATEGORY_BOARD,
   ].includes(type)
     ? true
     : false;
@@ -173,8 +179,8 @@ const getProjectColumns = (): IGroupByColumn[] | undefined => {
   const { joinedProjectIds: projectIds, projectMap } = store.projectRoot.project;
   // Return undefined if no project ids
   if (!projectIds) return;
-  // Map project ids to project columns
-  return projectIds
+  // Map project ids to project columns (jira-parity: only the category's projects on a master board)
+  return scopeProjectColumnIdsToCategoryBoard(projectIds)
     .map((projectId: string) => {
       const project = projectMap[projectId];
       if (!project) return;
@@ -635,6 +641,9 @@ export const handleGroupDragDrop = async (
     issueUpdates[subGroupKey] = { ADD: getGroupId(destination.subGroupId), REMOVE: getGroupId(source.subGroupId) };
     updatedIssue = { ...updatedIssue, [subGroupKey]: subGroupValue };
   }
+
+  // jira-parity: "state__name" columns carry a state NAME; resolve it to the work item's project state
+  updatedIssue = resolveStateNameGroupDrop(updatedIssue, sourceIssue, groupBy, subGroupBy, source, destination);
 
   if (updatedIssue && sourceIssue?.project_id) {
     return await updateIssueOnDrop(sourceIssue?.project_id, sourceIssue.id, updatedIssue, issueUpdates);

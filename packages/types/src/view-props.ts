@@ -23,6 +23,8 @@ export type TIssueGroupByOptions =
   | "module"
   | "target_date"
   | "team_project"
+  // jira-parity (project-categories master boards): group by state NAME across projects
+  | "state__name"
   // jira-parity (work item types): group by work item type
   | "issue_type"
   | null;

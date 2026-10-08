@@ -13,10 +13,13 @@ export const IssuesStoreContext = createContext<EIssuesStoreType | undefined>(un
 
 export const useIssueStoreType = () => {
   const storeType = useContext(IssuesStoreContext);
-  const { globalViewId, viewId, projectId, cycleId, moduleId, userId, epicId, teamspaceId } = useParams();
+  const { globalViewId, viewId, projectId, cycleId, moduleId, userId, epicId, teamspaceId, categoryId } = useParams();
 
   // If store type exists in context, use that store type
   if (storeType) return storeType;
+
+  // jira-parity: project-category master board (/:workspaceSlug/boards/:categoryId)
+  if (categoryId) return EIssuesStoreType.CATEGORY_BOARD;
 
   // else check the router params to determine the issue store
   if (globalViewId) return EIssuesStoreType.GLOBAL;

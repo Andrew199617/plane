@@ -14,6 +14,7 @@ import type { IProject } from "@plane/types";
 import { getTabIndex } from "@plane/utils";
 // components
 import { MemberSelect } from "@/components/dropdowns/member/member-select";
+import { ProjectCategorySelect } from "@/components/jira-parity/project-categories/category-select";
 import { ProjectNetworkIcon } from "@/components/project/project-network-icon";
 
 type Props = {
@@ -82,6 +83,14 @@ function ProjectAttributes(props: Props) {
             );
           else return <></>;
         }}
+      />
+      {/* jira-parity: project category */}
+      <Controller
+        name="category_id"
+        control={control}
+        render={({ field: { value, onChange } }) => (
+          <ProjectCategorySelect value={value ?? null} onChange={onChange} variant="pill-md" hideWhenEmpty />
+        )}
       />
     </div>
   );

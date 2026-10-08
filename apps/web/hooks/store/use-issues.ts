@@ -18,6 +18,8 @@ import type { IProjectIssues, IProjectIssuesFilter } from "@/store/issue/project
 import type { IProjectViewIssues, IProjectViewIssuesFilter } from "@/store/issue/project-views";
 import type { IWorkspaceIssuesFilter } from "@/store/issue/workspace";
 import type { IWorkspaceDraftIssues, IWorkspaceDraftIssuesFilter } from "@/store/issue/workspace-draft";
+// jira-parity
+import type { ICategoryBoardIssues, ICategoryBoardIssuesFilter } from "@/store/jira-parity/category-board";
 // constants
 
 type defaultIssueStore = {
@@ -76,6 +78,11 @@ export type TStoreIssues = {
   [EIssuesStoreType.TEAM_PROJECT_WORK_ITEMS]: defaultIssueStore & {
     issues: IProjectIssues;
     issuesFilter: IProjectIssuesFilter;
+  };
+  // jira-parity (project-categories master boards)
+  [EIssuesStoreType.CATEGORY_BOARD]: defaultIssueStore & {
+    issues: ICategoryBoardIssues;
+    issuesFilter: ICategoryBoardIssuesFilter;
   };
 };
 
@@ -147,6 +154,12 @@ export const useIssues = <T extends EIssuesStoreType>(storeType?: T): TStoreIssu
       return merge(defaultStore, {
         issues: context.issue.teamProjectWorkItems,
         issuesFilter: context.issue.teamProjectWorkItemsFilter,
+      }) as TStoreIssues[T];
+    // jira-parity (project-categories master boards)
+    case EIssuesStoreType.CATEGORY_BOARD:
+      return merge(defaultStore, {
+        issues: context.issue.categoryBoardIssues,
+        issuesFilter: context.issue.categoryBoardIssuesFilter,
       }) as TStoreIssues[T];
     default:
       return merge(defaultStore, {

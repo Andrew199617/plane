@@ -124,6 +124,8 @@ export const ISSUE_GROUP_BY_KEY: Record<TIssueDisplayFilterOptions, keyof TIssue
   cycle: "cycle_id",
   module: "module_ids",
   team_project: "project_id",
+  // jira-parity (project-categories): grouped by the NAME of the issue's state, see getDefaultGroupValue
+  state__name: "state_id",
   // jira-parity (work item types)
   issue_type: "type_id",
 };
@@ -140,6 +142,8 @@ export const ISSUE_FILTER_DEFAULT_DATA: Record<TIssueDisplayFilterOptions, keyof
   assignees: "assignee_ids",
   target_date: "target_date",
   team_project: "project_id",
+  // jira-parity (project-categories): drops resolve the state name to the project's state id
+  state__name: "state_id",
   // jira-parity (work item types)
   issue_type: "type_id",
 };
@@ -1618,7 +1622,8 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
     const issueGroupKey = issue?.[this.issueGroupKey] as string | string[] | null | undefined;
     // if they are grouped then identify the paths based on props on which group by is dependent on
     const issueKeyActions: { path: string[]; action: EIssueGroupedAction.REORDER }[] = [];
-    const groupByValues = this.getArrayStringArray(issue, issueGroupKey);
+    // jira-parity: pass the group key so derived groups (state group / state name) resolve correctly
+    const groupByValues = this.getArrayStringArray(issue, issueGroupKey, this.groupBy);
 
     // if issues are not subGrouped then, provide path from groupByValues
     if (!this.issueSubGroupKey) {
@@ -1631,7 +1636,7 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
 
     const issueSubGroupKey = issue?.[this.issueSubGroupKey] as string | string[] | null | undefined;
     // if they are grouped then identify the paths based on props on which sub group by is dependent on
-    const subGroupByValues = this.getArrayStringArray(issue, issueSubGroupKey);
+    const subGroupByValues = this.getArrayStringArray(issue, issueSubGroupKey, this.subGroupBy);
 
     // if issues are subGrouped then, provide path from subGroupByValues
     for (const groupKey of groupByValues) {
@@ -1679,6 +1684,10 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
     // Handle special case for state group
     if (groupByKey === "state_detail.group") {
       return [this.rootIssueStore.rootStore.state.stateMap?.[value]?.group ?? issueObject.state__group];
+    }
+    // jira-parity (project-categories): group key is the state NAME (shared across projects)
+    if (groupByKey === "state__name") {
+      return [this.rootIssueStore.rootStore.state.stateMap?.[value]?.name ?? value];
     }
 
     return [value];

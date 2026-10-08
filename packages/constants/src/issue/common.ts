@@ -43,6 +43,8 @@ export enum EIssueGroupByToServerOptions {
   "created_by" = "created_by",
   // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   "team_project" = "project_id",
+  // jira-parity (project-categories master boards)
+  "state__name" = "state__name",
   // jira-parity (work item types)
   "issue_type" = "type_id",
 }
@@ -115,6 +117,8 @@ export const DRAG_ALLOWED_GROUPS: TIssueGroupByOptions[] = [
   "labels",
   "module",
   "cycle",
+  // jira-parity (project-categories master boards): drop resolves the column name to the project's state
+  "state__name",
 ];
 
 export type TCreateModalStoreTypes =
@@ -132,6 +136,8 @@ export const ISSUE_GROUP_BY_OPTIONS: {
   key: TIssueGroupByOptions;
   titleTranslationKey: string;
 }[] = [
+  // jira-parity (project-categories master boards): Jira-like status columns, listed first where offered
+  { key: "state__name", titleTranslationKey: "jp_categories.board.group_by_status" },
   { key: "state", titleTranslationKey: "common.states" },
   { key: "state_detail.group", titleTranslationKey: "common.state_groups" },
   { key: "priority", titleTranslationKey: "common.priority" },

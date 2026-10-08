@@ -1,0 +1,81 @@
+{
+  "jp_categories": {
+    "settings": {
+      "title": "Project categories",
+      "heading": "Project categories",
+      "description": "Group projects into categories. Each category gets a master board across its projects.",
+      "add": "Add category",
+      "create_title": "Create project category",
+      "edit_title": "Edit project category",
+      "name_label": "Name",
+      "name_placeholder": "e.g. Game",
+      "name_required": "Category name is required.",
+      "name_too_long": "Category name must be at most 255 characters.",
+      "description_label": "Description",
+      "description_placeholder": "What do the projects of this category have in common?",
+      "no_description": "No description",
+      "projects_count": "{count, plural, one {# project} other {# projects}}",
+      "projects_placeholder": "Assign projects",
+      "uncategorized_count": "{count, plural, =0 {Every project has a category.} one {# project has no category.} other {# projects have no category.}}",
+      "open_board": "Open board",
+      "edit": "Edit",
+      "delete": "Delete",
+      "deleting": "Deleting",
+      "delete_title": "Delete project category",
+      "delete_description": "Delete \"{name}\"? {count, plural, =0 {It has no projects.} one {Its # project becomes uncategorized.} other {Its # projects become uncategorized.}} No projects or work items are deleted.",
+      "move_up": "Move up",
+      "move_down": "Move down",
+      "cancel": "Cancel",
+      "create": "Create category",
+      "save": "Save changes",
+      "saving": "Saving",
+      "empty_title": "No project categories yet",
+      "empty_description": "Create categories such as Game or Website, then assign projects to them to get a master board per category.",
+      "load_failed": "Project categories could not be loaded. Please try again.",
+      "toast": {
+        "created": "Project category created",
+        "updated": "Project category updated",
+        "deleted": "Project category deleted",
+        "projects_updated": "Category projects updated",
+        "error": "Error",
+        "save_failed": "The project category could not be saved. Please try again.",
+        "delete_failed": "The project category could not be deleted. Please try again.",
+        "reorder_failed": "The project categories could not be reordered. Please try again."
+      }
+    },
+    "select": {
+      "label": "Category",
+      "placeholder": "Category",
+      "none": "No category",
+      "empty": "No project categories"
+    },
+    "board": {
+      "title": "Board",
+      "breadcrumb": "Boards",
+      "switch_board": "Switch board",
+      "projects": "Projects",
+      "no_projects": "No projects in this category",
+      "projects_count": "{count, plural, one {# project} other {# projects}}",
+      "sprint": "Sprint",
+      "no_sprints": "No sprints in these projects",
+      "sprints_selected": "{count, plural, one {# sprint} other {# sprints}}",
+      "group_by_status": "Status",
+      "empty_title": "No work items",
+      "empty_description": "No work items of this category match the current filters.",
+      "no_projects_description": "Assign projects to this category in Settings > Project categories to fill its board.",
+      "not_found_title": "Board not found",
+      "not_found_description": "This project category does not exist anymore or you cannot access it.",
+      "go_to_projects": "Go to projects"
+    },
+    "sidebar": {
+      "boards": "Boards",
+      "manage": "Manage project categories",
+      "projects_count": "{count, plural, one {# project} other {# projects}}"
+    },
+    "projects_list": {
+      "uncategorized": "Uncategorized",
+      "open_board": "Open board",
+      "projects_count": "{count, plural, one {# project} other {# projects}}"
+    }
+  }
+}

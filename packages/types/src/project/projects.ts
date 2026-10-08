@@ -40,6 +40,8 @@ export interface IPartialProject {
   created_by?: string;
   updated_by?: string;
   intake_count?: number;
+  // jira-parity (project categories)
+  category_id?: string | null;
 }
 
 export interface IProject extends IPartialProject {

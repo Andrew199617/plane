@@ -9,6 +9,7 @@ import { observer } from "mobx-react";
 // plane helpers
 import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 // components
+import { SidebarCategoryBoardsList } from "@/components/jira-parity/project-categories/sidebar-boards";
 import { SidebarWrapper } from "@/components/sidebar/sidebar-wrapper";
 import { SidebarFavoritesMenu } from "@/components/workspace/sidebar/favorites/favorites-menu";
 import { SidebarProjectsList } from "@/components/workspace/sidebar/projects-list";
@@ -36,6 +37,8 @@ export const AppSidebar = observer(function AppSidebar() {
       <SidebarMenuItems />
       {/* Favorites Menu */}
       {canPerformWorkspaceMemberActions && !isFavoriteEmpty && <SidebarFavoritesMenu />}
+      {/* jira-parity: project category master boards */}
+      <SidebarCategoryBoardsList />
       {/* Projects List */}
       <SidebarProjectsList />
     </SidebarWrapper>

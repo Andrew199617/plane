@@ -22,6 +22,8 @@ import type {
   TSupportedFilterForUpdate,
 } from "@plane/types";
 import { EIssuesStoreType } from "@plane/types";
+// jira-parity (project-categories master boards)
+import { useCategoryBoardIssueActions } from "@/components/jira-parity/project-categories/use-category-board-issue-actions";
 import { useIssues } from "./store/use-issues";
 
 export interface IssueActions {
@@ -55,8 +57,12 @@ export const useIssuesActions = (storeType: EIssuesStoreType): IssueActions => {
   const profileIssueActions = useProfileIssueActions();
   const archivedIssueActions = useArchivedIssueActions();
   const workspaceDraftIssueActions = useWorkspaceDraftIssueActions();
+  const categoryBoardIssueActions = useCategoryBoardIssueActions();
 
   switch (storeType) {
+    // jira-parity (project-categories master boards)
+    case EIssuesStoreType.CATEGORY_BOARD:
+      return categoryBoardIssueActions;
     case EIssuesStoreType.PROJECT_VIEW:
       return projectViewIssueActions;
     case EIssuesStoreType.PROFILE:

@@ -26,6 +26,7 @@ import { renderFormattedDate } from "@plane/utils";
 import { CoverImage } from "@/components/common/cover-image";
 import { ImagePickerPopover } from "@/components/core/image-picker-popover";
 import { TimezoneSelect } from "@/components/global";
+import { ProjectCategoryFormField } from "@/components/jira-parity/project-categories/category-form-field";
 // helpers
 import { handleCoverImageChange } from "@/helpers/cover-image.helper";
 // hooks
@@ -165,6 +166,8 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
 
       logo_props: formData.logo_props,
       timezone: formData.timezone,
+      // jira-parity: project category
+      ...(formData.category_id !== undefined ? { category_id: formData.category_id } : {}),
     };
 
     // Handle cover image changes
@@ -451,6 +454,8 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
             />
             {errors.timezone && <span className="text-11 text-danger-primary">{errors.timezone.message}</span>}
           </div>
+          {/* jira-parity: project category */}
+          <ProjectCategoryFormField control={control} disabled={!isAdmin} />
         </div>
         <div className="flex items-center justify-between py-2">
           <>

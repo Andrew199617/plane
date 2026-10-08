@@ -40,6 +40,8 @@ export enum EIssuesStoreType {
   WORKSPACE_DRAFT = "WORKSPACE_DRAFT",
   EPIC = "EPIC",
   TEAM_PROJECT_WORK_ITEMS = "TEAM_PROJECT_WORK_ITEMS",
+  // jira-parity: master board of a project category (/:workspaceSlug/boards/:categoryId)
+  CATEGORY_BOARD = "CATEGORY_BOARD",
 }
 
 export type TBaseIssue = {
