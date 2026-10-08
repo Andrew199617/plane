@@ -156,6 +156,7 @@ class IssueSearchEndpoint(BaseAPIView):
                 "state__name",
                 "state__group",
                 "state__color",
+                "type_id",  # jira-parity: work item type (parent pickers show the type icon)
             )[:100],
             status=status.HTTP_200_OK,
         )

@@ -34,6 +34,8 @@ ISSUE_ORDER_BY_ALLOWLIST = frozenset({
     # jira-parity: time tracking spreadsheet columns
     "original_estimate",
     "remaining_estimate",
+    # jira-parity: work item type spreadsheet column
+    "type__name",
 })
 
 # IntakeIssue queryset — fields are prefixed with `issue__` for the join.
@@ -106,6 +108,8 @@ ISSUE_GROUP_BY_ALLOWLIST = frozenset({
     "created_by",
     "target_date",
     "start_date",
+    # jira-parity: group by work item type (plain FK column; resolved by both groupers)
+    "type_id",
 })
 
 # Cycle list queryset.

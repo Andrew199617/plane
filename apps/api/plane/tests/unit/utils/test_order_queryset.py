@@ -31,6 +31,7 @@ class TestIssueGroupByAllowlist:
             "created_by",
             "target_date",
             "start_date",
+            "type_id",  # jira-parity: work item types
         }
         assert ISSUE_GROUP_BY_ALLOWLIST == frozenset(expected)
 

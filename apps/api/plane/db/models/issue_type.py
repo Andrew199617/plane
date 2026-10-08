@@ -20,6 +20,8 @@ class IssueType(BaseModel):
     is_default = models.BooleanField(default=False)
     is_active = models.BooleanField(default=True)
     level = models.FloatField(default=0)
+    # Jira-parity: True only for the "Sub-task" type (requires a parent, cannot be a parent)
+    is_sub_task = models.BooleanField(default=False)
     external_source = models.CharField(max_length=255, null=True, blank=True)
     external_id = models.CharField(max_length=255, blank=True, null=True)
 
@@ -27,6 +29,13 @@ class IssueType(BaseModel):
         verbose_name = "Issue Type"
         verbose_name_plural = "Issue Types"
         db_table = "issue_types"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["workspace", "name"],
+                condition=Q(deleted_at__isnull=True),
+                name="issue_type_unique_workspace_name_when_deleted_at_null",
+            )
+        ]
 
     def __str__(self):
         return self.name

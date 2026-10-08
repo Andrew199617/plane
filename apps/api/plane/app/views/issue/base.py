@@ -188,6 +188,7 @@ class IssueListEndpoint(BaseAPIView):
                 "sequence_id",
                 "project_id",
                 "parent_id",
+                "type_id",  # jira-parity: work item type
                 "cycle_id",
                 "module_ids",
                 "label_ids",
@@ -455,6 +456,7 @@ class IssueViewSet(BaseViewSet):
                     "sequence_id",
                     "project_id",
                     "parent_id",
+                    "type_id",  # jira-parity: work item type
                     "cycle_id",
                     "module_ids",
                     "label_ids",
@@ -898,6 +900,7 @@ class IssuePaginatedViewSet(BaseViewSet):
             "sequence_id",
             "project_id",
             "parent_id",
+            "type_id",  # jira-parity: work item type
             "cycle_id",
             "created_at",
             "updated_at",

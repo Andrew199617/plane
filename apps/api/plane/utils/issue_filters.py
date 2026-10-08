@@ -428,6 +428,22 @@ def filter_logged_by(params, issue_filter, method, prefix=""):
     return issue_filter
 
 
+def _jp_split_values(value):
+    items = value if isinstance(value, (list, tuple)) else str(value or "").split(",")
+    return [str(item).strip() for item in items if item is not None and str(item).strip() not in ("", "null")]
+
+
+def filter_issue_type(params, issue_filter, method, prefix=""):
+    # Jira-parity work item types: legacy `issue_type=<id>[,<id>|None]` (group "load more", sub-items)
+    values = _jp_split_values(params.get("issue_type"))
+    if "None" in values:
+        issue_filter[f"{prefix}type__isnull"] = True
+    type_ids = filter_valid_uuids([value for value in values if value != "None"])
+    if type_ids:
+        issue_filter[f"{prefix}type_id__in"] = type_ids
+    return issue_filter
+
+
 def issue_filters(query_params, method, prefix=""):
     issue_filter = {}
 
@@ -457,6 +473,8 @@ def issue_filters(query_params, method, prefix=""):
         "sub_issue": filter_sub_issue_toggle,
         "subscriber": filter_subscribed_issues,
         "start_target_date": filter_start_target_date_issues,
+        # Jira-parity work item types
+        "issue_type": filter_issue_type,
     }
 
     for key, value in ISSUE_FILTER.items():

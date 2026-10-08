@@ -118,6 +118,7 @@ def issue_on_results(
         "sequence_id",
         "project_id",
         "parent_id",
+        "type_id",  # jira-parity: work item type
         "cycle_id",
         "sub_issues_count",
         "created_at",
@@ -150,6 +151,12 @@ def issue_group_values(
     filters: Dict[str, Any] = {},
     queryset: Optional[QuerySet] = None,
 ) -> List[Union[str, Any]]:
+    if field == "type_id":
+        # Jira-parity: group by work item type (workspace-level types + work items without a type)
+        from plane.db.models import IssueType
+
+        return list(IssueType.objects.filter(workspace__slug=slug).values_list("id", flat=True)) + ["None"]
+
     if field == "state_id":
         queryset = State.objects.filter(is_triage=False, workspace__slug=slug).values_list("id", flat=True)
         if project_id:

@@ -188,6 +188,11 @@ def issue_group_values(
     filters: Dict[str, Any] = {},
     queryset: Optional[QuerySet] = None,
 ) -> List[Union[str, Any]]:
+    if field == "type_id":
+        # Jira-parity: group by work item type (ISSUE_GROUP_BY_ALLOWLIST is shared with the app grouper)
+        from plane.db.models import IssueType
+
+        return list(IssueType.objects.filter(workspace__slug=slug).values_list("id", flat=True)) + ["None"]
     if field == "state_id":
         queryset = State.objects.filter(is_triage=False, workspace__slug=slug).values_list("id", flat=True)
         if project_id:

@@ -37,6 +37,7 @@ from plane.utils.exception_logger import log_exception
 from plane.utils.issue_relation_mapper import get_inverse_relation
 from plane.utils.priority import normalize_priority
 from plane.utils.time_tracking import track_original_estimate, track_remaining_estimate
+from plane.utils.work_item_types import track_work_item_type
 from plane.utils.uuid import is_valid_uuid
 
 
@@ -619,6 +620,10 @@ def update_issue_activity(
         # jira-parity: time tracking (minutes)
         "original_estimate": track_original_estimate,
         "remaining_estimate": track_remaining_estimate,
+        # jira-parity: work item type (app/v1 type_id, v1 type / type_name)
+        "type_id": track_work_item_type,
+        "type": track_work_item_type,
+        "type_name": track_work_item_type,
         "archived_at": track_archive_at,
         "closed_to": track_closed_to,
         # External endpoint keys

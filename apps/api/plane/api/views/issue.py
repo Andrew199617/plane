@@ -82,6 +82,7 @@ from plane.settings.storage import S3Storage
 from plane.utils.path_validator import sanitize_filename
 from plane.utils.priority import PRIORITY_ORDER
 from plane.utils.workflow import assert_state_transition_allowed  # Jira-parity workflows
+from plane.utils.work_item_types import filter_issues_by_work_item_type  # Jira-parity work item types
 from plane.utils.order_queryset import (
     ACTIVITY_ORDER_BY_ALLOWLIST,
     ISSUE_ORDER_BY_ALLOWLIST,
@@ -387,6 +388,10 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
         )
 
         total_issue_queryset = Issue.issue_objects.filter(project_id=project_id, workspace__slug=slug)
+
+        # Jira-parity: ?type_id= / ?type= (name) / ?type_name= work item type filters
+        issue_queryset = filter_issues_by_work_item_type(issue_queryset, request.GET)
+        total_issue_queryset = filter_issues_by_work_item_type(total_issue_queryset, request.GET)
 
         # Priority Ordering
         if order_by_param == "priority" or order_by_param == "-priority":

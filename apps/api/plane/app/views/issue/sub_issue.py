@@ -28,6 +28,7 @@ from plane.utils.timezone_converter import user_timezone_converter
 from collections import defaultdict
 from plane.utils.host import base_host
 from plane.utils.order_queryset import order_issue_queryset
+from plane.utils.work_item_types import WorkItemTypeRuleError, validate_parent_can_have_children
 
 
 class SubIssuesEndpoint(BaseAPIView):
@@ -159,6 +160,7 @@ class SubIssuesEndpoint(BaseAPIView):
                 "sequence_id",
                 "project_id",
                 "parent_id",
+                "type_id",  # jira-parity: work item type
                 "cycle_id",
                 "module_ids",
                 "label_ids",
@@ -228,6 +230,12 @@ class SubIssuesEndpoint(BaseAPIView):
                 {"error": "Sub Issue IDs are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        # Jira-parity: a Sub-task cannot be the parent of other work items
+        try:
+            validate_parent_can_have_children(parent_issue)
+        except WorkItemTypeRuleError as e:
+            return Response(e.as_response_data(), status=status.HTTP_400_BAD_REQUEST)
 
         # Scope to workspace + project to prevent cross-project/cross-tenant IDOR
         sub_issues = Issue.issue_objects.filter(

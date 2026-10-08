@@ -48,6 +48,7 @@ from plane.utils.content_validator import (
     validate_html_content,
     validate_binary_data,
 )
+from plane.utils.work_item_types import validate_issue_type_and_parent, work_item_type_id_field
 
 
 class IssueFlatSerializer(BaseSerializer):
@@ -88,6 +89,8 @@ class IssueCreateSerializer(BaseSerializer):
     parent_id = serializers.PrimaryKeyRelatedField(
         source="parent", queryset=Issue.objects.all(), required=False, allow_null=True
     )
+    # Jira-parity work item type (scoped + validated in validate_issue_type_and_parent)
+    type_id = work_item_type_id_field()
     label_ids = serializers.ListField(
         child=serializers.PrimaryKeyRelatedField(queryset=Label.objects.all()),
         write_only=True,
@@ -196,6 +199,14 @@ class IssueCreateSerializer(BaseSerializer):
             ).exists()
         ):
             raise serializers.ValidationError("Estimate point is not valid please pass a valid estimate_point_id")
+
+        # Jira-parity work item types: workspace-scoped type, default type, Sub-task parent rules
+        attrs = validate_issue_type_and_parent(
+            attrs,
+            instance=self.instance,
+            workspace_id=self.context.get("workspace_id"),
+            project_id=self.context.get("project_id"),
+        )
 
         return attrs
 
@@ -409,6 +420,7 @@ class IssueRelationSerializer(BaseSerializer):
     name = serializers.CharField(source="related_issue.name", read_only=True)
     relation_type = serializers.CharField(read_only=True)
     state_id = serializers.UUIDField(source="related_issue.state.id", read_only=True)
+    type_id = serializers.UUIDField(source="related_issue.type_id", read_only=True)  # jira-parity
     priority = serializers.CharField(source="related_issue.priority", read_only=True)
     assignee_ids = serializers.ListField(
         child=serializers.PrimaryKeyRelatedField(queryset=User.objects.all()),
@@ -425,6 +437,7 @@ class IssueRelationSerializer(BaseSerializer):
             "relation_type",
             "name",
             "state_id",
+            "type_id",
             "priority",
             "assignee_ids",
             "created_by",
@@ -449,6 +462,7 @@ class RelatedIssueSerializer(BaseSerializer):
     name = serializers.CharField(source="issue.name", read_only=True)
     relation_type = serializers.CharField(read_only=True)
     state_id = serializers.UUIDField(source="issue.state.id", read_only=True)
+    type_id = serializers.UUIDField(source="issue.type_id", read_only=True)  # jira-parity
     priority = serializers.CharField(source="issue.priority", read_only=True)
     assignee_ids = serializers.ListField(
         child=serializers.PrimaryKeyRelatedField(queryset=User.objects.all()),
@@ -465,6 +479,7 @@ class RelatedIssueSerializer(BaseSerializer):
             "relation_type",
             "name",
             "state_id",
+            "type_id",
             "priority",
             "assignee_ids",
             "created_by",
@@ -802,6 +817,8 @@ class IssueSerializer(DynamicBaseSerializer):
             "sequence_id",
             "project_id",
             "parent_id",
+            # jira-parity: work item type
+            "type_id",
             "cycle_id",
             "module_ids",
             "label_ids",
@@ -862,6 +879,8 @@ class IssueListDetailSerializer(serializers.Serializer):
             "sequence_id": instance.sequence_id,
             "project_id": instance.project_id,
             "parent_id": instance.parent_id,
+            # jira-parity: work item type
+            "type_id": instance.type_id,
             "created_at": instance.created_at,
             "updated_at": instance.updated_at,
             "created_by": instance.created_by_id,
