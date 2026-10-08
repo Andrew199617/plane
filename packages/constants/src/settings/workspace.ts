@@ -102,6 +102,7 @@ export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWo
     WORKSPACE_SETTINGS["general"],
     WORKSPACE_SETTINGS["members"],
     // jira-parity
+    WORKSPACE_SETTINGS["agents"],
     WORKSPACE_SETTINGS["teams"],
     WORKSPACE_SETTINGS["billing-and-plans"],
     WORKSPACE_SETTINGS["export"],

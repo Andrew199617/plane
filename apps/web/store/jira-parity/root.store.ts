@@ -7,6 +7,8 @@
 // Jira-parity root store (scaffold-owned). Mounted as `rootStore.jiraParity` in CoreRootStore.
 // Each feature owns its own `<feature>.store.ts`; add new slots here only through the integrator.
 import type { CoreRootStore } from "@/store/root.store";
+import type { IAgentsStore } from "./agents.store";
+import { AgentsStore } from "./agents.store";
 import type { IPrioritiesStore } from "./priorities.store";
 import { PrioritiesStore } from "./priorities.store";
 import type { IProjectCategoriesStore } from "./project-categories.store";
@@ -20,6 +22,7 @@ import { WorkItemTypesStore } from "./work-item-types.store";
 
 export interface IJiraParityRootStore {
   workItemTypes: IWorkItemTypesStore;
+  agents: IAgentsStore;
   teams: ITeamsStore;
   projectCategories: IProjectCategoriesStore;
   timeTracking: ITimeTrackingStore;
@@ -28,6 +31,7 @@ export interface IJiraParityRootStore {
 
 export class JiraParityRootStore implements IJiraParityRootStore {
   workItemTypes: IWorkItemTypesStore;
+  agents: IAgentsStore;
   teams: ITeamsStore;
   projectCategories: IProjectCategoriesStore;
   timeTracking: ITimeTrackingStore;
@@ -35,6 +39,7 @@ export class JiraParityRootStore implements IJiraParityRootStore {
 
   constructor(rootStore: CoreRootStore) {
     this.workItemTypes = new WorkItemTypesStore(rootStore);
+    this.agents = new AgentsStore(rootStore);
     this.teams = new TeamsStore(rootStore);
     this.projectCategories = new ProjectCategoriesStore(rootStore);
     this.timeTracking = new TimeTrackingStore(rootStore);

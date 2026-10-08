@@ -8,6 +8,7 @@
 // bootstrap hooks (components/jira-parity/<feature>/bootstrap.ts), which are owned by the features.
 import { observer } from "mobx-react";
 // local imports
+import { useAgentsProjectBootstrap, useAgentsWorkspaceBootstrap } from "./agents/bootstrap";
 import { usePrioritiesProjectBootstrap, usePrioritiesWorkspaceBootstrap } from "./priorities/bootstrap";
 import {
   useProjectCategoriesProjectBootstrap,
@@ -28,6 +29,7 @@ export const JiraParityWorkspaceDataLoader = observer(function JiraParityWorkspa
   const { workspaceSlug } = props;
 
   useWorkItemTypesWorkspaceBootstrap(workspaceSlug);
+  useAgentsWorkspaceBootstrap(workspaceSlug);
   useTeamsWorkspaceBootstrap(workspaceSlug);
   useProjectCategoriesWorkspaceBootstrap(workspaceSlug);
   useTimeTrackingWorkspaceBootstrap(workspaceSlug);
@@ -48,6 +50,7 @@ export const JiraParityProjectDataLoader = observer(function JiraParityProjectDa
   const { workspaceSlug, projectId } = props;
 
   useWorkItemTypesProjectBootstrap(workspaceSlug, projectId);
+  useAgentsProjectBootstrap(workspaceSlug, projectId);
   useTeamsProjectBootstrap(workspaceSlug, projectId);
   useProjectCategoriesProjectBootstrap(workspaceSlug, projectId);
   useTimeTrackingProjectBootstrap(workspaceSlug, projectId);
