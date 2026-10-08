@@ -10,6 +10,7 @@ import { dropTargetForElements } from "@atlaskit/pragmatic-drag-and-drop/element
 import { observer } from "mobx-react";
 // hooks
 import { useKanbanView } from "@/hooks/store/use-kanban-view";
+import { useIsAgent } from "@/hooks/store/jira-parity/use-is-agent";
 // helpers
 import { getSourceFromDropPayload } from "../utils";
 
@@ -25,6 +26,8 @@ export const KanbanDeleteDropZone = observer(function KanbanDeleteDropZone({ onR
   const [isDragOverDelete, setIsDragOverDelete] = useState(false);
   // store hooks
   const { isDragging } = useKanbanView();
+  // jira-parity: agents can drag work items (state changes) but never delete them
+  const isAgent = useIsAgent();
 
   useEffect(() => {
     const element = deleteAreaRef.current;
@@ -45,6 +48,8 @@ export const KanbanDeleteDropZone = observer(function KanbanDeleteDropZone({ onR
       })
     );
   }, [onRequestDelete]);
+
+  if (isAgent) return null;
 
   return (
     <div

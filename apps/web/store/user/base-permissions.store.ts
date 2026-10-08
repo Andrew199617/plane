@@ -43,6 +43,9 @@ export interface IBaseUserPermissionStore {
     projectId?: string
   ) => EUserPermissions | undefined;
   fetchWorkspaceLevelProjectEntities: (workspaceSlug: string, projectId: string) => void;
+  // Jira-parity: agent role helpers
+  isAgentInWorkspace: (workspaceSlug: string | undefined) => boolean;
+  isAgentInProject: (workspaceSlug: string | undefined, projectId: string | undefined) => boolean;
   allowPermissions: (
     allowPermissions: ETempUserRole[],
     level: TUserPermissionsLevel,
@@ -167,6 +170,22 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
   };
 
   /**
+   * Jira-parity: whether the current user is an agent (role 10) in the workspace.
+   */
+  isAgentInWorkspace = computedFn((workspaceSlug: string | undefined): boolean => {
+    if (!workspaceSlug) return false;
+    return Number(this.getWorkspaceRoleByWorkspaceSlug(workspaceSlug)) === EUserPermissions.AGENT;
+  });
+
+  /**
+   * Jira-parity: whether the current user is an agent (role 10) in the project.
+   */
+  isAgentInProject = computedFn((workspaceSlug: string | undefined, projectId: string | undefined): boolean => {
+    if (!workspaceSlug || !projectId) return false;
+    return Number(this.getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId)) === EUserPermissions.AGENT;
+  });
+
+  /**
    * @description Returns whether the user has the permission to access a page
    * @param { string } page
    * @returns { boolean }
@@ -219,7 +238,13 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
       currentUserRole = parseInt(currentUserRole);
     }
 
-    if (currentUserRole && typeof currentUserRole === "number" && allowPermissions.includes(currentUserRole)) {
+    // Jira-parity: agents inherit guest-level (read-only) access unless a list names AGENT explicitly.
+    const isAllowedRole =
+      typeof currentUserRole === "number" &&
+      (allowPermissions.includes(currentUserRole) ||
+        (currentUserRole === EUserPermissions.AGENT && allowPermissions.includes(EUserPermissions.GUEST)));
+
+    if (currentUserRole && isAllowedRole) {
       if (onPermissionAllowed) {
         return onPermissionAllowed();
       } else {

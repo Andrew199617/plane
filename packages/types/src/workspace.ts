@@ -15,6 +15,8 @@ import type { IWorkspaceViewProps } from "./view-props";
 export enum EUserWorkspaceRoles {
   ADMIN = 20,
   MEMBER = 15,
+  // Jira-parity: AI agent accounts
+  AGENT = 10,
   GUEST = 5,
 }
 

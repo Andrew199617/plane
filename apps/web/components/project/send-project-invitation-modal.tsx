@@ -150,12 +150,15 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
     const currentMemberWorkspaceRole = getWorkspaceMemberDetails(value)?.role;
     if (!value || !currentMemberWorkspaceRole) return ROLE;
 
-    const isGuestOROwner = [EUserPermissions.ADMIN, EUserPermissions.GUEST].includes(
+    // jira-parity: agents are locked to the Agent role, and only agents get it
+    const isGuestOROwner = [EUserPermissions.ADMIN, EUserPermissions.AGENT, EUserPermissions.GUEST].includes(
       currentMemberWorkspaceRole as EUserPermissions
     );
 
     return Object.fromEntries(
-      Object.entries(ROLE).filter(([key]) => !isGuestOROwner || [currentMemberWorkspaceRole].includes(parseInt(key)))
+      Object.entries(ROLE).filter(([key]) =>
+        isGuestOROwner ? [currentMemberWorkspaceRole].includes(parseInt(key)) : parseInt(key) !== EUserPermissions.AGENT
+      )
     );
   };
 

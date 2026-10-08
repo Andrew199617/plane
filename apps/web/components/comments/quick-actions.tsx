@@ -24,6 +24,7 @@ import type { TIssueComment, TCommentsOperations } from "@plane/types";
 import type { TContextMenuItem } from "@plane/blocks/context-menu";
 import { resolveItemVariant } from "@plane/blocks/context-menu";
 // hooks
+import { useIsAgent } from "@/hooks/store/jira-parity/use-is-agent";
 import { useUser } from "@/hooks/store/user";
 
 type TCommentCard = {
@@ -38,10 +39,12 @@ export const CommentQuickActions = observer(function CommentQuickActions(props: 
   const { activityOperations, comment, setEditMode, showAccessSpecifier, showCopyLinkOption } = props;
   // store hooks
   const { data: currentUser } = useUser();
+  // jira-parity: agents can edit their own comments but never delete them
+  const isAgent = useIsAgent(comment.project);
   // derived values
   const isAuthor = currentUser?.id === comment.actor;
   const canEdit = isAuthor;
-  const canDelete = isAuthor;
+  const canDelete = isAuthor && !isAgent;
   // translation
   const { t } = useTranslation();
 

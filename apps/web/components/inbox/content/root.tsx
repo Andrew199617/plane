@@ -76,7 +76,10 @@ export const InboxContentRoot = observer(function InboxContentRoot(props: TInbox
     allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.PROJECT, workspaceSlug, projectId) ||
     inboxIssue?.issue.created_by === currentUser?.id;
 
-  const isGuest = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId) === EUserPermissions.GUEST;
+  // jira-parity: agents are read-only in intake, like guests
+  const isGuest = [EUserPermissions.GUEST, EUserPermissions.AGENT].includes(
+    Number(getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId))
+  );
   const isOwner = inboxIssue?.issue.created_by === currentUser?.id;
   const readOnly = !isOwner && isGuest;
 

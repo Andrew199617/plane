@@ -7,10 +7,16 @@
 export enum EUserPermissions {
   ADMIN = 20,
   MEMBER = 15,
+  // Jira-parity: AI agent accounts
+  AGENT = 10,
   GUEST = 5,
 }
 
-export type TUserPermissions = EUserPermissions.ADMIN | EUserPermissions.MEMBER | EUserPermissions.GUEST;
+export type TUserPermissions =
+  | EUserPermissions.ADMIN
+  | EUserPermissions.MEMBER
+  | EUserPermissions.AGENT
+  | EUserPermissions.GUEST;
 
 // project network
 export enum EProjectNetwork {

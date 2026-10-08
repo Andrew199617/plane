@@ -85,8 +85,10 @@ export function NameColumn(props: NameProps) {
             </Link>
           )}
           <span className={isSuspended ? "text-placeholder" : ""}>
-            {first_name} {last_name}
+            {/* jira-parity: agent accounts may only have a display name */}
+            {first_name || last_name ? `${first_name ?? ""} ${last_name ?? ""}`.trim() : display_name}
           </span>
+          {rowData.role === EUserPermissions.AGENT && <Badge variant="purple" size="xs" label={t("jp_agents.badge")} />}
         </div>
 
         {!isSuspended && (isAdmin || id === currentUser?.id) && (
