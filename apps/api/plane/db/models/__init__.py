@@ -93,3 +93,4 @@ from .description import Description, DescriptionVersion
 
 # Jira-parity models
 from .project import ROLE, ROLE_CHOICES
+from .workflow import StateTransition

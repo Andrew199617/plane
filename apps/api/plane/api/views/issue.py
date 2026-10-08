@@ -81,6 +81,7 @@ from plane.db.models import (
 from plane.settings.storage import S3Storage
 from plane.utils.path_validator import sanitize_filename
 from plane.utils.priority import PRIORITY_ORDER
+from plane.utils.workflow import assert_state_transition_allowed  # Jira-parity workflows
 from plane.utils.order_queryset import (
     ACTIVITY_ORDER_BY_ALLOWLIST,
     ISSUE_ORDER_BY_ALLOWLIST,
@@ -808,6 +809,10 @@ class IssueDetailAPIEndpoint(BaseAPIView):
                     status=status.HTTP_409_CONFLICT,
                 )
 
+            # Jira-parity: role-based state transitions (HTTP 403 STATE_TRANSITION_NOT_ALLOWED)
+            assert_state_transition_allowed(
+                issue=issue, to_state_id=serializer.validated_data.get("state"), user=request.user
+            )
             serializer.save()
             issue_activity.delay(
                 type="issue.activity.updated",

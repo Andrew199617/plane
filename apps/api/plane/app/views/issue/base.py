@@ -73,6 +73,7 @@ from plane.utils.issue_filters import issue_filters
 from plane.utils.order_queryset import order_issue_queryset
 from plane.utils.paginator import GroupedOffsetPaginator, SubGroupedOffsetPaginator
 from plane.utils.timezone_converter import user_timezone_converter
+from plane.utils.workflow import assert_state_transition_allowed  # Jira-parity workflows
 
 from .. import BaseAPIView, BaseViewSet
 
@@ -679,6 +680,10 @@ class IssueViewSet(BaseViewSet):
         requested_data = json.dumps(self.request.data, cls=DjangoJSONEncoder)
         serializer = IssueCreateSerializer(issue, data=request.data, partial=True, context={"project_id": project_id})
         if serializer.is_valid():
+            # Jira-parity: role-based state transitions (HTTP 403 STATE_TRANSITION_NOT_ALLOWED)
+            assert_state_transition_allowed(
+                issue=issue, to_state_id=serializer.validated_data.get("state"), user=request.user
+            )
             serializer.save()
             # Check if the update is a migration description update
             is_migration_description_update = skip_activity and is_description_update
@@ -712,6 +717,11 @@ class IssueViewSet(BaseViewSet):
                 )
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, *args, **kwargs):
+        # Jira-parity: the "put" route used DRF's undecorated default update (no permission or
+        # workflow checks); route it through partial_update instead.
+        return self.partial_update(request, *args, **kwargs)
 
     @allow_permission([ROLE.ADMIN], creator=True, model=Issue)
     def destroy(self, request, slug, project_id, pk=None):

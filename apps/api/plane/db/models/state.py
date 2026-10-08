@@ -20,24 +20,24 @@ class StateGroup(models.TextChoices):
     TRIAGE = "triage", "Triage"
 
 
-# Default states
+# Default states (Jira-parity standard workflow; existing projects: plane.utils.workflow.seed_project_workflow)
 DEFAULT_STATES = [
     {
-        "name": "Backlog",
+        "name": "To Do",
         "color": "#60646C",
         "sequence": 15000,
-        "group": StateGroup.BACKLOG.value,
+        "group": StateGroup.UNSTARTED.value,
         "default": True,
     },
     {
-        "name": "Todo",
-        "color": "#60646C",
+        "name": "In Progress",
+        "color": "#2563EB",
         "sequence": 25000,
-        "group": StateGroup.UNSTARTED.value,
+        "group": StateGroup.STARTED.value,
     },
     {
-        "name": "In Progress",
-        "color": "#F59E0B",
+        "name": "In Review",
+        "color": "#8B5CF6",
         "sequence": 35000,
         "group": StateGroup.STARTED.value,
     },
@@ -48,7 +48,7 @@ DEFAULT_STATES = [
         "group": StateGroup.COMPLETED.value,
     },
     {
-        "name": "Cancelled",
+        "name": "Won't Fix",
         "color": "#9AA4BC",
         "sequence": 55000,
         "group": StateGroup.CANCELLED.value,
