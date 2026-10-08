@@ -151,6 +151,8 @@ class SubIssuesEndpoint(BaseAPIView):
                 "sort_order",
                 "completed_at",
                 "estimate_point",
+                "original_estimate",
+                "remaining_estimate",
                 "priority",
                 "start_date",
                 "target_date",

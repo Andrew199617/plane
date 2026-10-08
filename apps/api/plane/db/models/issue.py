@@ -166,6 +166,9 @@ class Issue(ChangeTrackerMixin, ProjectBaseModel):
         null=True,
         blank=True,
     )
+    # Jira-parity time tracking, in minutes (Jira "Original estimate" / "Remaining Estimate")
+    original_estimate = models.PositiveIntegerField(null=True, blank=True)
+    remaining_estimate = models.PositiveIntegerField(null=True, blank=True)
 
     issue_objects = IssueManager()
 

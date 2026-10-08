@@ -29,6 +29,9 @@ class ViewIssueListSerializer(serializers.Serializer):
             "sort_order": instance.sort_order,
             "completed_at": instance.completed_at,
             "estimate_point": instance.estimate_point_id,
+            # jira-parity: time tracking (minutes)
+            "original_estimate": instance.original_estimate,
+            "remaining_estimate": instance.remaining_estimate,
             "priority": instance.priority,
             "start_date": instance.start_date,
             "target_date": instance.target_date,

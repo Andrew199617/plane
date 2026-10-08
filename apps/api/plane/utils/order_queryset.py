@@ -31,6 +31,9 @@ ISSUE_ORDER_BY_ALLOWLIST = frozenset({
     "assignees__first_name",
     "labels__name",
     "issue_module__module__name",
+    # jira-parity: time tracking spreadsheet columns
+    "original_estimate",
+    "remaining_estimate",
 })
 
 # IntakeIssue queryset — fields are prefixed with `issue__` for the join.
