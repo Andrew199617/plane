@@ -1,0 +1,56 @@
+{
+  "jp_workflows": {
+    "settings": {
+      "title": "Workflows",
+      "heading": "Workflows",
+      "description": "Control which state transitions each role is allowed to make in this project."
+    },
+    "load_error": "Could not load the workflow rules. Please try again.",
+    "no_states": "This project has no states yet.",
+    "admin_note": "Admins can always move work items to any state.",
+    "enable": {
+      "title": "Enforce workflow",
+      "description": "When on, members and guests can only make the state changes checked for their role (a role without rules stays unrestricted). Agents always follow their rules.",
+      "enabled": "Workflow enabled",
+      "disabled": "Workflow disabled",
+      "error": "Could not update the workflow. Please try again.",
+      "off_notice": "The workflow is off: only the agent rules are enforced."
+    },
+    "roles": {
+      "member": "Members",
+      "agent": "Agents",
+      "guest": "Guests"
+    },
+    "no_rules": {
+      "member": "No rules: members can move work items between any states.",
+      "agent": "No rules: agents use the default To Do → In Progress → In Review.",
+      "guest": "No rules: guests are not restricted by the workflow."
+    },
+    "matrix": {
+      "caption": "Allowed state changes for {role}",
+      "from_to": "From \\ To",
+      "any_state": "Any state",
+      "allowed_from_any": "Allowed from any state",
+      "same_state": "Staying in the same state is always allowed",
+      "toggle": "Allow {from} → {to}",
+      "count": "{count, plural, one {1 allowed transition} other {{count} allowed transitions}}"
+    },
+    "epics": {
+      "title": "Apply to epics",
+      "description": "When off, these rules don't apply to epics, so this role can't change the state of epics.",
+      "mixed": "Some of these rules apply to epics and some don't. Toggling updates all of them.",
+      "agent_locked": "Agents can never change the state of epics."
+    },
+    "actions": {
+      "save": "Save rules",
+      "saving": "Saving",
+      "discard": "Discard changes",
+      "clear": "Clear role rules"
+    },
+    "toast": {
+      "saved_title": "Workflow saved",
+      "saved_message": "The transition rules were updated.",
+      "save_error": "Could not save the workflow rules."
+    }
+  }
+}

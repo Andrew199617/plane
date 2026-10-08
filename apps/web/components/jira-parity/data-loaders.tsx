@@ -17,6 +17,7 @@ import {
 import { useTeamsProjectBootstrap, useTeamsWorkspaceBootstrap } from "./teams/bootstrap";
 import { useTimeTrackingProjectBootstrap, useTimeTrackingWorkspaceBootstrap } from "./time-tracking/bootstrap";
 import { useWorkItemTypesProjectBootstrap, useWorkItemTypesWorkspaceBootstrap } from "./work-item-types/bootstrap";
+import { useWorkflowsProjectBootstrap, useWorkflowsWorkspaceBootstrap } from "./workflows/bootstrap";
 
 type TJiraParityWorkspaceDataLoaderProps = {
   workspaceSlug: string;
@@ -30,6 +31,7 @@ export const JiraParityWorkspaceDataLoader = observer(function JiraParityWorkspa
 
   useWorkItemTypesWorkspaceBootstrap(workspaceSlug);
   useAgentsWorkspaceBootstrap(workspaceSlug);
+  useWorkflowsWorkspaceBootstrap(workspaceSlug);
   useTeamsWorkspaceBootstrap(workspaceSlug);
   useProjectCategoriesWorkspaceBootstrap(workspaceSlug);
   useTimeTrackingWorkspaceBootstrap(workspaceSlug);
@@ -51,6 +53,7 @@ export const JiraParityProjectDataLoader = observer(function JiraParityProjectDa
 
   useWorkItemTypesProjectBootstrap(workspaceSlug, projectId);
   useAgentsProjectBootstrap(workspaceSlug, projectId);
+  useWorkflowsProjectBootstrap(workspaceSlug, projectId);
   useTeamsProjectBootstrap(workspaceSlug, projectId);
   useProjectCategoriesProjectBootstrap(workspaceSlug, projectId);
   useTimeTrackingProjectBootstrap(workspaceSlug, projectId);

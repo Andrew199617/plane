@@ -105,6 +105,8 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
             projectId={projectId ?? undefined}
             variant="pill-md"
             tabIndex={getIndex("state_id")}
+            // jira-parity: the form value is not the persisted state; the server enforces the workflow
+            disableWorkflowFilter
           />
         )}
       />

@@ -63,6 +63,8 @@ export interface IProject extends IPartialProject {
   members?: string[];
   timezone?: string;
   next_work_item_sequence?: number;
+  // jira-parity (workflows)
+  is_workflow_enabled?: boolean;
 }
 
 export type TProjectAnalyticsCountParams = {

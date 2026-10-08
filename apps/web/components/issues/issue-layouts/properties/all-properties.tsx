@@ -218,6 +218,7 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
             disabled={isReadOnly}
             variant="pill-sm"
             tooltip
+            workItemId={issue.id}
           />
         </div>
       </WithDisplayPropertiesHOC>

@@ -7,6 +7,7 @@
 // Jira-parity types (scaffold-owned barrel; each feature owns its own file)
 export * from "./work-item-types";
 export * from "./agents";
+export * from "./workflows";
 export * from "./teams";
 export * from "./project-categories";
 export * from "./time-tracking";

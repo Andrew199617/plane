@@ -19,10 +19,13 @@ import type { ITimeTrackingStore } from "./time-tracking.store";
 import { TimeTrackingStore } from "./time-tracking.store";
 import type { IWorkItemTypesStore } from "./work-item-types.store";
 import { WorkItemTypesStore } from "./work-item-types.store";
+import type { IWorkflowsStore } from "./workflows.store";
+import { WorkflowsStore } from "./workflows.store";
 
 export interface IJiraParityRootStore {
   workItemTypes: IWorkItemTypesStore;
   agents: IAgentsStore;
+  workflows: IWorkflowsStore;
   teams: ITeamsStore;
   projectCategories: IProjectCategoriesStore;
   timeTracking: ITimeTrackingStore;
@@ -32,6 +35,7 @@ export interface IJiraParityRootStore {
 export class JiraParityRootStore implements IJiraParityRootStore {
   workItemTypes: IWorkItemTypesStore;
   agents: IAgentsStore;
+  workflows: IWorkflowsStore;
   teams: ITeamsStore;
   projectCategories: IProjectCategoriesStore;
   timeTracking: ITimeTrackingStore;
@@ -40,6 +44,7 @@ export class JiraParityRootStore implements IJiraParityRootStore {
   constructor(rootStore: CoreRootStore) {
     this.workItemTypes = new WorkItemTypesStore(rootStore);
     this.agents = new AgentsStore(rootStore);
+    this.workflows = new WorkflowsStore(rootStore);
     this.teams = new TeamsStore(rootStore);
     this.projectCategories = new ProjectCategoriesStore(rootStore);
     this.timeTracking = new TimeTrackingStore(rootStore);

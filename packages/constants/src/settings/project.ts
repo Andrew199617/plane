@@ -107,6 +107,14 @@ export const PROJECT_SETTINGS: Record<TProjectSettingsTabs, TProjectSettingsItem
     access: [EUserProjectRoles.ADMIN],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/automations/`,
   },
+  // jira-parity
+  workflows: {
+    key: "workflows",
+    i18n_label: "jp_workflows.settings.title",
+    href: `/workflows`,
+    access: [EUserProjectRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/workflows/`,
+  },
 };
 
 export const PROJECT_SETTINGS_FLAT_MAP: TProjectSettingsItem[] = Object.values(PROJECT_SETTINGS);
@@ -122,6 +130,8 @@ export const GROUPED_PROJECT_SETTINGS: Record<PROJECT_SETTINGS_CATEGORY, TProjec
   ],
   [PROJECT_SETTINGS_CATEGORY.WORK_STRUCTURE]: [
     PROJECT_SETTINGS["states"],
+    // jira-parity
+    PROJECT_SETTINGS["workflows"],
     PROJECT_SETTINGS["labels"],
     PROJECT_SETTINGS["estimates"],
   ],

@@ -28,6 +28,7 @@ import { JP_WORK_ITEM_TYPE_IDENTIFIER_ICON_WIDTH } from "@/components/jira-parit
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
+import { useIsAgent } from "@/hooks/store/jira-parity/use-is-agent";
 import { useProject } from "@/hooks/store/use-project";
 import type { TSelectionHelper } from "@/hooks/use-multiple-select";
 import { usePlatformOS } from "@/hooks/use-platform-os";
@@ -106,7 +107,9 @@ export const IssueBlock = observer(function IssueBlock(props: IssueBlockProps) {
   const issue = issuesMap[issueId];
   const subIssuesCount = issue?.sub_issues_count ?? 0;
   const canEditIssueProperties = canEditProperties(issue?.project_id ?? undefined);
-  const isDraggingAllowed = canDrag && canEditIssueProperties;
+  // jira-parity: agents may drag to change the state; the workflow drop gating blocks everything else
+  const isAgent = useIsAgent(issue?.project_id);
+  const isDraggingAllowed = canDrag && (canEditIssueProperties || (isAgent && !issue?.archived_at));
 
   const { isMobile } = usePlatformOS();
 

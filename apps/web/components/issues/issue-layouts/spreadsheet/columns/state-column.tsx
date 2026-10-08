@@ -34,6 +34,7 @@ export const SpreadsheetStateColumn = observer(function SpreadsheetStateColumn(p
         variant="table-cell"
         onClose={onClose}
         tooltip
+        workItemId={issue.id}
       />
     </div>
   );

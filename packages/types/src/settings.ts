@@ -40,7 +40,9 @@ export type TProjectSettingsTabs =
   | "states"
   | "labels"
   | "estimates"
-  | "automations";
+  | "automations"
+  // jira-parity
+  | "workflows";
 export type TProjectSettingsItem = {
   key: TProjectSettingsTabs;
   i18n_label: string;

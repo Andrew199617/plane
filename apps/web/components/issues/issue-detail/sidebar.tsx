@@ -95,6 +95,7 @@ export const IssueDetailsSidebar = observer(function IssueDetailsSidebar(props: 
                 disabled={!isEditable}
                 variant="select-ghost-md"
                 tooltip
+                workItemId={issueId}
               />
             </SidebarPropertyListItem>
 

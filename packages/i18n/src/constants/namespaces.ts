@@ -37,6 +37,7 @@ export const NAMESPACES = [
   "jp-common",
   "jp-work-item-types",
   "jp-agents",
+  "jp-workflows",
   "jp-teams",
   "jp-project-categories",
   "jp-time-tracking",

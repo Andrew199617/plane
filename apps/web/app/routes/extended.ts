@@ -11,10 +11,12 @@ import { agentsRoutes } from "./extended/agents";
 import { projectCategoriesRoutes } from "./extended/project-categories";
 import { teamsRoutes } from "./extended/teams";
 import { workItemTypesRoutes } from "./extended/work-item-types";
+import { workflowsRoutes } from "./extended/workflows";
 
 const JIRA_PARITY_ROUTES: RouteConfigEntry[][] = [
   workItemTypesRoutes,
   agentsRoutes,
+  workflowsRoutes,
   teamsRoutes,
   projectCategoriesRoutes,
 ];

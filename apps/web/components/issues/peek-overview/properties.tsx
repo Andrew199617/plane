@@ -90,6 +90,7 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
             disabled={disabled}
             variant="select-ghost-md"
             tooltip
+            workItemId={issueId}
           />
         </SidebarPropertyListItem>
 

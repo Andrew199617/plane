@@ -154,6 +154,8 @@ export const DraftIssueProperties = observer(function DraftIssueProperties(props
           projectId={issue.project_id}
           variant="pill-sm"
           tooltip
+          // jira-parity: drafts are not work items yet, so no workflow gating
+          disableWorkflowFilter
         />
       </div>
 
