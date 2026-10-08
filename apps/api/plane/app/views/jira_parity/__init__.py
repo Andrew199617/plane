@@ -10,6 +10,7 @@ package re-exports them. Prefer importing from the feature module directly, e.g.
 """
 
 from .work_item_types import *  # noqa: F401,F403
+from .agents import *  # noqa: F401,F403
 from .workflows import *  # noqa: F401,F403
 from .teams import *  # noqa: F401,F403
 from .project_categories import *  # noqa: F401,F403

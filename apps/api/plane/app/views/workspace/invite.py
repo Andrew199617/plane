@@ -28,6 +28,7 @@ from plane.app.serializers import (
 from plane.app.views.base import BaseAPIView
 from plane.bgtasks.workspace_invitation_task import workspace_invitation
 from plane.db.models import User, Workspace, WorkspaceMember, WorkspaceMemberInvite
+from plane.utils.agent import onboard_invited_agent
 from plane.utils.cache import invalidate_cache, invalidate_cache_directly
 from plane.utils.host import base_host
 from .. import BaseViewSet
@@ -201,6 +202,9 @@ class WorkspaceJoinEndpoint(BaseAPIView):
                             role=workspace_invite.role,
                         )
 
+                    # jira-parity: an invited Agent joins every project (+ the Agents team)
+                    onboard_invited_agent(user, [workspace_invite.workspace_id])
+
                     # Set the user last_workspace_id to the accepted workspace
                     user.last_workspace_id = workspace_invite.workspace.id
                     user.save()
@@ -276,6 +280,9 @@ class UserWorkspaceInvitationsViewSet(BaseViewSet):
             ],
             ignore_conflicts=True,
         )
+
+        # jira-parity: invited Agents join every project (+ the Agents team)
+        onboard_invited_agent(request.user, [invitation.workspace_id for invitation in workspace_invitations])
 
         # Delete joined workspace invites
         workspace_invitations.delete()

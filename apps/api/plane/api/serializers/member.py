@@ -10,6 +10,7 @@ from plane.db.models import ProjectMember, WorkspaceMember
 from .base import BaseSerializer
 from plane.db.models import User
 from plane.utils.permissions import ROLE
+from plane.utils.agent import agent_role_mismatch
 
 
 class ProjectMemberSerializer(BaseSerializer):
@@ -33,9 +34,26 @@ class ProjectMemberSerializer(BaseSerializer):
         return value
 
     def validate_role(self, value):
-        if value not in [ROLE.ADMIN.value, ROLE.MEMBER.value, ROLE.GUEST.value]:
+        if value not in [ROLE.ADMIN.value, ROLE.MEMBER.value, ROLE.AGENT.value, ROLE.GUEST.value]:
             raise serializers.ValidationError("Invalid role", code="INVALID_ROLE")
         return value
+
+    def validate(self, attrs):
+        # jira-parity: the project Agent role is reserved for (and mandatory for) workspace agents
+        member = attrs.get("member") or getattr(self.instance, "member", None)
+        role = attrs.get("role", getattr(self.instance, "role", None))
+        if member is not None and role is not None:
+            workspace_role = (
+                WorkspaceMember.objects.filter(workspace__slug=self.context.get("slug"), member=member, is_active=True)
+                .values_list("role", flat=True)
+                .first()
+            )
+            if agent_role_mismatch(workspace_role, role):
+                raise serializers.ValidationError(
+                    {"role": "The Agent role is only valid for (and required for) workspace agents"},
+                    code="INVALID_ROLE",
+                )
+        return attrs
 
     class Meta:
         model = ProjectMember

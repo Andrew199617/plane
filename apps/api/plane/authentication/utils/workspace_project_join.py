@@ -9,6 +9,7 @@ from plane.db.models import (
     WorkspaceMember,
     WorkspaceMemberInvite,
 )
+from plane.utils.agent import onboard_invited_agent
 from plane.utils.cache import invalidate_cache_directly
 
 
@@ -29,6 +30,9 @@ def process_workspace_project_invitations(user):
         ],
         ignore_conflicts=True,
     )
+
+    # jira-parity: invited Agents join every project (+ the Agents team)
+    onboard_invited_agent(user, [invite.workspace_id for invite in workspace_member_invites])
 
     for workspace_member_invite in workspace_member_invites:
         invalidate_cache_directly(

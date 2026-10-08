@@ -23,6 +23,7 @@ from plane.app.serializers import (
 from plane.app.views.base import BaseAPIView
 from plane.db.models import Project, ProjectMember, WorkspaceMember, DraftIssue
 from plane.utils.cache import invalidate_cache
+from plane.utils.agent import apply_agent_workspace_role_change
 
 from .. import BaseViewSet
 
@@ -48,7 +49,8 @@ class WorkSpaceMemberViewSet(BaseViewSet):
 
         # Get all active workspace members
         workspace_members = self.get_queryset()
-        if workspace_member.role > 5:
+        # Jira-parity: agents (10) get the guest view (no emails)
+        if workspace_member.role >= ROLE.MEMBER.value:
             serializer = WorkspaceMemberAdminSerializer(workspace_members, fields=("id", "member", "role"), many=True)
         else:
             serializer = WorkSpaceMemberSerializer(workspace_members, fields=("id", "member", "role"), many=True)
@@ -67,7 +69,7 @@ class WorkSpaceMemberViewSet(BaseViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if workspace_member.role > ROLE.GUEST.value:
+        if workspace_member.role >= ROLE.MEMBER.value:  # Jira-parity: agents get the guest view
             serializer = WorkspaceMemberAdminSerializer(member, fields=("id", "member", "role"))
         else:
             serializer = WorkSpaceMemberSerializer(member, fields=("id", "member", "role"))
@@ -87,6 +89,11 @@ class WorkSpaceMemberViewSet(BaseViewSet):
         # If a user is moved to a guest role he can't have any other role in projects
         if "role" in request.data and int(request.data.get("role")) == 5:
             ProjectMember.objects.filter(workspace__slug=slug, member_id=workspace_member.member_id).update(role=5)
+
+        # Jira-parity: becoming an Agent makes the user an agent in every project; leaving the Agent
+        # role caps their agent project rows at the new role (plane.utils.agent)
+        if "role" in request.data:
+            apply_agent_workspace_role_change(workspace_member, request.data.get("role"))
 
         serializer = WorkSpaceMemberSerializer(workspace_member, data=request.data, partial=True)
 

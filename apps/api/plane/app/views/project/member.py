@@ -22,6 +22,7 @@ from plane.db.models import Project, ProjectMember, ProjectUserProperty, Workspa
 from plane.bgtasks.project_add_user_email_task import project_add_user_email
 from plane.utils.host import base_host
 from plane.app.permissions.base import allow_permission, ROLE
+from plane.utils.agent import agent_role_mismatch
 
 
 class ProjectMemberViewSet(BaseViewSet):
@@ -79,6 +80,13 @@ class ProjectMemberViewSet(BaseViewSet):
             if workspace_member_role in [5] and member_roles.get(member) in [15, 20]:
                 return Response(
                     {"error": "You cannot add a user with role higher than the workspace role"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Jira-parity: the Agent role (10) is reserved for agent accounts (workspace role 10)
+            if agent_role_mismatch(workspace_member_role, member_roles.get(member)):
+                return Response(
+                    {"error": "The Agent role is reserved for agent accounts, which can only be agents in projects"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
@@ -195,7 +203,8 @@ class ProjectMemberViewSet(BaseViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if requesting_project_member.role > ROLE.GUEST.value:
+        # Jira-parity: agents (10) get the guest view (no emails)
+        if requesting_project_member.role >= ROLE.MEMBER.value:
             serializer = ProjectMemberAdminSerializer(project_member)
         else:
             serializer = ProjectMemberRoleSerializer(project_member, fields=("id", "member", "role"))
@@ -258,6 +267,13 @@ class ProjectMemberViewSet(BaseViewSet):
             if target_workspace_role in [5] and new_role in [15, 20]:
                 return Response(
                     {"error": "You cannot add a user with role higher than the workspace role"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            # Jira-parity: the Agent role (10) is reserved for agent accounts (workspace role 10)
+            if agent_role_mismatch(target_workspace_role, new_role):
+                return Response(
+                    {"error": "The Agent role is reserved for agent accounts, which can only be agents in projects"},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
