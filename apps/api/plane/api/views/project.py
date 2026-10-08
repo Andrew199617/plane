@@ -42,6 +42,7 @@ from plane.bgtasks.webhook_task import model_activity, webhook_activity
 from plane.utils.exception_logger import log_exception
 from .base import BaseAPIView
 from plane.utils.host import base_host
+from plane.utils.jira_parity.project_hooks import run_project_created_hooks
 from plane.utils.order_queryset import PROJECT_ORDER_BY_ALLOWLIST, sanitize_order_by
 from plane.api.serializers import (
     ProjectSerializer,
@@ -269,6 +270,9 @@ class ProjectListCreateAPIEndpoint(BaseAPIView):
                             for state in DEFAULT_STATES
                         ]
                     )
+
+                    # Jira-parity: types, workflow, agents, teams, lead defaults (never blocks creation)
+                    run_project_created_hooks(serializer.instance, request.user)
 
                     project = self.get_queryset().filter(pk=serializer.instance.id).first()
 
