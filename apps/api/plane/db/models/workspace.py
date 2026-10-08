@@ -16,7 +16,8 @@ from .base import BaseModel
 from plane.utils.constants import RESTRICTED_WORKSPACE_SLUGS
 from plane.utils.color import get_random_color
 
-ROLE_CHOICES = ((20, "Admin"), (15, "Member"), (5, "Guest"))
+# Roles are defined once in project.py (Admin 20, Member 15, Agent 10, Guest 5)
+from .project import ROLE_CHOICES  # noqa: E402
 
 
 def get_default_props():

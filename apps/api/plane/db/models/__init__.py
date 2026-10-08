@@ -90,3 +90,6 @@ from .device import Device, DeviceSession
 from .sticky import Sticky
 
 from .description import Description, DescriptionVersion
+
+# Jira-parity models
+from .project import ROLE, ROLE_CHOICES

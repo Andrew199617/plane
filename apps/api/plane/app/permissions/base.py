@@ -7,13 +7,8 @@ from functools import wraps
 from rest_framework.response import Response
 from rest_framework import status
 
-from enum import Enum
-
-
-class ROLE(Enum):
-    ADMIN = 20
-    MEMBER = 15
-    GUEST = 5
+# Single ROLE enum (Admin 20, Member 15, Agent 10, Guest 5) defined on the model layer
+from plane.db.models.project import ROLE  # noqa: F401
 
 
 def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None):

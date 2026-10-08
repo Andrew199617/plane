@@ -18,12 +18,15 @@ from plane.db.mixins import AuditModel
 
 from .base import BaseModel
 
-ROLE_CHOICES = ((20, "Admin"), (15, "Member"), (5, "Guest"))
+# Single source of truth for workspace + project roles (Jira-parity adds AGENT = 10).
+# plane.app.permissions.ROLE and plane.utils.permissions.ROLE re-export this enum.
+ROLE_CHOICES = ((20, "Admin"), (15, "Member"), (10, "Agent"), (5, "Guest"))
 
 
 class ROLE(Enum):
     ADMIN = 20
     MEMBER = 15
+    AGENT = 10
     GUEST = 5
 
 

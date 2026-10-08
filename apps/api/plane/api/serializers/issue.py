@@ -109,7 +109,7 @@ class IssueSerializer(BaseSerializer):
                 ProjectMember.objects.filter(
                     project_id=self.context.get("project_id"),
                     is_active=True,
-                    role__gte=15,
+                    role__gte=10,  # Jira-parity: Agents (10) can be assigned; guests (5) cannot
                     member_id__in=data["assignees"],
                 ).values_list("member_id", flat=True)
             )
@@ -209,7 +209,7 @@ class IssueSerializer(BaseSerializer):
                     and ProjectMember.objects.filter(
                         member_id=default_assignee_id,
                         project_id=project_id,
-                        role__gte=15,
+                        role__gte=10,  # Jira-parity: Agents (10) can be assigned; guests (5) cannot
                         is_active=True,
                     ).exists()
                 ):
