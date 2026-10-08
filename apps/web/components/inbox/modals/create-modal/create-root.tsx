@@ -10,7 +10,7 @@ import type { FormEvent } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { observer } from "mobx-react";
 // plane imports
-import { ETabIndices } from "@plane/constants";
+import { DEFAULT_ISSUE_PRIORITY, ETabIndices } from "@plane/constants";
 import type { EditorRefApi } from "@plane/editor";
 import { useTranslation } from "@plane/i18n";
 import {
@@ -54,7 +54,7 @@ export const defaultIssueData: Partial<TIssue> = {
   id: undefined,
   name: "",
   description_html: "",
-  priority: "none",
+  priority: DEFAULT_ISSUE_PRIORITY,
   state_id: "",
   label_ids: [],
   assignee_ids: [],
@@ -142,7 +142,7 @@ export const InboxIssueCreateRoot = observer(function InboxIssueCreateRoot(props
     const payload: Partial<TIssue> = {
       name: formData.name || "",
       description_html: formData.description_html || "<p></p>",
-      priority: formData.priority || "none",
+      priority: formData.priority || DEFAULT_ISSUE_PRIORITY,
       state_id: formData.state_id || "",
       label_ids: formData.label_ids || [],
       assignee_ids: formData.assignee_ids || [],

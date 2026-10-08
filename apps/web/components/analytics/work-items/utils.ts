@@ -5,7 +5,8 @@
  */
 
 // plane package imports
-import type { ChartYAxisMetric, IState } from "@plane/types";
+import { JP_PRIORITY_COLORS, JP_PRIORITY_FALLBACK_COLOR } from "@plane/constants";
+import type { ChartYAxisMetric, IState, TIssuePriorities } from "@plane/types";
 import { ChartXAxisProperty } from "@plane/types";
 
 interface ParamsProps {
@@ -24,16 +25,10 @@ export const generateBarColor = (
   let color = baseColors[0];
   // Priority
   if (params.x_axis === ChartXAxisProperty.PRIORITY) {
-    color =
-      value === "urgent"
-        ? "#ef4444"
-        : value === "high"
-          ? "#f97316"
-          : value === "medium"
-            ? "#eab308"
-            : value === "low"
-              ? "#22c55e"
-              : "#ced4da";
+    // Jira-parity priorities (highest/high/medium/low/lowest)
+    color = Object.hasOwn(JP_PRIORITY_COLORS, value)
+      ? JP_PRIORITY_COLORS[value as TIssuePriorities]
+      : JP_PRIORITY_FALLBACK_COLOR;
   }
 
   // State

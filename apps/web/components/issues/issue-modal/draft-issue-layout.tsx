@@ -9,6 +9,7 @@ import { isEmpty } from "lodash-es";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // Plane imports
+import { DEFAULT_ISSUE_PRIORITY } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { setToast } from "@plane/blocks/toast";
 import type { TIssue } from "@plane/types";
@@ -45,7 +46,8 @@ export const DraftIssueLayout = observer(function DraftIssueLayout(props: DraftI
       if (typeof value === "object" && isEmpty(value)) delete sanitizedChanges[issueKey];
       if (Array.isArray(value) && value.length === 0) delete sanitizedChanges[issueKey];
       if (issueKey === "project_id") delete sanitizedChanges.project_id;
-      if (issueKey === "priority" && value && value === "none") delete sanitizedChanges.priority;
+      // Jira-parity: the default priority (Medium) is not a user change
+      if (issueKey === "priority" && value && value === DEFAULT_ISSUE_PRIORITY) delete sanitizedChanges.priority;
       if (
         issueKey === "description_html" &&
         changesMade?.description_html &&

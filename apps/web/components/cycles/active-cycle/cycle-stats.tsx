@@ -133,7 +133,7 @@ export const ActiveCycleStats = observer(function ActiveCycleStats(props: Active
                                 isArchived: !!issue.archived_at,
                               });
                               handleFiltersUpdate([
-                                { property: "priority", operator: "in", value: ["urgent", "high"] },
+                                { property: "priority", operator: "in", value: ["highest", "high"] },
                               ]);
                             }
                           }}
