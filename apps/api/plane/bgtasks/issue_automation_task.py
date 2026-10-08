@@ -117,9 +117,12 @@ def close_old_issues():
             # Check if Issues
             if issues:
                 if project.default_state is None:
-                    close_state = State.objects.filter(group="cancelled").first()
+                    # jira-parity: scope the fallback to this project (was workspace-agnostic)
+                    close_state = State.objects.filter(project_id=project_id, group="cancelled").first()
                 else:
                     close_state = project.default_state
+                if close_state is None:
+                    continue
 
                 issues_to_update = []
                 for issue in issues:
