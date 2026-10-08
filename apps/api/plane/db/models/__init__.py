@@ -96,3 +96,4 @@ from .project import ROLE, ROLE_CHOICES
 from .workspace import Team
 from .team import TeamMember, TeamProject
 from .workflow import StateTransition
+from .project_category import ProjectCategory

@@ -117,6 +117,14 @@ class Project(BaseModel):
     archived_at = models.DateTimeField(null=True)
     # Jira-parity: state transition rules (db.StateTransition) are enforced when True
     is_workflow_enabled = models.BooleanField(default=False)
+    # Jira-parity: project category (db.ProjectCategory); deleting a category un-categorizes its projects
+    category = models.ForeignKey(
+        "db.ProjectCategory",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="projects",
+    )
     # timezone
     TIMEZONE_CHOICES = tuple(zip(pytz.common_timezones, pytz.common_timezones))
     timezone = models.CharField(max_length=255, default="UTC", choices=TIMEZONE_CHOICES)

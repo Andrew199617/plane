@@ -69,12 +69,27 @@ class IssueView(WorkspaceBaseModel):
     owned_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="views")
     is_locked = models.BooleanField(default=False)
     archived_at = models.DateTimeField(null=True)
+    # Jira-parity: optional "master board" view of a project category (project=None, category set)
+    category = models.ForeignKey(
+        "db.ProjectCategory",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="board_views",
+    )
 
     class Meta:
         verbose_name = "Issue View"
         verbose_name_plural = "Issue Views"
         db_table = "issue_views"
         ordering = ("-created_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=["category"],
+                condition=models.Q(deleted_at__isnull=True, category__isnull=False),
+                name="issue_view_unique_category_board_when_deleted_at_null",
+            )
+        ]
 
     def save(self, *args, **kwargs):
         query_params = self.filters
