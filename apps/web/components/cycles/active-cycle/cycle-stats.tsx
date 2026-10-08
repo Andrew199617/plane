@@ -120,6 +120,7 @@ export const ActiveCycleStats = observer(function ActiveCycleStats(props: Active
                       if (!issue) return null;
 
                       return (
+                        // oxlint-disable-next-line jsx_a11y/click-events-have-key-events, jsx_a11y/no-static-element-interactions
                         <div
                           key={issue.id}
                           className="group flex cursor-pointer items-center justify-between gap-2 rounded-md p-1 hover:bg-surface-2"
@@ -227,6 +228,7 @@ export const ActiveCycleStats = observer(function ActiveCycleStats(props: Active
                   else
                     return (
                       <SingleProgressStats
+                        // oxlint-disable-next-line react/no-array-index-key -- the unassigned row has no id
                         key={`unassigned-${index}`}
                         title={
                           <div className="flex items-center gap-2">
@@ -261,6 +263,7 @@ export const ActiveCycleStats = observer(function ActiveCycleStats(props: Active
               cycle?.distribution?.labels && cycle.distribution.labels.length > 0 ? (
                 cycle.distribution.labels?.map((label, index) => (
                   <SingleProgressStats
+                    // oxlint-disable-next-line react/no-array-index-key -- only rows without a label id use the index
                     key={label.label_id ?? `no-label-${index}`}
                     title={
                       <div className="flex items-center gap-2 truncate">
