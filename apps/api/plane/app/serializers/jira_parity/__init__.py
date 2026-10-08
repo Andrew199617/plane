@@ -13,3 +13,4 @@ from .work_item_types import *  # noqa: F401,F403
 from .workflows import *  # noqa: F401,F403
 from .teams import *  # noqa: F401,F403
 from .project_categories import *  # noqa: F401,F403
+from .project_defaults import *  # noqa: F401,F403

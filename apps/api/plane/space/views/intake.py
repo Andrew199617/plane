@@ -25,6 +25,7 @@ from plane.app.serializers import (
 )
 from plane.utils.content_validator import validate_html_content
 from plane.utils.priority import resolve_request_priority
+from plane.utils.project_defaults import assign_default_assignee
 from plane.utils.issue_filters import issue_filters
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.db.models.intake import SourceType
@@ -160,6 +161,8 @@ class IntakeIssuePublicViewSet(BaseViewSet):
             project_id=project_deploy_board.project_id,
             state_id=triage_state.id,
         )
+        # Jira-parity: same default-assignee behavior as the app intake / issue create paths
+        assign_default_assignee(issue)
 
         # Create an Issue Activity
         issue_activity.delay(

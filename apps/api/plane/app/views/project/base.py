@@ -42,6 +42,7 @@ from plane.db.models import (
 from plane.db.models.intake import IntakeIssueStatus
 from plane.utils.host import base_host
 from plane.utils.jira_parity.project_hooks import run_project_created_hooks
+from plane.utils.project_defaults import apply_project_lead_change
 from plane.utils.order_queryset import PROJECT_ORDER_BY_ALLOWLIST, sanitize_order_by
 
 
@@ -190,6 +191,7 @@ class ProjectViewSet(BaseViewSet):
             "inbox_view",
             "guest_view_all_features",
             "project_lead",
+            "default_assignee",  # Jira-parity: the create-work-item modal pre-fills it
             "network",
             "category_id",  # Jira-parity: project categories
             "created_at",
@@ -360,6 +362,14 @@ class ProjectViewSet(BaseViewSet):
 
         if serializer.is_valid():
             serializer.save()
+            # Jira-parity: the default assignee follows the project lead
+            previous = json.loads(current_instance)
+            apply_project_lead_change(
+                serializer.instance,
+                old_lead_id=previous.get("project_lead"),
+                old_default_assignee_id=previous.get("default_assignee"),
+                requested_data=request.data,
+            )
             if intake_view:
                 intake = Intake.objects.filter(project=project, is_default=True).first()
                 if not intake:

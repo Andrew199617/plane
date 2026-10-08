@@ -31,6 +31,7 @@ from plane.db.models import Intake, IntakeIssue, Issue, Project, ProjectMember, 
 from plane.utils.host import base_host
 from plane.utils.content_validator import validate_html_content
 from plane.utils.priority import resolve_request_priority
+from plane.utils.project_defaults import assign_default_assignee
 from plane.utils.workflow import assert_state_transition_allowed  # Jira-parity workflows
 from .base import BaseAPIView
 from plane.db.models.intake import SourceType
@@ -197,6 +198,8 @@ class IntakeIssueListCreateAPIEndpoint(BaseAPIView):
             project_id=project_id,
             state_id=triage_state.id,
         )
+        # Jira-parity: same default-assignee behavior as the app intake / issue create paths
+        assign_default_assignee(issue, project.default_assignee_id)
 
         # create an intake issue
         intake_issue = IntakeIssue.objects.create(

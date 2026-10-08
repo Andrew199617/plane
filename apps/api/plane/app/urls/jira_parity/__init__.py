@@ -12,10 +12,12 @@ from .work_item_types import urlpatterns as work_item_types_urls
 from .workflows import urlpatterns as workflows_urls
 from .teams import urlpatterns as teams_urls
 from .project_categories import urlpatterns as project_categories_urls
+from .project_defaults import urlpatterns as project_defaults_urls
 
 urlpatterns = [
     *work_item_types_urls,
     *workflows_urls,
     *teams_urls,
     *project_categories_urls,
+    *project_defaults_urls,
 ]
