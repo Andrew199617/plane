@@ -171,6 +171,11 @@ const ISSUE_ORDERBY_KEY: Record<TIssueOrderByOptions, keyof TIssue> = {
   "-attachment_count": "attachment_count",
   sub_issues_count: "sub_issues_count",
   "-sub_issues_count": "sub_issues_count",
+  // jira-parity
+  original_estimate: "original_estimate",
+  "-original_estimate": "original_estimate",
+  remaining_estimate: "remaining_estimate",
+  "-remaining_estimate": "remaining_estimate",
 };
 
 export abstract class BaseIssuesStore implements IBaseIssuesStore {
@@ -1814,6 +1819,18 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
             ["asc", "desc"]
           )
         );
+
+      // jira-parity time tracking (minutes); empty estimates always stay below
+      case "original_estimate":
+      case "remaining_estimate":
+        return getIssueIds(orderBy(array, [getSortOrderToFilterEmptyValues.bind(null, key), key]));
+      case "-original_estimate":
+      case "-remaining_estimate": {
+        const estimateKey = key === "-original_estimate" ? "original_estimate" : "remaining_estimate";
+        return getIssueIds(
+          orderBy(array, [getSortOrderToFilterEmptyValues.bind(null, estimateKey), estimateKey], ["asc", "desc"])
+        );
+      }
 
       // custom
       case "-priority": {

@@ -9,6 +9,7 @@
 import { observer } from "mobx-react";
 // local imports
 import { usePrioritiesProjectBootstrap, usePrioritiesWorkspaceBootstrap } from "./priorities/bootstrap";
+import { useTimeTrackingProjectBootstrap, useTimeTrackingWorkspaceBootstrap } from "./time-tracking/bootstrap";
 
 type TJiraParityWorkspaceDataLoaderProps = {
   workspaceSlug: string;
@@ -20,6 +21,7 @@ export const JiraParityWorkspaceDataLoader = observer(function JiraParityWorkspa
 ) {
   const { workspaceSlug } = props;
 
+  useTimeTrackingWorkspaceBootstrap(workspaceSlug);
   usePrioritiesWorkspaceBootstrap(workspaceSlug);
 
   return null;
@@ -36,6 +38,7 @@ export const JiraParityProjectDataLoader = observer(function JiraParityProjectDa
 ) {
   const { workspaceSlug, projectId } = props;
 
+  useTimeTrackingProjectBootstrap(workspaceSlug, projectId);
   usePrioritiesProjectBootstrap(workspaceSlug, projectId);
 
   return null;

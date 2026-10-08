@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Учёт времени",
+    "original_estimate": "Исходная оценка",
+    "remaining_estimate": "Оставшаяся оценка",
+    "time_estimate": "Оценка времени",
+    "time_remaining": "Оставшееся время",
+    "add_estimate": "Добавить оценку",
+    "input_placeholder": "например, 1w 2d 4h 30m",
+    "input_hint": "Используйте w, d, h и m (1d = 8h, 1w = 5d).",
+    "invalid_format": "Неверное время. Используйте формат вида 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "установил(а) исходную оценку: {value}",
+      "original_estimate_removed": "удалил(а) исходную оценку",
+      "remaining_estimate_set": "установил(а) оставшуюся оценку: {value}",
+      "remaining_estimate_removed": "удалил(а) оставшуюся оценку"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "시간 추적",
+    "original_estimate": "최초 예상 시간",
+    "remaining_estimate": "남은 예상 시간",
+    "time_estimate": "예상 시간",
+    "time_remaining": "남은 시간",
+    "add_estimate": "예상 시간 추가",
+    "input_placeholder": "예: 1w 2d 4h 30m",
+    "input_hint": "w, d, h, m을 사용합니다(1d = 8h, 1w = 5d).",
+    "invalid_format": "잘못된 시간입니다. 1w 2d 4h 30m 같은 형식을 사용하십시오.",
+    "activity": {
+      "original_estimate_set": "최초 예상 시간을 {value}(으)로 설정했습니다",
+      "original_estimate_removed": "최초 예상 시간을 제거했습니다",
+      "remaining_estimate_set": "남은 예상 시간을 {value}(으)로 설정했습니다",
+      "remaining_estimate_removed": "남은 예상 시간을 제거했습니다"
+    }
+  }
+}

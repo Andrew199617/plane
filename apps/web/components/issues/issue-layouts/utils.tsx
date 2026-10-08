@@ -73,6 +73,11 @@ import {
   SpreadsheetSubIssueColumn,
   SpreadsheetUpdatedOnColumn,
 } from "@/components/issues/issue-layouts/spreadsheet/columns";
+// jira-parity
+import {
+  SpreadsheetOriginalEstimateColumn,
+  SpreadsheetRemainingEstimateColumn,
+} from "@/components/jira-parity/time-tracking/spreadsheet-columns";
 
 export const HIGHLIGHT_CLASS = "highlight";
 export const HIGHLIGHT_WITH_LINE = "highlight-with-line";
@@ -760,10 +765,11 @@ export const getBlockViewDetails = (
  * @param iconKey
  */
 export function SpreadSheetPropertyIcon(props: ISvgIcons & { iconKey: string }) {
-  const { iconKey } = props;
+  // jira-parity: keep `iconKey` off the DOM (React warns about unknown props on <svg>)
+  const { iconKey, ...iconProps } = props;
   const Icon = SpreadSheetPropertyIconMap[iconKey];
   if (!Icon) return null;
-  return <Icon {...props} />;
+  return <Icon {...iconProps} />;
 }
 
 /**
@@ -876,6 +882,9 @@ export const SPREADSHEET_COLUMNS: { [key in keyof IIssueDisplayProperties]: TSpr
   sub_issue_count: SpreadsheetSubIssueColumn,
   updated_on: SpreadsheetUpdatedOnColumn,
   attachment_count: SpreadsheetAttachmentColumn,
+  // jira-parity
+  original_estimate: SpreadsheetOriginalEstimateColumn,
+  remaining_estimate: SpreadsheetRemainingEstimateColumn,
 };
 
 export const useGroupByOptions = (

@@ -10,6 +10,7 @@ import { getValidKeysFromObject } from "@plane/utils";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useTimeLineRelationOptions } from "@/components/relations";
+import { TimeTrackingActivity } from "@/components/jira-parity/time-tracking/activity";
 // local components
 import {
   IssueDefaultActivity,
@@ -70,6 +71,10 @@ export const IssueActivityItem = observer(function IssueActivityItem(props: TIss
       return <IssueEstimateActivity {...componentDefaultProps} showIssue={false} />;
     case "parent":
       return <IssueParentActivity {...componentDefaultProps} showIssue={false} />;
+    // jira-parity: time tracking (original / remaining estimate)
+    case "original_estimate":
+    case "remaining_estimate":
+      return <TimeTrackingActivity {...componentDefaultProps} showIssue={false} />;
     case activityRelations.find((field) => field === activityField):
       return <IssueRelationActivity {...componentDefaultProps} />;
     case "start_date":

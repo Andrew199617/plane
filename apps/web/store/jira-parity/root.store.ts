@@ -9,15 +9,20 @@
 import type { CoreRootStore } from "@/store/root.store";
 import type { IPrioritiesStore } from "./priorities.store";
 import { PrioritiesStore } from "./priorities.store";
+import type { ITimeTrackingStore } from "./time-tracking.store";
+import { TimeTrackingStore } from "./time-tracking.store";
 
 export interface IJiraParityRootStore {
+  timeTracking: ITimeTrackingStore;
   priorities: IPrioritiesStore;
 }
 
 export class JiraParityRootStore implements IJiraParityRootStore {
+  timeTracking: ITimeTrackingStore;
   priorities: IPrioritiesStore;
 
   constructor(rootStore: CoreRootStore) {
+    this.timeTracking = new TimeTrackingStore(rootStore);
     this.priorities = new PrioritiesStore(rootStore);
   }
 }

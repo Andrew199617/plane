@@ -54,7 +54,12 @@ export type TIssueOrderByOptions =
   | "attachment_count"
   | "-attachment_count"
   | "sub_issues_count"
-  | "-sub_issues_count";
+  | "-sub_issues_count"
+  // jira-parity
+  | "original_estimate"
+  | "-original_estimate"
+  | "remaining_estimate"
+  | "-remaining_estimate";
 
 export type TIssueGroupingFilters = "active" | "backlog";
 
@@ -175,6 +180,9 @@ export interface IIssueDisplayProperties {
   modules?: boolean;
   cycle?: boolean;
   issue_type?: boolean;
+  // jira-parity (time tracking)
+  original_estimate?: boolean;
+  remaining_estimate?: boolean;
 }
 
 export type TIssueKanbanFilters = {

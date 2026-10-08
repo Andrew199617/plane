@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "時間管理",
+    "original_estimate": "当初見積もり",
+    "remaining_estimate": "残り見積もり",
+    "time_estimate": "見積もり時間",
+    "time_remaining": "残り時間",
+    "add_estimate": "見積もりを追加",
+    "input_placeholder": "例：1w 2d 4h 30m",
+    "input_hint": "w、d、h、m を使用します（1d = 8h、1w = 5d）。",
+    "invalid_format": "無効な時間です。1w 2d 4h 30m のような形式を使用してください。",
+    "activity": {
+      "original_estimate_set": "当初見積もりを {value} に設定しました",
+      "original_estimate_removed": "当初見積もりを削除しました",
+      "remaining_estimate_set": "残り見積もりを {value} に設定しました",
+      "remaining_estimate_removed": "残り見積もりを削除しました"
+    }
+  }
+}

@@ -170,6 +170,9 @@ export const ISSUE_DISPLAY_PROPERTIES_KEYS: (keyof IIssueDisplayProperties)[] = 
   "modules",
   "cycle",
   "issue_type",
+  // jira-parity (time tracking)
+  "original_estimate",
+  "remaining_estimate",
 ];
 
 export const SUB_ISSUES_DISPLAY_PROPERTIES_KEYS: (keyof IIssueDisplayProperties)[] = [
@@ -222,6 +225,9 @@ export const ISSUE_DISPLAY_PROPERTIES: {
   },
   { key: "modules", titleTranslationKey: "common.module" },
   { key: "cycle", titleTranslationKey: "common.cycle" },
+  // jira-parity
+  { key: "original_estimate", titleTranslationKey: "jp_time_tracking.original_estimate" },
+  { key: "remaining_estimate", titleTranslationKey: "jp_time_tracking.remaining_estimate" },
 ];
 
 export const SPREADSHEET_PROPERTY_LIST: (keyof IIssueDisplayProperties)[] = [
@@ -234,6 +240,9 @@ export const SPREADSHEET_PROPERTY_LIST: (keyof IIssueDisplayProperties)[] = [
   "start_date",
   "due_date",
   "estimate",
+  // jira-parity (time tracking)
+  "original_estimate",
+  "remaining_estimate",
   "created_on",
   "updated_on",
   "link",
@@ -362,6 +371,23 @@ export const SPREADSHEET_PROPERTY_DETAILS: {
     descendingOrderKey: "sub_issues_count",
     descendingOrderTitle: "Least",
     icon: "LayersIcon",
+  },
+  // jira-parity
+  original_estimate: {
+    i18n_title: "jp_time_tracking.original_estimate",
+    ascendingOrderKey: "original_estimate",
+    ascendingOrderTitle: "Low",
+    descendingOrderKey: "-original_estimate",
+    descendingOrderTitle: "High",
+    icon: "EstimateOutline",
+  },
+  remaining_estimate: {
+    i18n_title: "jp_time_tracking.remaining_estimate",
+    ascendingOrderKey: "remaining_estimate",
+    ascendingOrderTitle: "Low",
+    descendingOrderKey: "-remaining_estimate",
+    descendingOrderTitle: "High",
+    icon: "EstimateOutline",
   },
 };
 

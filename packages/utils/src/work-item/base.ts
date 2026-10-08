@@ -315,6 +315,9 @@ export const getComputedDisplayProperties = (
   modules: displayProperties?.modules ?? true,
   cycle: displayProperties?.cycle ?? true,
   issue_type: displayProperties?.issue_type ?? true,
+  // jira-parity (time tracking columns are opt-in)
+  original_estimate: displayProperties?.original_estimate ?? false,
+  remaining_estimate: displayProperties?.remaining_estimate ?? false,
 });
 
 export const generateWorkItemLink = ({

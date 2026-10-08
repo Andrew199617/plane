@@ -30,6 +30,7 @@ import { MemberSelect } from "@/components/dropdowns/member/member-select";
 import { PrioritySelect } from "@/components/dropdowns/priority/priority-select";
 import { StateSelect } from "@/components/dropdowns/state/state-select";
 import { SidebarPropertyListItem } from "@/components/common/layout/sidebar/property-list-item";
+import { JiraParityIssueProperties } from "@/components/jira-parity/issue-properties";
 // helpers
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useMember } from "@/hooks/store/use-member";
@@ -106,6 +107,15 @@ export const PeekOverviewProperties = observer(function PeekOverviewProperties(p
             tooltip={{ heading: t("common.assignees") }}
           />
         </SidebarPropertyListItem>
+
+        {/* jira-parity: work item type + time tracking rows */}
+        <JiraParityIssueProperties
+          workspaceSlug={workspaceSlug}
+          projectId={projectId}
+          issueId={issueId}
+          disabled={disabled}
+          issueOperations={issueOperations}
+        />
 
         <SidebarPropertyListItem icon={PriorityOutline} label={t("common.priority")}>
           <PrioritySelect

@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Urmărirea timpului",
+    "original_estimate": "Estimare inițială",
+    "remaining_estimate": "Estimare rămasă",
+    "time_estimate": "Estimare de timp",
+    "time_remaining": "Timp rămas",
+    "add_estimate": "Adăugați estimare",
+    "input_placeholder": "de ex. 1w 2d 4h 30m",
+    "input_hint": "Folosiți w, d, h și m (1d = 8h, 1w = 5d).",
+    "invalid_format": "Timp nevalid. Folosiți un format ca 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "a setat estimarea inițială la {value}",
+      "original_estimate_removed": "a eliminat estimarea inițială",
+      "remaining_estimate_set": "a setat estimarea rămasă la {value}",
+      "remaining_estimate_removed": "a eliminat estimarea rămasă"
+    }
+  }
+}

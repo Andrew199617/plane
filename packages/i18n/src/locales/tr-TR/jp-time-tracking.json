@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Zaman takibi",
+    "original_estimate": "İlk tahmin",
+    "remaining_estimate": "Kalan tahmin",
+    "time_estimate": "Süre tahmini",
+    "time_remaining": "Kalan süre",
+    "add_estimate": "Tahmin ekle",
+    "input_placeholder": "ör. 1w 2d 4h 30m",
+    "input_hint": "w, d, h ve m kullanın (1d = 8h, 1w = 5d).",
+    "invalid_format": "Geçersiz süre. 1w 2d 4h 30m gibi bir biçim kullanın.",
+    "activity": {
+      "original_estimate_set": "ilk tahmini {value} olarak ayarladı",
+      "original_estimate_removed": "ilk tahmini kaldırdı",
+      "remaining_estimate_set": "kalan tahmini {value} olarak ayarladı",
+      "remaining_estimate_removed": "kalan tahmini kaldırdı"
+    }
+  }
+}

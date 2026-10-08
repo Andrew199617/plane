@@ -6,9 +6,13 @@
 
 import { replaceUnderscoreIfSnakeCase } from "@plane/utils";
 import type { TNotificationContentMap } from "@/components/workspace-notifications/sidebar/notification-card/content";
+// jira-parity: estimate fields render as Jira durations ("1w 2d") instead of raw minutes
+import { JP_TIME_TRACKING_NOTIFICATION_CONTENT_MAP } from "@/components/jira-parity/time-tracking/notification-content";
 
 // Additional notification content map for CE (empty - EE extends this)
-export const ADDITIONAL_NOTIFICATION_CONTENT_MAP: TNotificationContentMap = {};
+export const ADDITIONAL_NOTIFICATION_CONTENT_MAP: TNotificationContentMap = {
+  ...JP_TIME_TRACKING_NOTIFICATION_CONTENT_MAP,
+};
 
 // Fallback action renderer for fields not in the map
 export const renderAdditionalAction = (notificationField: string, verb: string | undefined) => {

@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Tijdregistratie",
+    "original_estimate": "Oorspronkelijke schatting",
+    "remaining_estimate": "Resterende schatting",
+    "time_estimate": "Tijdschatting",
+    "time_remaining": "Resterende tijd",
+    "add_estimate": "Schatting toevoegen",
+    "input_placeholder": "bijv. 1w 2d 4h 30m",
+    "input_hint": "Gebruik w, d, h en m (1d = 8h, 1w = 5d).",
+    "invalid_format": "Ongeldige tijd. Gebruik een notatie zoals 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "heeft de oorspronkelijke schatting ingesteld op {value}",
+      "original_estimate_removed": "heeft de oorspronkelijke schatting verwijderd",
+      "remaining_estimate_set": "heeft de resterende schatting ingesteld op {value}",
+      "remaining_estimate_removed": "heeft de resterende schatting verwijderd"
+    }
+  }
+}

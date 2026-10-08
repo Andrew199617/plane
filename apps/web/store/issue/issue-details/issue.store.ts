@@ -152,6 +152,9 @@ export class IssueStore implements IIssueStore {
       label_ids: issue?.label_ids,
       assignee_ids: issue?.assignee_ids,
       estimate_point: issue?.estimate_point,
+      // jira-parity: time tracking (minutes)
+      original_estimate: issue?.original_estimate,
+      remaining_estimate: issue?.remaining_estimate,
       sub_issues_count: issue?.sub_issues_count,
       attachment_count: issue?.attachment_count,
       link_count: issue?.link_count,
