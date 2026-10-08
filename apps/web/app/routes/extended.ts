@@ -5,5 +5,13 @@
  */
 
 import type { RouteConfigEntry } from "@react-router/dev/routes";
+import { mergeRoutes } from "./helper";
+// jira-parity feature routes (each file is owned by its feature)
+import { workItemTypesRoutes } from "./extended/work-item-types";
 
-export const extendedRoutes: RouteConfigEntry[] = [];
+const JIRA_PARITY_ROUTES: RouteConfigEntry[][] = [workItemTypesRoutes];
+
+export const extendedRoutes: RouteConfigEntry[] = JIRA_PARITY_ROUTES.reduce<RouteConfigEntry[]>(
+  (mergedRoutes, featureRoutes) => mergeRoutes(mergedRoutes, featureRoutes),
+  []
+);

@@ -43,6 +43,8 @@ export enum EIssueGroupByToServerOptions {
   "created_by" = "created_by",
   // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   "team_project" = "project_id",
+  // jira-parity (work item types)
+  "issue_type" = "type_id",
 }
 
 export enum EIssueGroupBYServerToProperty {
@@ -56,6 +58,8 @@ export enum EIssueGroupBYServerToProperty {
   "target_date" = "target_date",
   "project_id" = "project_id",
   "created_by" = "created_by",
+  // jira-parity (work item types)
+  "type_id" = "type_id",
 }
 
 export enum EIssueCommentAccessSpecifier {
@@ -138,6 +142,8 @@ export const ISSUE_GROUP_BY_OPTIONS: {
   { key: "labels", titleTranslationKey: "common.labels" },
   { key: "assignees", titleTranslationKey: "common.assignees" },
   { key: "created_by", titleTranslationKey: "common.created_by" },
+  // jira-parity (work item types)
+  { key: "issue_type", titleTranslationKey: "jp_work_item_types.group_by" },
   { key: null, titleTranslationKey: "common.none" },
 ];
 
@@ -226,11 +232,14 @@ export const ISSUE_DISPLAY_PROPERTIES: {
   { key: "modules", titleTranslationKey: "common.module" },
   { key: "cycle", titleTranslationKey: "common.cycle" },
   // jira-parity
+  { key: "issue_type", titleTranslationKey: "jp_work_item_types.display_property" },
   { key: "original_estimate", titleTranslationKey: "jp_time_tracking.original_estimate" },
   { key: "remaining_estimate", titleTranslationKey: "jp_time_tracking.remaining_estimate" },
 ];
 
 export const SPREADSHEET_PROPERTY_LIST: (keyof IIssueDisplayProperties)[] = [
+  // jira-parity
+  "issue_type",
   "state",
   "priority",
   "assignee",
@@ -373,6 +382,14 @@ export const SPREADSHEET_PROPERTY_DETAILS: {
     icon: "LayersIcon",
   },
   // jira-parity
+  issue_type: {
+    i18n_title: "jp_work_item_types.spreadsheet_column",
+    ascendingOrderKey: "type__name",
+    ascendingOrderTitle: "A",
+    descendingOrderKey: "-type__name",
+    descendingOrderTitle: "Z",
+    icon: "WorkItemsOutline",
+  },
   original_estimate: {
     i18n_title: "jp_time_tracking.original_estimate",
     ascendingOrderKey: "original_estimate",

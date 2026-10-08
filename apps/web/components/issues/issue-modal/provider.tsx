@@ -12,6 +12,7 @@ import type { ISearchIssueResponse, TIssue } from "@plane/types";
 import { IssueModalContext } from "@/components/issues/issue-modal/context";
 // hooks
 import { useUser } from "@/hooks/store/user/user-user";
+import { useWorkItemTypes } from "@/hooks/store/jira-parity/use-work-item-types";
 
 export type TIssueModalProviderProps = {
   templateId?: string;
@@ -26,6 +27,8 @@ export const IssueModalProvider = observer(function IssueModalProvider(props: TI
   const [selectedParentIssue, setSelectedParentIssue] = useState<ISearchIssueResponse | null>(null);
   // store hooks
   const { projectsWithCreatePermissions } = useUser();
+  // jira-parity: new work items default to the workspace default type (Task)
+  const { defaultWorkItemType } = useWorkItemTypes();
   // derived values
   const projectIdsWithCreatePermissions = Object.keys(projectsWithCreatePermissions ?? {});
 
@@ -44,7 +47,7 @@ export const IssueModalProvider = observer(function IssueModalProvider(props: TI
         setIssuePropertyValues: () => {},
         issuePropertyValueErrors: {},
         setIssuePropertyValueErrors: () => {},
-        getIssueTypeIdOnProjectChange: () => null,
+        getIssueTypeIdOnProjectChange: () => defaultWorkItemType?.id ?? null,
         getActiveAdditionalPropertiesLength: () => 0,
         handlePropertyValuesValidation: () => true,
         handleCreateUpdatePropertyValues: () => Promise.resolve(),

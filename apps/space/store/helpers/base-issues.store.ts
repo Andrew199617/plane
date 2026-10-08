@@ -68,6 +68,8 @@ export const ISSUE_FILTER_DEFAULT_DATA: Record<TIssueDisplayFilterOptions, keyof
   created_by: "created_by",
   assignees: "assignee_ids",
   target_date: "target_date",
+  // jira-parity (work item types; not offered in space)
+  issue_type: "type_id" as keyof IIssue,
 };
 
 export abstract class BaseIssuesStore implements IBaseIssuesStore {

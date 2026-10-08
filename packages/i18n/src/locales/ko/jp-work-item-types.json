@@ -1,0 +1,85 @@
+{
+  "jp_work_item_types": {
+    "settings": {
+      "title": "Work item types",
+      "heading": "Work item types",
+      "description": "Manage the work item types (Task, Story, Bug, Sub-task, Epic) available in every project.",
+      "shared_note": "Work item types are shared by every project in this workspace. Changes apply everywhere.",
+      "edit": "Edit",
+      "empty": "No work item types yet.",
+      "load_failed": "Couldn't load the work item types. Refresh the page to try again.",
+      "no_description": "No description",
+      "badges": {
+        "default": "Default",
+        "epic": "Epic",
+        "sub_task": "Sub-task",
+        "inactive": "Inactive"
+      },
+      "glyphs": {
+        "task": "Task",
+        "story": "Story",
+        "bug": "Bug",
+        "sub_task": "Sub-task",
+        "epic": "Epic"
+      },
+      "edit_modal": {
+        "title": "Edit work item type",
+        "name_label": "Name",
+        "name_placeholder": "Work item type name",
+        "name_required": "Name is required.",
+        "name_too_long": "Name must be 255 characters or fewer.",
+        "description_label": "Description",
+        "description_placeholder": "What is this type used for?",
+        "icon_label": "Icon",
+        "color_label": "Color",
+        "cancel": "Cancel",
+        "save": "Save changes",
+        "saving": "Saving..."
+      },
+      "toast": {
+        "updated": {
+          "title": "Work item type updated",
+          "message": "{type} was updated."
+        },
+        "update_failed": {
+          "title": "Couldn't update the work item type",
+          "message": "Something went wrong. Please try again."
+        }
+      }
+    },
+    "property_label": "Type",
+    "display_property": "Type",
+    "spreadsheet_column": "Type",
+    "group_by": "Work item type",
+    "select": {
+      "placeholder": "Type",
+      "empty": "No work item types",
+      "none": "None",
+      "needs_parent": "Needs a parent",
+      "has_children": "Has sub-work items",
+      "select_parent": "Select parent"
+    },
+    "errors": {
+      "title": "Check the work item type",
+      "sub_task_requires_parent": "A Sub-task must have a parent work item.",
+      "parent_is_sub_task": "A Sub-task can't be the parent of another work item.",
+      "sub_task_cannot_have_children": "A work item with sub-work items can't be a Sub-task."
+    },
+    "toast": {
+      "type_changed": {
+        "title": "Type changed",
+        "message": "The work item is now a {type}."
+      },
+      "type_change_failed": {
+        "title": "Couldn't change the type",
+        "message": "Something went wrong. Please try again."
+      }
+    },
+    "activity": {
+      "changed_from": "changed the type from",
+      "to": "to",
+      "set_to": "set the type to",
+      "for": "for"
+    }
+  }
+}

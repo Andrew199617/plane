@@ -11,12 +11,14 @@ import { observer } from "mobx-react";
 // local imports
 import { TimeTrackingIssueProperties } from "./time-tracking/issue-properties";
 import type { TJiraParityIssuePropertyProps } from "./types";
+import { WorkItemTypeIssueProperty } from "./work-item-types/issue-property";
 
 export const JiraParityIssueProperties = observer(function JiraParityIssueProperties(
   props: TJiraParityIssuePropertyProps
 ) {
   return (
     <>
+      <WorkItemTypeIssueProperty {...props} />
       <TimeTrackingIssueProperties {...props} />
     </>
   );

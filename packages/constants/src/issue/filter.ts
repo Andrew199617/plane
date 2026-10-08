@@ -29,6 +29,8 @@ export enum EServerGroupByToFilterOptions {
   "target_date" = "target_date",
   "project_id" = "project",
   "created_by" = "created_by",
+  // jira-parity (work item types): legacy `issue_type` param when paging a single type group
+  "type_id" = "issue_type",
 }
 
 export enum EIssueFilterType {
@@ -112,7 +114,7 @@ export type TIssueFiltersToDisplayByPageType = {
 
 export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
   profile_issues: {
-    filters: ["priority", "state_group", "label_id", "start_date", "target_date"],
+    filters: ["priority", "state_group", "label_id", "start_date", "target_date", "type_id"],
     layoutOptions: {
       list: {
         display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
@@ -152,6 +154,7 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
       "label_id",
       "start_date",
       "target_date",
+      "type_id",
     ],
     layoutOptions: {
       list: {
@@ -179,6 +182,7 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
       "project_id",
       "start_date",
       "target_date",
+      "type_id",
     ],
     layoutOptions: {
       spreadsheet: {
@@ -217,12 +221,14 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
       "label_id",
       "start_date",
       "target_date",
+      "type_id",
     ],
     layoutOptions: {
       list: {
         display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
         display_filters: {
-          group_by: ["state", "priority", "cycle", "module", "labels", "assignees", "created_by", null],
+          // jira-parity: "issue_type" (group by work item type)
+          group_by: ["state", "issue_type", "priority", "cycle", "module", "labels", "assignees", "created_by", null],
           order_by: ["sort_order", "-created_at", "-updated_at", "start_date", "-priority", "target_date"],
           type: ["active", "backlog"],
         },
@@ -234,8 +240,19 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
       kanban: {
         display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
         display_filters: {
-          group_by: ["state", "priority", "cycle", "module", "labels", "assignees", "created_by"],
-          sub_group_by: ["state", "priority", "cycle", "module", "labels", "assignees", "created_by", null],
+          // jira-parity: "issue_type" (group by work item type)
+          group_by: ["state", "issue_type", "priority", "cycle", "module", "labels", "assignees", "created_by"],
+          sub_group_by: [
+            "state",
+            "issue_type",
+            "priority",
+            "cycle",
+            "module",
+            "labels",
+            "assignees",
+            "created_by",
+            null,
+          ],
           order_by: ["sort_order", "-created_at", "-updated_at", "start_date", "-priority", "target_date"],
           type: ["active", "backlog"],
         },
@@ -279,7 +296,7 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
     },
   },
   sub_work_items: {
-    filters: ["priority", "state_id", "assignee_id", "start_date", "target_date"],
+    filters: ["priority", "state_id", "assignee_id", "start_date", "target_date", "type_id"],
     layoutOptions: {
       list: {
         display_properties: SUB_ISSUES_DISPLAY_PROPERTIES_KEYS,

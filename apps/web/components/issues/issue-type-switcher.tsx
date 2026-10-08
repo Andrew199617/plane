@@ -5,10 +5,11 @@
  */
 
 import { observer } from "mobx-react";
+import { useParams } from "next/navigation";
 // store hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 // components
-import { IssueIdentifier } from "@/components/issues/issue-detail/issue-identifier";
+import { WorkItemTypeSwitcher } from "@/components/jira-parity/work-item-types/type-switcher";
 
 export type TIssueTypeSwitcherProps = {
   issueId: string;
@@ -16,7 +17,9 @@ export type TIssueTypeSwitcherProps = {
 };
 
 export const IssueTypeSwitcher = observer(function IssueTypeSwitcher(props: TIssueTypeSwitcherProps) {
-  const { issueId } = props;
+  const { issueId, disabled } = props;
+  // router
+  const { workspaceSlug } = useParams();
   // store hooks
   const {
     issue: { getIssueById },
@@ -26,5 +29,13 @@ export const IssueTypeSwitcher = observer(function IssueTypeSwitcher(props: TIss
 
   if (!issue || !issue.project_id) return <></>;
 
-  return <IssueIdentifier issueId={issueId} projectId={issue.project_id} size="md" enableClickToCopyIdentifier />;
+  // jira-parity: type icon (with a "change type" menu) + identifier
+  return (
+    <WorkItemTypeSwitcher
+      workspaceSlug={workspaceSlug?.toString() ?? ""}
+      projectId={issue.project_id}
+      issueId={issueId}
+      disabled={disabled}
+    />
+  );
 });

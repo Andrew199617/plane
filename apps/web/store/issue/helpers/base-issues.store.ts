@@ -124,6 +124,8 @@ export const ISSUE_GROUP_BY_KEY: Record<TIssueDisplayFilterOptions, keyof TIssue
   cycle: "cycle_id",
   module: "module_ids",
   team_project: "project_id",
+  // jira-parity (work item types)
+  issue_type: "type_id",
 };
 
 export const ISSUE_FILTER_DEFAULT_DATA: Record<TIssueDisplayFilterOptions, keyof TIssue> = {
@@ -138,6 +140,8 @@ export const ISSUE_FILTER_DEFAULT_DATA: Record<TIssueDisplayFilterOptions, keyof
   assignees: "assignee_ids",
   target_date: "target_date",
   team_project: "project_id",
+  // jira-parity (work item types)
+  issue_type: "type_id",
 };
 
 // This constant maps the order by keys to the respective issue property that the key relies on
@@ -172,6 +176,8 @@ const ISSUE_ORDERBY_KEY: Record<TIssueOrderByOptions, keyof TIssue> = {
   sub_issues_count: "sub_issues_count",
   "-sub_issues_count": "sub_issues_count",
   // jira-parity
+  type__name: "type_id",
+  "-type__name": "type_id",
   original_estimate: "original_estimate",
   "-original_estimate": "original_estimate",
   remaining_estimate: "remaining_estimate",

@@ -23,6 +23,8 @@ export type TIssueGroupByOptions =
   | "module"
   | "target_date"
   | "team_project"
+  // jira-parity (work item types): group by work item type
+  | "issue_type"
   | null;
 
 export type TIssueOrderByOptions =
@@ -56,6 +58,8 @@ export type TIssueOrderByOptions =
   | "sub_issues_count"
   | "-sub_issues_count"
   // jira-parity
+  | "type__name"
+  | "-type__name"
   | "original_estimate"
   | "-original_estimate"
   | "remaining_estimate"
@@ -114,6 +118,8 @@ export const WORK_ITEM_FILTER_PROPERTY_KEYS = [
   "project_id",
   "created_at",
   "updated_at",
+  // jira-parity (work item types)
+  "type_id",
 ] as const;
 export type TWorkItemFilterProperty = (typeof WORK_ITEM_FILTER_PROPERTY_KEYS)[number];
 

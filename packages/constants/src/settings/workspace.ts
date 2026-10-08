@@ -62,6 +62,35 @@ export const WORKSPACE_SETTINGS: Record<TWorkspaceSettingsTabs, TWorkspaceSettin
     access: [EUserWorkspaceRoles.ADMIN],
     highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/webhooks/`,
   },
+  // jira-parity
+  "work-item-types": {
+    key: "work-item-types",
+    i18n_label: "jp_work_item_types.settings.title",
+    href: `/settings/work-item-types`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/work-item-types/`,
+  },
+  agents: {
+    key: "agents",
+    i18n_label: "jp_agents.settings.title",
+    href: `/settings/agents`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/agents/`,
+  },
+  teams: {
+    key: "teams",
+    i18n_label: "jp_teams.settings.title",
+    href: `/settings/teams`,
+    access: [EUserWorkspaceRoles.ADMIN, EUserWorkspaceRoles.MEMBER],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/teams/`,
+  },
+  "project-categories": {
+    key: "project-categories",
+    i18n_label: "jp_categories.settings.title",
+    href: `/settings/project-categories`,
+    access: [EUserWorkspaceRoles.ADMIN],
+    highlight: (pathname: string, baseUrl: string) => pathname === `${baseUrl}/settings/project-categories/`,
+  },
 };
 
 export const WORKSPACE_SETTINGS_ACCESS = Object.fromEntries(
@@ -75,6 +104,9 @@ export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWo
     WORKSPACE_SETTINGS["billing-and-plans"],
     WORKSPACE_SETTINGS["export"],
   ],
-  [WORKSPACE_SETTINGS_CATEGORY.FEATURES]: [],
+  [WORKSPACE_SETTINGS_CATEGORY.FEATURES]: [
+    // jira-parity
+    WORKSPACE_SETTINGS["work-item-types"],
+  ],
   [WORKSPACE_SETTINGS_CATEGORY.DEVELOPER]: [WORKSPACE_SETTINGS["webhooks"]],
 };

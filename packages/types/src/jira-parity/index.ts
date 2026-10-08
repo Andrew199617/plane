@@ -5,5 +5,6 @@
  */
 
 // Jira-parity types (scaffold-owned barrel; each feature owns its own file)
+export * from "./work-item-types";
 export * from "./time-tracking";
 export * from "./priorities";

@@ -24,6 +24,7 @@ import { cn, generateWorkItemLink } from "@plane/utils";
 import { MultipleSelectEntityAction } from "@/components/core/multiple-select";
 import { IssueProperties } from "@/components/issues/issue-layouts/properties";
 import { IssueIdentifier } from "@/components/issues/issue-detail/issue-identifier";
+import { JP_WORK_ITEM_TYPE_IDENTIFIER_ICON_WIDTH } from "@/components/jira-parity/work-item-types/identifier-icon";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
@@ -157,7 +158,9 @@ export const IssueBlock = observer(function IssueBlock(props: IssueBlockProps) {
   // Use next_work_item_sequence from backend (static value from project endpoint)
   const maxSequenceId = currentProjectNextSequenceId ?? 1;
   const keyMinWidth = displayProperties?.key
-    ? calculateIdentifierWidth(projectIdentifier?.length ?? 0, maxSequenceId)
+    ? calculateIdentifierWidth(projectIdentifier?.length ?? 0, maxSequenceId) +
+      // jira-parity: room for the work item type icon rendered before the key
+      (displayProperties.issue_type !== false ? JP_WORK_ITEM_TYPE_IDENTIFIER_ICON_WIDTH : 0)
     : 0;
 
   const workItemLink = generateWorkItemLink({

@@ -11,17 +11,22 @@ import type { IPrioritiesStore } from "./priorities.store";
 import { PrioritiesStore } from "./priorities.store";
 import type { ITimeTrackingStore } from "./time-tracking.store";
 import { TimeTrackingStore } from "./time-tracking.store";
+import type { IWorkItemTypesStore } from "./work-item-types.store";
+import { WorkItemTypesStore } from "./work-item-types.store";
 
 export interface IJiraParityRootStore {
+  workItemTypes: IWorkItemTypesStore;
   timeTracking: ITimeTrackingStore;
   priorities: IPrioritiesStore;
 }
 
 export class JiraParityRootStore implements IJiraParityRootStore {
+  workItemTypes: IWorkItemTypesStore;
   timeTracking: ITimeTrackingStore;
   priorities: IPrioritiesStore;
 
   constructor(rootStore: CoreRootStore) {
+    this.workItemTypes = new WorkItemTypesStore(rootStore);
     this.timeTracking = new TimeTrackingStore(rootStore);
     this.priorities = new PrioritiesStore(rootStore);
   }

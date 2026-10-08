@@ -74,10 +74,13 @@ import {
   SpreadsheetUpdatedOnColumn,
 } from "@/components/issues/issue-layouts/spreadsheet/columns";
 // jira-parity
+import { JIRA_PARITY_GROUP_BY_COLUMNS } from "@/components/jira-parity/group-by";
+import type { TJiraParityGroupByKey } from "@/components/jira-parity/group-by";
 import {
   SpreadsheetOriginalEstimateColumn,
   SpreadsheetRemainingEstimateColumn,
 } from "@/components/jira-parity/time-tracking/spreadsheet-columns";
+import { SpreadsheetWorkItemTypeColumn } from "@/components/jira-parity/work-item-types/spreadsheet-column";
 
 export const HIGHLIGHT_CLASS = "highlight";
 export const HIGHLIGHT_WITH_LINE = "highlight-with-line";
@@ -145,7 +148,7 @@ export const getGroupByColumns = ({
 
   // Map of group by options to their corresponding column getter functions
   const groupByColumnMap: Record<
-    GroupByColumnTypes,
+    GroupByColumnTypes | TJiraParityGroupByKey,
     ({ isWorkspaceLevel, projectId }: TGetColumns) => IGroupByColumn[] | undefined
   > = {
     project: getProjectColumns,
@@ -158,6 +161,8 @@ export const getGroupByColumns = ({
     assignees: getAssigneeColumns,
     created_by: getCreatedByColumns,
     team_project: getTeamProjectColumns,
+    // jira-parity ("state__name" -> project-categories, "issue_type" -> work-item-types)
+    ...JIRA_PARITY_GROUP_BY_COLUMNS,
   };
 
   // Get and return the columns for the specified group by option
@@ -883,6 +888,7 @@ export const SPREADSHEET_COLUMNS: { [key in keyof IIssueDisplayProperties]: TSpr
   updated_on: SpreadsheetUpdatedOnColumn,
   attachment_count: SpreadsheetAttachmentColumn,
   // jira-parity
+  issue_type: SpreadsheetWorkItemTypeColumn,
   original_estimate: SpreadsheetOriginalEstimateColumn,
   remaining_estimate: SpreadsheetRemainingEstimateColumn,
 };

@@ -6,11 +6,15 @@
 
 import type { LucideIcon } from "lucide-react";
 import {
+  AgentOutline,
   BillingsOutline,
   BuildingOutline,
   ExportOutline,
   MembersOutline,
+  ProjectsOutline,
+  TeamspacesOutline,
   WebhooksOutline,
+  WorkItemsOutline,
 } from "@makeplane/propel/icons";
 // plane imports
 import type { ISvgIcons } from "@plane/blocks/icons";
@@ -22,4 +26,9 @@ export const WORKSPACE_SETTINGS_ICONS: Record<TWorkspaceSettingsTabs, LucideIcon
   export: ExportOutline,
   "billing-and-plans": BillingsOutline,
   webhooks: WebhooksOutline,
+  // jira-parity
+  "work-item-types": WorkItemsOutline,
+  agents: AgentOutline,
+  teams: TeamspacesOutline,
+  "project-categories": ProjectsOutline,
 };

@@ -10,6 +10,7 @@ import { getValidKeysFromObject } from "@plane/utils";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 import { useTimeLineRelationOptions } from "@/components/relations";
+import { WorkItemTypeActivity } from "@/components/jira-parity/work-item-types/activity";
 import { TimeTrackingActivity } from "@/components/jira-parity/time-tracking/activity";
 // local components
 import {
@@ -71,6 +72,9 @@ export const IssueActivityItem = observer(function IssueActivityItem(props: TIss
       return <IssueEstimateActivity {...componentDefaultProps} showIssue={false} />;
     case "parent":
       return <IssueParentActivity {...componentDefaultProps} showIssue={false} />;
+    // jira-parity: work item type changes
+    case "type":
+      return <WorkItemTypeActivity {...componentDefaultProps} showIssue={false} />;
     // jira-parity: time tracking (original / remaining estimate)
     case "original_estimate":
     case "remaining_estimate":

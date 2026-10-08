@@ -6,5 +6,6 @@
 
 // Jira-parity constants (scaffold-owned barrel; each feature owns its own file)
 export * from "./common";
+export * from "./work-item-types";
 export * from "./time-tracking";
 export * from "./priorities";
