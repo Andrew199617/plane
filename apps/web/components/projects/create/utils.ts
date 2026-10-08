@@ -8,7 +8,8 @@ import { RANDOM_EMOJI_CODES } from "@plane/constants";
 import type { IProject } from "@plane/types";
 import { getRandomCoverImage } from "@/helpers/cover-image.helper";
 
-export const getProjectFormValues = (): Partial<IProject> => ({
+// jira-parity: the project lead defaults to the current user (pass their id)
+export const getProjectFormValues = (projectLeadId: string | null = null): Partial<IProject> => ({
   cover_image_url: getRandomCoverImage(),
   description: "",
   logo_props: {
@@ -20,5 +21,5 @@ export const getProjectFormValues = (): Partial<IProject> => ({
   identifier: "",
   name: "",
   network: 2,
-  project_lead: null,
+  project_lead: projectLeadId,
 });

@@ -18,6 +18,7 @@ import ProjectCreateButtons from "@/components/project/create/project-create-but
 // hooks
 import { getCoverImageType, uploadCoverImage } from "@/helpers/cover-image.helper";
 import { useProject } from "@/hooks/store/use-project";
+import { useUser } from "@/hooks/store/user";
 import { usePlatformOS } from "@/hooks/use-platform-os";
 // plane web types
 import type { TProject } from "@plane/types";
@@ -39,11 +40,13 @@ export const CreateProjectForm = observer(function CreateProjectForm(props: TCre
   // store
   const { t } = useTranslation();
   const { addProjectToFavorites, createProject, updateProject } = useProject();
+  const { data: currentUser } = useUser();
   // states
   const [shouldAutoSyncIdentifier, setShouldAutoSyncIdentifier] = useState(true);
   // form info
   const methods = useForm<TProject>({
-    defaultValues: { ...getProjectFormValues(), ...data },
+    // jira-parity: the project lead defaults to the current user
+    defaultValues: { ...getProjectFormValues(currentUser?.id ?? null), ...data },
     reValidateMode: "onChange",
   });
   const { handleSubmit, reset, setValue } = methods;

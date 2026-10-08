@@ -110,6 +110,8 @@ export const ProjectSettingsMemberDefaults = observer(function ProjectSettingsMe
         formData.project_lead === "none" ? null : (formData.project_lead ?? currentProjectDetails?.project_lead),
     })
       .then(() => {
+        // jira-parity: the server moves the default assignee along with the project lead; reload it
+        if ("project_lead" in formData) void fetchProjectDetails(workspaceSlug, projectId);
         setToast({
           title: `${t("success")}!`,
           type: "success",

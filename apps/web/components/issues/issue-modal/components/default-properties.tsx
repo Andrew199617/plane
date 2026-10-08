@@ -30,6 +30,7 @@ import { PrioritySelect } from "@/components/dropdowns/priority/priority-select"
 import { StateSelect } from "@/components/dropdowns/state/state-select";
 import { ParentIssuesListModal } from "@/components/issues/parent-issues-list-modal";
 import { IssueIdentifier } from "@/components/issues/issue-detail/issue-identifier";
+import { useDefaultAssigneePrefill } from "@/components/jira-parity/project-defaults/use-default-assignee-prefill";
 // hooks
 import { useProjectEstimates } from "@/hooks/store/estimates";
 import { useProject } from "@/hooks/store/use-project";
@@ -74,6 +75,8 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
   const { getProjectDefaultStateId } = useProjectState();
   const { isMobile } = usePlatformOS();
   const { data: userProfile } = useUserProfile();
+  // jira-parity: pre-fill the assignee with the project's default assignee until the user picks one
+  const { markAssigneesTouched } = useDefaultAssigneePrefill({ workItemId: id, projectId });
   // derived values
   const projectDetails = getProjectById(projectId);
 
@@ -130,6 +133,7 @@ export const IssueDefaultProperties = observer(function IssueDefaultProperties(p
             projectId={projectId ?? undefined}
             value={value}
             onChange={(assigneeIds) => {
+              markAssigneesTouched();
               onChange(assigneeIds);
               handleFormChange();
             }}
