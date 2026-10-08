@@ -13,6 +13,7 @@ import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { GANTT_TIMELINE_TYPE } from "@plane/types";
 // components
 import { ProjectAccessRestriction } from "@/components/auth-screens/project/project-access-restriction";
+import { JiraParityProjectDataLoader } from "@/components/jira-parity/data-loaders";
 import {
   PROJECT_DETAILS,
   PROJECT_ME_INFORMATION,
@@ -157,5 +158,10 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <JiraParityProjectDataLoader workspaceSlug={workspaceSlug} projectId={projectId} />
+      {children}
+    </>
+  );
 });

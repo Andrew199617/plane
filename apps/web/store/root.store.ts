@@ -69,6 +69,9 @@ import { ThemeStore } from "./theme.store";
 import type { IUserStore } from "./user";
 import { UserStore } from "./user";
 import type { IWorkspaceRootStore } from "./workspace";
+// jira-parity
+import type { IJiraParityRootStore } from "./jira-parity/root.store";
+import { JiraParityRootStore } from "./jira-parity/root.store";
 
 enableStaticRendering(typeof window === "undefined");
 
@@ -103,6 +106,8 @@ export class CoreRootStore {
   workItemFilters: IWorkItemFilterStore;
   powerK: IPowerKStore;
   timelineStore: ITimelineStore;
+  // jira-parity
+  jiraParity: IJiraParityRootStore;
 
   constructor() {
     this.router = new RouterStore();
@@ -135,6 +140,8 @@ export class CoreRootStore {
     this.workItemFilters = new WorkItemFilterStore();
     this.powerK = new PowerKStore();
     this.timelineStore = new TimeLineStore(this);
+    // jira-parity
+    this.jiraParity = new JiraParityRootStore(this);
   }
 
   resetOnSignOut() {
@@ -169,6 +176,8 @@ export class CoreRootStore {
     this.workItemFilters = new WorkItemFilterStore();
     this.powerK = new PowerKStore();
     this.timelineStore = new TimeLineStore(this);
+    // jira-parity
+    this.jiraParity = new JiraParityRootStore(this);
   }
 }
 

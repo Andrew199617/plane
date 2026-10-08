@@ -34,6 +34,7 @@ export const NAMESPACES = [
   "workspace",
   "workspace-settings",
   // jira-parity
+  "jp-common",
   "jp-priorities",
 ] as const;
 
