@@ -93,4 +93,6 @@ from .description import Description, DescriptionVersion
 
 # Jira-parity models
 from .project import ROLE, ROLE_CHOICES
+from .workspace import Team
+from .team import TeamMember, TeamProject
 from .workflow import StateTransition
