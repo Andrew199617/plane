@@ -69,3 +69,34 @@ class TeamProject(ProjectBaseModel):
 
     def __str__(self):
         return f"{self.team_id} {self.project_id}"
+
+
+class TeamProvisionedMember(ProjectBaseModel):
+    """Provenance marker: the (project, member) ProjectMember row was created or reactivated by
+    team provisioning, i.e. the user had no active membership before a team covered them.
+
+    When the user stops being covered by any team linked to the project (removed from the team,
+    team unlinked, team deleted) only memberships carrying this marker are deactivated; memberships
+    that existed independently of teams are never touched. Rows are hard-deleted.
+    """
+
+    member = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="team_provisioned_memberships"
+    )
+
+    class Meta:
+        unique_together = ["project", "member", "deleted_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["project", "member"],
+                condition=Q(deleted_at__isnull=True),
+                name="team_provisioned_member_unique_project_member_active",
+            )
+        ]
+        verbose_name = "Team Provisioned Member"
+        verbose_name_plural = "Team Provisioned Members"
+        db_table = "team_provisioned_members"
+        ordering = ("-created_at",)
+
+    def __str__(self):
+        return f"{self.project_id} {self.member_id}"
