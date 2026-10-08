@@ -16,6 +16,7 @@ from plane.db.models import Project, ProjectIdentifier, WorkspaceMember, State, 
 from plane.utils.content_validator import (
     validate_html_content,
 )
+from plane.utils.project_categories import ProjectCategoryIdField
 from .base import BaseSerializer
 
 
@@ -68,6 +69,9 @@ class ProjectCreateSerializer(BaseSerializer):
         "cycle",
     ]
 
+    # Jira-parity: project category (only this workspace's categories)
+    category_id = ProjectCategoryIdField(source="category")
+
     class Meta:
         model = Project
         fields = [
@@ -92,6 +96,7 @@ class ProjectCreateSerializer(BaseSerializer):
             "external_id",
             "is_issue_type_enabled",
             "is_time_tracking_enabled",
+            "category_id",  # Jira-parity
         ]
 
         read_only_fields = [
@@ -222,6 +227,7 @@ class ProjectSerializer(BaseSerializer):
     member_role = serializers.IntegerField(read_only=True)
     is_deployed = serializers.BooleanField(read_only=True)
     cover_image_url = serializers.CharField(read_only=True)
+    category_id = serializers.UUIDField(read_only=True)  # Jira-parity: project category
 
     class Meta:
         model = Project

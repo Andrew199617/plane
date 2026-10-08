@@ -130,6 +130,8 @@ def issue_on_results(
         "is_draft",
         "archived_at",
         "state__group",
+        # Jira-parity: master boards group by state name across projects (same join as state__group)
+        "state__name",
     ]
 
     if group_by in FIELD_MAPPER:
@@ -151,6 +153,12 @@ def issue_group_values(
     filters: Dict[str, Any] = {},
     queryset: Optional[QuerySet] = None,
 ) -> List[Union[str, Any]]:
+    if field == "state__name":
+        # Jira-parity: distinct state names, standard Jira order first (plane.utils.project_categories)
+        from plane.utils.project_categories import state_name_group_values
+
+        return state_name_group_values(slug=slug, project_id=project_id, filters=filters)
+
     if field == "type_id":
         # Jira-parity: group by work item type (workspace-level types + work items without a type)
         from plane.db.models import IssueType

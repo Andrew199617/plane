@@ -71,6 +71,8 @@ class IssueViewSerializer(DynamicBaseSerializer):
             "owned_by",
             "access",
             "is_locked",
+            # jira-parity: the master-board link of a project category is managed server-side only
+            "category",
         ]
 
     def create(self, validated_data):

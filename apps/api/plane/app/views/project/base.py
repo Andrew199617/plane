@@ -191,6 +191,7 @@ class ProjectViewSet(BaseViewSet):
             "guest_view_all_features",
             "project_lead",
             "network",
+            "category_id",  # Jira-parity: project categories
             "created_at",
             "updated_at",
             "created_by",

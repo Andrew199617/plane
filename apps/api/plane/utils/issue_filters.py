@@ -428,9 +428,30 @@ def filter_logged_by(params, issue_filter, method, prefix=""):
     return issue_filter
 
 
+# Jira-parity (master boards): state by name, sprint (cycle) by name across projects, project category
 def _jp_split_values(value):
     items = value if isinstance(value, (list, tuple)) else str(value or "").split(",")
     return [str(item).strip() for item in items if item is not None and str(item).strip() not in ("", "null")]
+
+
+def filter_state_name(params, issue_filter, method, prefix=""):
+    names = _jp_split_values(params.get("state_name"))
+    if names:
+        issue_filter[f"{prefix}state__name__in"] = names
+    return issue_filter
+
+
+def filter_cycle_name(params, issue_filter, method, prefix=""):
+    names = _jp_split_values(params.get("cycle_name"))
+    if "None" in names:
+        issue_filter[f"{prefix}issue_cycle__cycle_id__isnull"] = True
+    names = [name for name in names if name != "None"]
+    if names:
+        issue_filter[f"{prefix}issue_cycle__cycle__name__in"] = names
+        issue_filter[f"{prefix}issue_cycle__cycle__deleted_at__isnull"] = True
+    if names or f"{prefix}issue_cycle__cycle_id__isnull" in issue_filter:
+        issue_filter[f"{prefix}issue_cycle__deleted_at__isnull"] = True
+    return issue_filter
 
 
 def filter_issue_type(params, issue_filter, method, prefix=""):
@@ -441,6 +462,13 @@ def filter_issue_type(params, issue_filter, method, prefix=""):
     type_ids = filter_valid_uuids([value for value in values if value != "None"])
     if type_ids:
         issue_filter[f"{prefix}type_id__in"] = type_ids
+    return issue_filter
+
+
+def filter_project_category(params, issue_filter, method, prefix=""):
+    categories = filter_valid_uuids(_jp_split_values(params.get("project_category")))
+    if categories:
+        issue_filter[f"{prefix}project__category_id__in"] = categories
     return issue_filter
 
 
@@ -473,6 +501,10 @@ def issue_filters(query_params, method, prefix=""):
         "sub_issue": filter_sub_issue_toggle,
         "subscriber": filter_subscribed_issues,
         "start_target_date": filter_start_target_date_issues,
+        # Jira-parity (master boards)
+        "state_name": filter_state_name,
+        "cycle_name": filter_cycle_name,
+        "project_category": filter_project_category,
         # Jira-parity work item types
         "issue_type": filter_issue_type,
     }
