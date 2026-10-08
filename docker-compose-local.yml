@@ -1,3 +1,6 @@
+# Project name pinned so this stack never collides with other compose projects on the host.
+name: plane
+
 services:
   plane-redis:
     image: valkey/valkey:7.2.11-alpine
@@ -7,7 +10,7 @@ services:
     volumes:
       - redisdata:/data
     ports:
-      - "6379:6379"
+      - "${PLANE_REDIS_PORT:-56379}:6379"
 
   plane-mq:
     image: rabbitmq:3.13.6-management-alpine
@@ -45,8 +48,8 @@ services:
       MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
       MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
     ports:
-      - "9000:9000"
-      - "9090:9090"
+      - "${PLANE_MINIO_PORT:-9300}:9000"
+      - "${PLANE_MINIO_CONSOLE_PORT:-9390}:9090"
 
   plane-db:
     image: postgres:15.7-alpine
@@ -61,7 +64,7 @@ services:
     environment:
       PGDATA: /var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${PLANE_DB_PORT:-55432}:5432"
 
   api:
     build:
@@ -82,7 +85,7 @@ services:
       - plane-redis
       - plane-mq
     ports:
-      - "8000:8000"
+      - "${PLANE_API_PORT:-8300}:8000"
 
   worker:
     build:
