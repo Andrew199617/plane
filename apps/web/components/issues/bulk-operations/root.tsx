@@ -8,7 +8,7 @@ import { observer } from "mobx-react";
 // ui
 import { Banner } from "@makeplane/propel/components/banner";
 import { Button } from "@makeplane/propel/components/button";
-import { MARKETING_PLANE_ONE_PAGE_LINK } from "@plane/constants";
+import { JP_HIDE_UPSELL, MARKETING_PLANE_ONE_PAGE_LINK } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { cn } from "@plane/utils";
 // hooks
@@ -27,7 +27,8 @@ export const IssueBulkOperationsRoot = observer(function IssueBulkOperationsRoot
   // store hooks
   const { isSelectionActive } = useMultipleSelectStore();
 
-  if (!isSelectionActive || selectionHelpers.isSelectionDisabled) return null;
+  // jira-parity: the CE bulk-operations bar is only an upgrade banner, hide it
+  if (JP_HIDE_UPSELL || !isSelectionActive || selectionHelpers.isSelectionDisabled) return null;
 
   return (
     <div className={cn("sticky bottom-0 left-0 z-[2] grid h-20 place-items-center px-3.5", className)}>

@@ -7,6 +7,8 @@
 // plane imports
 import type { TWorkspaceSettingsItem, TWorkspaceSettingsTabs } from "@plane/types";
 import { EUserWorkspaceRoles } from "@plane/types";
+// jira-parity
+import { JP_HIDE_UPSELL } from "../jira-parity/common";
 
 export enum WORKSPACE_SETTINGS_CATEGORY {
   ADMINISTRATION = "administration",
@@ -104,7 +106,7 @@ export const GROUPED_WORKSPACE_SETTINGS: Record<WORKSPACE_SETTINGS_CATEGORY, TWo
     // jira-parity
     WORKSPACE_SETTINGS["agents"],
     WORKSPACE_SETTINGS["teams"],
-    WORKSPACE_SETTINGS["billing-and-plans"],
+    ...(JP_HIDE_UPSELL ? [] : [WORKSPACE_SETTINGS["billing-and-plans"]]),
     WORKSPACE_SETTINGS["export"],
   ],
   [WORKSPACE_SETTINGS_CATEGORY.FEATURES]: [
