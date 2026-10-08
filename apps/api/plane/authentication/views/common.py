@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from zxcvbn import zxcvbn
+from plane.utils.password_policy import password_score
 
 ## Module imports
 from plane.app.serializers import UserSerializer
@@ -80,7 +80,7 @@ class ChangePasswordEndpoint(APIView):
             return Response(exc.get_error_dict(), status=status.HTTP_400_BAD_REQUEST)
 
         # check the password score
-        results = zxcvbn(new_password)
+        results = password_score(new_password)
         if results["score"] < 3:
             exc = AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["PASSWORD_TOO_WEAK"],
@@ -119,7 +119,7 @@ class SetUserPasswordEndpoint(APIView):
             )
             return Response(exc.get_error_dict(), status=status.HTTP_400_BAD_REQUEST)
 
-        results = zxcvbn(password)
+        results = password_score(password)
         if results["score"] < 3:
             exc = AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["INVALID_PASSWORD"],

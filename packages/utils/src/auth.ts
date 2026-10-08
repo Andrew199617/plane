@@ -33,12 +33,13 @@ export const getPasswordStrength = (password: string): E_PASSWORD_STRENGTH => {
   }
 
   // Check all criteria
+  // Policy (matches the API's plane/utils/password_policy.py): 8+ chars, an
+  // uppercase letter, a number and a symbol.
   const hasUpperCase = /[A-Z]/.test(password);
-  const hasLowerCase = /[a-z]/.test(password);
   const hasDigit = /[0-9]/.test(password);
-  const hasSpecialChar = /[!@#$%^&*()\-_+=\[\]{}|;:'",.<>?/]/.test(password);
+  const hasSpecialChar = /[^A-Za-z0-9\s]/.test(password);
 
-  if (hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar) {
+  if (hasUpperCase && hasDigit && hasSpecialChar) {
     return E_PASSWORD_STRENGTH.STRENGTH_VALID;
   }
 
@@ -66,11 +67,6 @@ export const getPasswordCriteria = (password: string): PasswordCriteria[] => [
     isValid: /[A-Z]/.test(password),
   },
   {
-    key: "lowercase",
-    label: "Min 1 lower-case letter",
-    isValid: /[a-z]/.test(password),
-  },
-  {
     key: "number",
     label: "Min 1 number",
     isValid: /[0-9]/.test(password),
@@ -78,7 +74,7 @@ export const getPasswordCriteria = (password: string): PasswordCriteria[] => [
   {
     key: "special",
     label: "Min 1 special character",
-    isValid: /[!@#$%^&*()\-_+=\[\]{}|;:'",.<>?/]/.test(password),
+    isValid: /[^A-Za-z0-9\s]/.test(password),
   },
 ];
 

@@ -17,7 +17,7 @@ from plane.utils.url_security import pinned_fetch_following_redirects
 from django.utils import timezone
 
 # Third party imports
-from zxcvbn import zxcvbn
+from plane.utils.password_policy import password_score
 
 from plane.bgtasks.user_activation_email_task import user_activation_email
 
@@ -89,7 +89,7 @@ class Adapter:
 
     def validate_password(self, email):
         """Validate password strength"""
-        results = zxcvbn(self.code)
+        results = password_score(self.code)
         if results["score"] < 3:
             self.logger.warning("Password is not strong enough")
             raise AuthenticationException(

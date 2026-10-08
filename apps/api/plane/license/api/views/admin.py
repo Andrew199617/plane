@@ -5,7 +5,7 @@
 # Python imports
 from urllib.parse import urlencode, urljoin
 import uuid
-from zxcvbn import zxcvbn
+from plane.utils.password_policy import password_score
 
 # Django imports
 from django.http import HttpResponseRedirect
@@ -192,7 +192,7 @@ class InstanceAdminSignUpEndpoint(View):
             )
             return HttpResponseRedirect(url)
         else:
-            results = zxcvbn(password)
+            results = password_score(password)
             if results["score"] < 3:
                 exc = AuthenticationException(
                     error_code=AUTHENTICATION_ERROR_CODES["PASSWORD_TOO_WEAK"],
