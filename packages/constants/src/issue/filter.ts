@@ -63,36 +63,37 @@ export const ISSUE_DISPLAY_FILTERS_BY_LAYOUT: {
   },
 };
 
+// Jira-parity priorities (class names stay full literals so Tailwind can see them)
 export const ISSUE_PRIORITY_FILTERS: TIssueFilterPriorityObject[] = [
   {
-    key: "urgent",
-    titleTranslationKey: "issue.priority.urgent",
-    className: "bg-layer-2 text-priority-urgent border-strong",
-    icon: "error",
+    key: "highest",
+    titleTranslationKey: "jp_priorities.highest",
+    className: "bg-layer-2 text-priority-highest border-strong",
+    icon: "keyboard_double_arrow_up",
   },
   {
     key: "high",
-    titleTranslationKey: "issue.priority.high",
+    titleTranslationKey: "jp_priorities.high",
     className: "bg-layer-2 text-priority-high border-strong",
-    icon: "signal_cellular_alt",
+    icon: "keyboard_arrow_up",
   },
   {
     key: "medium",
-    titleTranslationKey: "issue.priority.medium",
+    titleTranslationKey: "jp_priorities.medium",
     className: "bg-layer-2 text-priority-medium border-strong",
-    icon: "signal_cellular_alt_2_bar",
+    icon: "drag_handle",
   },
   {
     key: "low",
-    titleTranslationKey: "issue.priority.low",
+    titleTranslationKey: "jp_priorities.low",
     className: "bg-layer-2 text-priority-low border-strong",
-    icon: "signal_cellular_alt_1_bar",
+    icon: "keyboard_arrow_down",
   },
   {
-    key: "none",
-    titleTranslationKey: "common.none",
-    className: "bg-layer-2 text-priority-none border-strong",
-    icon: "block",
+    key: "lowest",
+    titleTranslationKey: "jp_priorities.lowest",
+    className: "bg-layer-2 text-priority-lowest border-strong",
+    icon: "keyboard_double_arrow_down",
   },
 ];
 

@@ -47,3 +47,5 @@ export * from "./user";
 export * from "./views";
 export * from "./workspace-drafts";
 export * from "./workspace";
+// jira-parity
+export * from "./jira-parity";

@@ -16,6 +16,18 @@
 @import "@makeplane/propel/styles";
 @source "../**/*.{ts,tsx}";
 
+/*
+ * Jira-parity priorities (highest / high / medium / low / lowest). propel ships theme-aware tokens
+ * for high, medium and low; add Highest (propel's red "urgent") and Lowest (a lighter "low" blue)
+ * so `text-priority-highest|lowest` and `border-priority-highest|lowest` exist in light and dark.
+ */
+@theme inline {
+  --text-color-priority-highest: var(--priority-urgent);
+  --border-color-priority-highest: var(--priority-urgent);
+  --text-color-priority-lowest: color-mix(in oklch, var(--priority-low) 70%, white);
+  --border-color-priority-lowest: color-mix(in oklch, var(--priority-low) 70%, white);
+}
+
 * {
   -webkit-text-size-adjust: 100%;
   -ms-text-size-adjust: 100%;

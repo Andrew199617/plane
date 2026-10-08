@@ -12,10 +12,15 @@ import type {
   TIssue,
   EIssuesStoreType,
 } from "@plane/types";
+import type { TIssuePriorities as TIssuePrioritiesBase } from "@plane/types";
 
 export const ALL_ISSUES = "All Issues";
 
-export type TIssuePriorities = "urgent" | "high" | "medium" | "low" | "none";
+// Jira-parity priorities (highest/high/medium/low/lowest); the union lives in @plane/types.
+export type TIssuePriorities = TIssuePrioritiesBase;
+
+/** Default priority for new work items (Jira: Medium). */
+export const DEFAULT_ISSUE_PRIORITY: TIssuePriorities = "medium";
 
 export type TIssueFilterPriorityObject = {
   key: TIssuePriorities;
@@ -65,29 +70,37 @@ export enum EIssueListRow {
   QUICK_ADD = "QUICK_ADD",
 }
 
+// Jira-parity: ordered most -> least important (drives select order, group-by columns and client sorting).
+// `i18n_label` is the translated label (jp-priorities namespace); `title` is the English fallback.
 export const ISSUE_PRIORITIES: {
   key: TIssuePriorities;
   title: string;
+  i18n_label: string;
 }[] = [
   {
-    key: "urgent",
-    title: "Urgent",
+    key: "highest",
+    title: "Highest",
+    i18n_label: "jp_priorities.highest",
   },
   {
     key: "high",
     title: "High",
+    i18n_label: "jp_priorities.high",
   },
   {
     key: "medium",
     title: "Medium",
+    i18n_label: "jp_priorities.medium",
   },
   {
     key: "low",
     title: "Low",
+    i18n_label: "jp_priorities.low",
   },
   {
-    key: "none",
-    title: "None",
+    key: "lowest",
+    title: "Lowest",
+    i18n_label: "jp_priorities.lowest",
   },
 ];
 
@@ -297,9 +310,9 @@ export const SPREADSHEET_PROPERTY_DETAILS: {
   priority: {
     i18n_title: "common.priority",
     ascendingOrderKey: "priority",
-    ascendingOrderTitle: "None",
+    ascendingOrderTitle: "Lowest",
     descendingOrderKey: "-priority",
-    descendingOrderTitle: "Urgent",
+    descendingOrderTitle: "Highest",
     icon: "PriorityPropertyIcon",
   },
   start_date: {

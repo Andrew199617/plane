@@ -6,6 +6,7 @@
 
 // plane imports
 import type { TIssue } from "@plane/types";
+import { DEFAULT_ISSUE_PRIORITY } from "./common";
 
 export const DEFAULT_WORK_ITEM_FORM_VALUES: Partial<TIssue> = {
   project_id: "",
@@ -15,7 +16,7 @@ export const DEFAULT_WORK_ITEM_FORM_VALUES: Partial<TIssue> = {
   estimate_point: null,
   state_id: "",
   parent_id: null,
-  priority: "none",
+  priority: DEFAULT_ISSUE_PRIORITY,
   assignee_ids: [],
   label_ids: [],
   cycle_id: null,

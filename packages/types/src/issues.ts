@@ -108,7 +108,8 @@ export interface IIssueActivity {
   workspace_detail?: IWorkspaceLite;
 }
 
-export type TIssuePriorities = "urgent" | "high" | "medium" | "low" | "none";
+// Jira-parity priorities, most -> least important; "medium" is the default (see jira-parity/priorities.ts).
+export type TIssuePriorities = "highest" | "high" | "medium" | "low" | "lowest";
 
 export interface ViewFlags {
   enableQuickAdd: boolean;
