@@ -8,7 +8,7 @@
     "sort_order": 1000,
     "state_id": 4,
     "labels": [],
-    "priority": "urgent",
+    "priority": "highest",
     "project_id": 1,
     "cycle_id": 1,
     "module_ids": [1]
@@ -63,7 +63,7 @@
     "sort_order": 5000,
     "state_id": 3,
     "labels": [],
-    "priority": "none",
+    "priority": "medium",
     "project_id": 1,
     "cycle_id": 2,
     "module_ids": [2]
@@ -91,7 +91,7 @@
     "sort_order": 7000,
     "state_id": 1,
     "labels": [],
-    "priority": "none",
+    "priority": "lowest",
     "project_id": 1,
     "cycle_id": 2,
     "module_ids": [2, 3]

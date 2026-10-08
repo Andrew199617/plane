@@ -12,6 +12,7 @@ from django.db import IntegrityError
 from rest_framework import serializers
 
 # Module imports
+from plane.utils.priority_field import PriorityField
 from .base import BaseSerializer, DynamicBaseSerializer
 from .user import UserLiteSerializer
 from .state import StateLiteSerializer
@@ -99,6 +100,8 @@ class IssueCreateSerializer(BaseSerializer):
     )
     project_id = serializers.UUIDField(source="project.id", read_only=True)
     workspace_id = serializers.UUIDField(source="workspace.id", read_only=True)
+    # Jira-parity priorities: accepts "Highest" and legacy "urgent"/"none"
+    priority = PriorityField(required=False)
 
     class Meta:
         model = Issue

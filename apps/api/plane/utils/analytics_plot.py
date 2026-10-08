@@ -21,6 +21,7 @@ from django.utils import timezone
 
 # Module imports
 from plane.db.models import Issue, Project
+from plane.utils.priority import PRIORITY_ASCENDING
 
 VALID_ANALYTICS_FIELDS = [
     "state_id",
@@ -64,7 +65,7 @@ def extract_axis(queryset, x_axis):
 def sort_data(data, temp_axis):
     # When the axis is in priority order by
     if temp_axis == "priority":
-        order = ["low", "medium", "high", "urgent", "none"]
+        order = PRIORITY_ASCENDING  # Jira-parity: lowest -> highest
         return {key: data[key] for key in order if key in data}
     else:
         return dict(sorted(data.items(), key=lambda x: (x[0] == "none", x[0])))

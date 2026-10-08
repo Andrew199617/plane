@@ -11,6 +11,7 @@ from django.db import IntegrityError
 from rest_framework import serializers
 
 # Module imports
+from plane.utils.priority_field import PriorityField
 from plane.db.models import (
     Issue,
     IssueType,
@@ -66,6 +67,8 @@ class IssueSerializer(BaseSerializer):
     type_id = serializers.PrimaryKeyRelatedField(
         source="type", queryset=IssueType.objects.all(), required=False, allow_null=True
     )
+    # Jira-parity priorities: accepts "Highest" and legacy "urgent"/"none"
+    priority = PriorityField(required=False, help_text="highest, high, medium (default), low or lowest")
 
     class Meta:
         model = Issue

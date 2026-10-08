@@ -11,16 +11,11 @@ from django.utils import timezone
 from plane.utils.html_processor import strip_tags
 
 from .workspace import WorkspaceBaseModel
+from .issue import PRIORITY_CHOICES, DEFAULT_PRIORITY
 
 
 class DraftIssue(WorkspaceBaseModel):
-    PRIORITY_CHOICES = (
-        ("urgent", "Urgent"),
-        ("high", "High"),
-        ("medium", "Medium"),
-        ("low", "Low"),
-        ("none", "None"),
-    )
+    PRIORITY_CHOICES = PRIORITY_CHOICES
     parent = models.ForeignKey(
         "db.Issue",
         on_delete=models.CASCADE,
@@ -51,7 +46,7 @@ class DraftIssue(WorkspaceBaseModel):
         max_length=30,
         choices=PRIORITY_CHOICES,
         verbose_name="Issue Priority",
-        default="none",
+        default=DEFAULT_PRIORITY,
     )
     start_date = models.DateField(null=True, blank=True)
     target_date = models.DateField(null=True, blank=True)

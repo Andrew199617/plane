@@ -10,6 +10,7 @@ from rest_framework import serializers
 
 # Module imports
 from .base import BaseSerializer
+from plane.utils.priority_field import PriorityField
 from plane.db.models import (
     User,
     Issue,
@@ -48,6 +49,8 @@ class DraftIssueCreateSerializer(BaseSerializer):
         write_only=True,
         required=False,
     )
+    # Jira-parity priorities: accepts "Highest" and legacy "urgent"/"none"
+    priority = PriorityField(required=False)
 
     class Meta:
         model = DraftIssue

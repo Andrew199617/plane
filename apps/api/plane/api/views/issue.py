@@ -80,6 +80,7 @@ from plane.db.models import (
 )
 from plane.settings.storage import S3Storage
 from plane.utils.path_validator import sanitize_filename
+from plane.utils.priority import PRIORITY_ORDER
 from plane.utils.order_queryset import (
     ACTIVITY_ORDER_BY_ALLOWLIST,
     ISSUE_ORDER_BY_ALLOWLIST,
@@ -348,7 +349,7 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
             )
 
         # Custom ordering for priority and state
-        priority_order = ["urgent", "high", "medium", "low", "none"]
+        priority_order = list(PRIORITY_ORDER)  # Jira-parity: highest -> lowest
         state_order = ["backlog", "unstarted", "started", "completed", "cancelled"]
 
         # Reject any field not in the allowlist before it reaches .order_by().

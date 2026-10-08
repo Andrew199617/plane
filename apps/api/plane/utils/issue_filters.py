@@ -8,6 +8,8 @@ from datetime import timedelta
 
 from django.utils import timezone
 
+from plane.utils.priority import remap_priority_tokens
+
 # The date from pattern
 pattern = re.compile(r"\d+_(weeks|months)$")
 
@@ -123,10 +125,11 @@ def filter_priority(params, issue_filter, method, prefix=""):
     if method == "GET":
         priorities = [item for item in params.get("priority").split(",") if item != "null"]
         if len(priorities) and "" not in priorities:
-            issue_filter[f"{prefix}priority__in"] = priorities
+            # Jira-parity: legacy "urgent"/"none" in old URLs map to highest/medium
+            issue_filter[f"{prefix}priority__in"] = remap_priority_tokens(priorities)
     else:
         if params.get("priority", None) and len(params.get("priority")) and params.get("priority") != "null":
-            issue_filter[f"{prefix}priority__in"] = params.get("priority")
+            issue_filter[f"{prefix}priority__in"] = remap_priority_tokens(params.get("priority"))
     return issue_filter
 
 

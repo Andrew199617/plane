@@ -191,4 +191,10 @@ def build_analytics_chart(
         response = build_simple_chart_response(queryset, id_field, name_field, aggregate_func)
         schema = {}
 
+    if x_axis == "PRIORITY":
+        # Jira-parity: Highest -> Lowest bars with their labels
+        from plane.utils.priority import sort_priority_chart_rows
+
+        response = sort_priority_chart_rows(response)
+
     return {"data": response, "schema": schema}

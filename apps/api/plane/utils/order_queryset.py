@@ -4,8 +4,9 @@
 
 from django.db.models import Case, CharField, Min, Value, When
 
+from plane.utils.priority import PRIORITY_ORDER  # noqa: F401  (re-exported; Jira-parity priorities)
+
 # Custom ordering for priority and state
-PRIORITY_ORDER = ["urgent", "high", "medium", "low", "none"]
 STATE_ORDER = ["backlog", "unstarted", "started", "completed", "cancelled"]
 
 # ---------------------------------------------------------------------------

@@ -45,6 +45,7 @@ from plane.app.serializers import (
 )
 from plane.utils.issue_filters import issue_filters
 from plane.utils.order_queryset import INTAKE_ISSUE_ORDER_BY_ALLOWLIST, sanitize_order_by
+from plane.utils.priority import resolve_request_priority
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.bgtasks.issue_description_version_task import issue_description_version_task
 from plane.app.views.base import BaseAPIView
@@ -230,15 +231,11 @@ class IntakeIssueViewSet(BaseViewSet):
         if not request.data.get("issue", {}).get("name", False):
             return Response({"error": "Name is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check for valid priority
-        if request.data.get("issue", {}).get("priority", "none") not in [
-            "low",
-            "medium",
-            "high",
-            "urgent",
-            "none",
-        ]:
+        # Check for valid priority (Jira-parity keys; legacy "urgent"/"none" are mapped, missing -> medium)
+        priority = resolve_request_priority(request.data.get("issue", {}).get("priority"))
+        if priority is None:
             return Response({"error": "Invalid priority"}, status=status.HTTP_400_BAD_REQUEST)
+        request.data["issue"]["priority"] = priority
 
         project = Project.objects.get(pk=project_id)
 

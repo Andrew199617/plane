@@ -25,6 +25,10 @@ from plane.utils.uuid import convert_uuid_to_integer
 from .description import Description
 from .state import StateGroup
 
+# Jira-parity priorities, ordered highest -> lowest. Shared by Issue, IssueVersion and DraftIssue.
+# Single source of truth lives in plane.utils.priority; re-exported here for model/draft imports.
+from plane.utils.priority import PRIORITY_CHOICES, PRIORITY_ORDER, DEFAULT_PRIORITY  # noqa: E402,F401
+
 
 def get_default_properties():
     return {
@@ -104,13 +108,7 @@ class IssueManager(SoftDeletionManager):
 class Issue(ChangeTrackerMixin, ProjectBaseModel):
     TRACKED_FIELDS = ["state_id"]
 
-    PRIORITY_CHOICES = (
-        ("urgent", "Urgent"),
-        ("high", "High"),
-        ("medium", "Medium"),
-        ("low", "Low"),
-        ("none", "None"),
-    )
+    PRIORITY_CHOICES = PRIORITY_CHOICES
     parent = models.ForeignKey(
         "self",
         on_delete=models.CASCADE,
@@ -142,7 +140,7 @@ class Issue(ChangeTrackerMixin, ProjectBaseModel):
         max_length=30,
         choices=PRIORITY_CHOICES,
         verbose_name="Issue Priority",
-        default="none",
+        default=DEFAULT_PRIORITY,
     )
     start_date = models.DateField(null=True, blank=True)
     target_date = models.DateField(null=True, blank=True)
@@ -675,13 +673,7 @@ class IssueVote(ProjectBaseModel):
 
 
 class IssueVersion(ProjectBaseModel):
-    PRIORITY_CHOICES = (
-        ("urgent", "Urgent"),
-        ("high", "High"),
-        ("medium", "Medium"),
-        ("low", "Low"),
-        ("none", "None"),
-    )
+    PRIORITY_CHOICES = PRIORITY_CHOICES
 
     parent = models.UUIDField(blank=True, null=True)
     state = models.UUIDField(blank=True, null=True)
@@ -691,7 +683,7 @@ class IssueVersion(ProjectBaseModel):
         max_length=30,
         choices=PRIORITY_CHOICES,
         verbose_name="Issue Priority",
-        default="none",
+        default=DEFAULT_PRIORITY,
     )
     start_date = models.DateField(null=True, blank=True)
     target_date = models.DateField(null=True, blank=True)

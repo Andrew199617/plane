@@ -335,7 +335,7 @@ ORDER_BY_PARAMETER = OpenApiParameter(
         OpenApiExample(
             name="Priority ascending",
             value="priority",
-            description="Order by priority (urgent, high, medium, low, none)",
+            description="Order by priority (highest, high, medium, low, lowest)",
         ),
         OpenApiExample(
             name="State group",
