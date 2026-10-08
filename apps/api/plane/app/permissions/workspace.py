@@ -12,6 +12,7 @@ from plane.db.models import WorkspaceMember
 # Permission Mappings
 Admin = 20
 Member = 15
+Agent = 10  # Jira-parity: agents read what members read; writes stay [Admin, Member]
 Guest = 5
 
 
@@ -66,7 +67,7 @@ class WorkSpaceAdminPermission(BasePermission):
         return WorkspaceMember.objects.filter(
             member=request.user,
             workspace__slug=view.workspace_slug,
-            role__in=[Admin, Member],
+            role__in=[Admin, Member, Agent] if request.method in SAFE_METHODS else [Admin, Member],
             is_active=True,
         ).exists()
 

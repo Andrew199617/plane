@@ -8,6 +8,7 @@ from rest_framework.permissions import SAFE_METHODS, BasePermission
 # Module import
 from plane.db.models import ProjectMember, WorkspaceMember
 from plane.db.models.project import ROLE
+from plane.app.permissions.agent import with_agent_role
 
 
 class ProjectBasePermission(BasePermission):
@@ -113,7 +114,8 @@ class ProjectEntityPermission(BasePermission):
         return ProjectMember.objects.filter(
             workspace__slug=view.workspace_slug,
             member=request.user,
-            role__in=[ROLE.ADMIN.value, ROLE.MEMBER.value],
+            # Jira-parity: + Agent for whitelisted agent writes (plane.app.permissions.agent)
+            role__in=with_agent_role([ROLE.ADMIN.value, ROLE.MEMBER.value], view, request),
             project_id=view.project_id,
             is_active=True,
         ).exists()

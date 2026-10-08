@@ -9,6 +9,7 @@ from rest_framework import status
 
 # Single ROLE enum (Admin 20, Member 15, Agent 10, Guest 5) defined on the model layer
 from plane.db.models.project import ROLE  # noqa: F401
+from plane.app.permissions.agent import with_agent_role
 
 
 def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None):
@@ -34,6 +35,8 @@ def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None):
 
             # Convert allowed_roles to their values if they are enum members
             allowed_role_values = [role.value if isinstance(role, ROLE) else role for role in allowed_roles]
+            # Jira-parity: agents read what members read and get only whitelisted writes
+            allowed_role_values = with_agent_role(allowed_role_values, instance, request)
 
             # Check role permissions
             if level == "WORKSPACE":
