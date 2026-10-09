@@ -24,46 +24,46 @@
     },
     "cycle": {
       "step_zero": {
-        "title": "Make progress with Cycles",
-        "description": "Press Q to create a Cycle. Name it and set dates—only one cycle per project."
+        "title": "Make progress with Sprints",
+        "description": "Press Q to create a sprint, then start it when you're ready. Only one sprint can be active per project."
       },
       "step_one": {
-        "title": "Create a new cycle",
-        "description": "Press Q to create a Cycle. Name it and set dates—only one cycle per project."
+        "title": "Create a new sprint",
+        "description": "Press Q to create a sprint, then start it when you're ready. Only one sprint can be active per project."
       },
       "step_two": {
         "title": "Click “+ ”",
-        "description": "Start by clicking the “+” button. Add new or existing work items directly from the Cycle page."
+        "description": "Start by clicking the “+” button. Add new or existing work items directly from the Sprint page."
       },
       "step_three": {
-        "title": "Cycle summary",
-        "description": "Track cycle progress, team productivity, and priorities—and investigate if things fall behind."
+        "title": "Sprint summary",
+        "description": "Track sprint progress, team productivity, and priorities—and investigate if things fall behind."
       },
       "step_four": {
         "title": "Transfer work items",
-        "description": "After the due date, a cycle auto-completes. Move unfinished work to another cycle."
+        "description": "When the sprint ends, complete it and move unfinished work to the backlog or another sprint."
       }
     },
     "module": {
       "step_zero": {
-        "title": "Break your project down into Modules",
-        "description": "Modules are smaller, focused projects that help users group and organize work items within specific time frames."
+        "title": "Break your project down into Releases",
+        "description": "Releases group work items by the version they ship in, each with a release date."
       },
       "step_one": {
-        "title": "Create Module",
-        "description": "Modules are smaller, focused projects that help users group and organize work items within specific time frames."
+        "title": "Create Release",
+        "description": "Releases group work items by the version they ship in, each with a release date."
       },
       "step_two": {
         "title": "Click “+ ”",
-        "description": "Start by clicking the “+” button. Add new or existing work items directly from the Module page."
+        "description": "Start by clicking the “+” button. Add new or existing work items directly from the Release page."
       },
       "step_three": {
-        "title": "Module states",
-        "description": "Modules use these statuses to help users plan and clearly track progress and stage."
+        "title": "Release status",
+        "description": "A release stays Unreleased until you release it. Archive old releases to hide them."
       },
       "step_four": {
-        "title": "Module progress",
-        "description": "Module progress is tracked via completed items, with analytics to monitor performance."
+        "title": "Release progress",
+        "description": "Release progress is tracked via completed items, with analytics to monitor performance."
       }
     },
     "page": {

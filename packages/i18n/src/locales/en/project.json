@@ -7,26 +7,26 @@
     }
   },
   "project_cycles": {
-    "add_cycle": "Add cycle",
+    "add_cycle": "Add sprint",
     "more_details": "More details",
-    "cycle": "Cycle",
-    "update_cycle": "Update cycle",
-    "create_cycle": "Create cycle",
-    "no_matching_cycles": "No matching cycles",
-    "remove_filters_to_see_all_cycles": "Remove the filters to see all cycles",
-    "remove_search_criteria_to_see_all_cycles": "Remove the search criteria to see all cycles",
-    "only_completed_cycles_can_be_archived": "Only completed cycles can be archived",
+    "cycle": "Sprint",
+    "update_cycle": "Update sprint",
+    "create_cycle": "Create sprint",
+    "no_matching_cycles": "No matching sprints",
+    "remove_filters_to_see_all_cycles": "Remove the filters to see all sprints",
+    "remove_search_criteria_to_see_all_cycles": "Remove the search criteria to see all sprints",
+    "only_completed_cycles_can_be_archived": "Only completed sprints can be archived",
     "start_date": "Start date",
     "end_date": "End date",
     "in_your_timezone": "In your timezone",
     "transfer_work_items": "Transfer {count} work items",
     "transfer": {
-      "no_cycles_available": "No other cycles available to transfer work items to."
+      "no_cycles_available": "No other sprints available to transfer work items to."
     },
     "date_range": "Date range",
     "add_date": "Add date",
     "active_cycle": {
-      "label": "Active cycle",
+      "label": "Active sprint",
       "progress": "Progress",
       "chart": "Burndown chart",
       "priority_issue": "Priority work items",
@@ -39,82 +39,82 @@
       "leading": "Leading"
     },
     "upcoming_cycle": {
-      "label": "Upcoming cycle"
+      "label": "Future sprint"
     },
     "completed_cycle": {
-      "label": "Completed cycle"
+      "label": "Completed sprint"
     },
     "status": {
       "days_left": "Days left",
       "completed": "Completed",
-      "yet_to_start": "Yet to start",
-      "in_progress": "In progress",
-      "draft": "Draft"
+      "yet_to_start": "Future",
+      "in_progress": "Active",
+      "draft": "Future"
     },
     "action": {
       "restore": {
-        "title": "Restore cycle",
+        "title": "Restore sprint",
         "success": {
-          "title": "Cycle restored",
-          "description": "The cycle has been restored."
+          "title": "Sprint restored",
+          "description": "The sprint has been restored."
         },
         "failed": {
-          "title": "Cycle restore failed",
-          "description": "The cycle could not be restored. Please try again."
+          "title": "Sprint restore failed",
+          "description": "The sprint could not be restored. Please try again."
         }
       },
       "favorite": {
-        "loading": "Adding cycle to favorites",
+        "loading": "Adding sprint to favorites",
         "success": {
-          "description": "Cycle added to favorites.",
+          "description": "Sprint added to favorites.",
           "title": "Success!"
         },
         "failed": {
-          "description": "Couldn't add the cycle to favorites. Please try again.",
+          "description": "Couldn't add the sprint to favorites. Please try again.",
           "title": "Error!"
         }
       },
       "unfavorite": {
-        "loading": "Removing cycle from favorites",
+        "loading": "Removing sprint from favorites",
         "success": {
-          "description": "Cycle removed from favorites.",
+          "description": "Sprint removed from favorites.",
           "title": "Success!"
         },
         "failed": {
-          "description": "Couldn't remove the cycle from favorites. Please try again.",
+          "description": "Couldn't remove the sprint from favorites. Please try again.",
           "title": "Error!"
         }
       },
       "update": {
-        "loading": "Updating cycle",
+        "loading": "Updating sprint",
         "success": {
-          "description": "Cycle updated successfully.",
+          "description": "Sprint updated successfully.",
           "title": "Success!"
         },
         "failed": {
-          "description": "Error updating the cycle. Please try again.",
+          "description": "Error updating the sprint. Please try again.",
           "title": "Error!"
         },
         "error": {
-          "already_exists": "You already have a cycle on the given dates, if you want to create a draft cycle, you can do that by removing both the dates."
+          "already_exists": "You already have a sprint on the given dates, if you want to create a draft sprint, you can do that by removing both the dates."
         }
       }
     },
     "empty_state": {
       "general": {
-        "title": "Group and timebox your work in Cycles.",
+        "title": "Group and timebox your work in Sprints.",
         "description": "Break work down by timeboxed chunks, work backwards from your project deadline to set dates, and make tangible progress as a team.",
         "primary_button": {
-          "text": "Set your first cycle",
+          "text": "Set your first sprint",
           "comic": {
-            "title": "Cycles are repetitive time-boxes.",
-            "description": "A sprint, an iteration, and or any other term you use for weekly or fortnightly tracking of work is a cycle."
+            "title": "Sprints are repetitive time-boxes.",
+            "description": "Plan a sprint, start it, and complete it when the time box ends. Unfinished work moves to the backlog or the next sprint."
           }
         }
       },
       "no_issues": {
-        "title": "No work items added to the cycle",
-        "description": "Add or create work items you wish to timebox and deliver within this cycle",
+        "title": "No work items added to the sprint",
+        "description": "Add or create work items you wish to timebox and deliver within this sprint",
         "primary_button": {
           "text": "Create new work item"
         },
@@ -123,16 +123,16 @@
         }
       },
       "completed_no_issues": {
-        "title": "No work items in the cycle",
-        "description": "No work items in the cycle. Work items are either transferred or hidden. To see hidden work items if any, update your display properties accordingly."
+        "title": "No work items in the sprint",
+        "description": "No work items in the sprint. Work items are either transferred or hidden. To see hidden work items if any, update your display properties accordingly."
       },
       "active": {
-        "title": "No active cycle",
-        "description": "An active cycle includes any period that encompasses today's date within its range. Find the progress and details of the active cycle here."
+        "title": "No active sprint",
+        "description": "Start a sprint to see its progress and details here."
       },
       "archived": {
-        "title": "No archived cycles yet",
-        "description": "To tidy up your project, archive completed cycles. Find them here once archived."
+        "title": "No archived sprints yet",
+        "description": "To tidy up your project, archive completed sprints. Find them here once archived."
       }
     }
   },
@@ -216,27 +216,27 @@
     }
   },
   "project_module": {
-    "add_module": "Add Module",
-    "update_module": "Update Module",
-    "create_module": "Create Module",
-    "archive_module": "Archive Module",
-    "restore_module": "Restore Module",
-    "delete_module": "Delete module",
+    "add_module": "Add Release",
+    "update_module": "Update Release",
+    "create_module": "Create Release",
+    "archive_module": "Archive Release",
+    "restore_module": "Restore Release",
+    "delete_module": "Delete release",
     "empty_state": {
       "general": {
-        "title": "Map your project milestones to Modules and track aggregated work easily.",
-        "description": "A group of work items that belong to a logical, hierarchical parent form a module. Think of them as a way to track work by project milestones. They have their own periods and deadlines as well as analytics to help you see how close or far you are from a milestone.",
+        "title": "Track each version you ship with Releases.",
+        "description": "A release is a version of your project. Add work items to it, watch progress toward the release date, and mark it released when it ships.",
         "primary_button": {
-          "text": "Build your first module",
+          "text": "Build your first release",
           "comic": {
-            "title": "Modules help group work by hierarchy.",
-            "description": "A cart module, a chassis module, and a warehouse module are all good example of this grouping."
+            "title": "Releases group work by the version it ships in.",
+            "description": "For example: 1.0, 1.1, or 2.0 Beta."
           }
         }
       },
       "no_issues": {
-        "title": "No work items in the module",
-        "description": "Create or add work items which you want to accomplish as part of this module",
+        "title": "No work items in the release",
+        "description": "Create or add work items which you want to accomplish as part of this release",
         "primary_button": {
           "text": "Create new work items"
         },
@@ -245,26 +245,26 @@
         }
       },
       "archived": {
-        "title": "No archived Modules yet",
-        "description": "To tidy up your project, archive completed or cancelled modules. Find them here once archived."
+        "title": "No archived Releases yet",
+        "description": "To tidy up your project, archive releases you no longer need. Find them here once archived."
       },
       "sidebar": {
-        "in_active": "This module isn't active yet.",
+        "in_active": "This release isn't active yet.",
         "invalid_date": "Invalid date. Please enter valid date."
       }
     },
     "quick_actions": {
-      "archive_module": "Archive module",
-      "archive_module_description": "Only completed or canceled\nmodule can be archived.",
-      "delete_module": "Delete module"
+      "archive_module": "Archive release",
+      "archive_module_description": "Archived releases can be restored later.",
+      "delete_module": "Delete release"
     },
     "toast": {
       "copy": {
-        "success": "Module link copied to clipboard"
+        "success": "Release link copied to clipboard"
       },
       "delete": {
-        "success": "Module deleted successfully",
-        "error": "Failed to delete module"
+        "success": "Release deleted successfully",
+        "error": "Failed to delete release"
       }
     }
   },
@@ -307,15 +307,15 @@
         }
       },
       "cycle": {
-        "title": "Cycles is not enabled for this project.",
-        "description": "Break work down by timeboxed chunks, work backwards from your project deadline to set dates, and make tangible progress as a team. Enable the cycles feature for your project to start using them.",
+        "title": "Sprints are not enabled for this project.",
+        "description": "Break work down by timeboxed chunks, work backwards from your project deadline to set dates, and make tangible progress as a team. Enable the sprints feature for your project to start using them.",
         "primary_button": {
           "text": "Manage features"
         }
       },
       "module": {
-        "title": "Modules are not enabled for the project.",
-        "description": "Modules are the building blocks of your project. Enable modules from project settings to start using them.",
+        "title": "Releases are not enabled for the project.",
+        "description": "Releases track the versions you ship. Enable releases from project settings to start using them.",
         "primary_button": {
           "text": "Manage features"
         }
@@ -338,6 +338,8 @@
   },
   "project_modules": {
     "status": {
+      "unreleased": "Unreleased",
+      "released": "Released",
       "backlog": "Backlog",
       "planned": "Planned",
       "in_progress": "In Progress",
@@ -354,7 +356,7 @@
       "name": "Name",
       "progress": "Progress",
       "issues": "Number of work items",
-      "due_date": "Due date",
+      "due_date": "Release date",
       "created_at": "Created date",
       "manual": "Manual"
     }

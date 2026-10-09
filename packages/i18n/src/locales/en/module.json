@@ -1,7 +1,7 @@
 {
   "module": {
-    "label": "{count, plural, one {Module} other {Modules}}",
-    "no_module": "No module",
-    "select": "Add modules"
+    "label": "{count, plural, one {Release} other {Releases}}",
+    "no_module": "No release",
+    "select": "Add releases"
   }
 }
