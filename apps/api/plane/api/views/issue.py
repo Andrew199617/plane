@@ -81,7 +81,7 @@ from plane.db.models import (
 from plane.settings.storage import S3Storage
 from plane.utils.path_validator import sanitize_filename
 from plane.utils.priority import PRIORITY_ORDER
-from plane.utils.workflow import assert_state_transition_allowed  # Jira-parity workflows
+from plane.utils.workflow import assert_create_state_allowed, assert_state_change_allowed  # Jira-parity workflows
 from plane.utils.work_item_types import filter_issues_by_work_item_type  # Jira-parity work item types
 from plane.utils.order_queryset import (
     ACTIVITY_ORDER_BY_ALLOWLIST,
@@ -499,6 +499,10 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
                     status=status.HTTP_409_CONFLICT,
                 )
 
+            # Jira-parity: creating in a state = moving there from the default state
+            assert_create_state_allowed(
+                project_id=project_id, validated_data=serializer.validated_data, user=request.user
+            )
             serializer.save()
             # Refetch the issue
             issue = Issue.objects.filter(workspace__slug=slug, project_id=project_id, pk=serializer.data["id"]).first()
@@ -815,9 +819,7 @@ class IssueDetailAPIEndpoint(BaseAPIView):
                 )
 
             # Jira-parity: role-based state transitions (HTTP 403 STATE_TRANSITION_NOT_ALLOWED)
-            assert_state_transition_allowed(
-                issue=issue, to_state_id=serializer.validated_data.get("state"), user=request.user
-            )
+            assert_state_change_allowed(issue=issue, validated_data=serializer.validated_data, user=request.user)
             serializer.save()
             issue_activity.delay(
                 type="issue.activity.updated",

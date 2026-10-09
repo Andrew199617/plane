@@ -22,15 +22,21 @@ Enforcement layers:
 """
 
 # Python imports
+import operator
+import uuid
 from dataclasses import dataclass
+from functools import reduce
 from typing import Callable, Optional
+
+# Django imports
+from django.db.models import Exists
 
 # Third party imports
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.permissions import SAFE_METHODS
 
 # Module imports
-from plane.db.models import FileAsset, Issue, IssueComment, ProjectMember, WorkspaceMember
+from plane.db.models import FileAsset, Issue, IssueComment, ProjectMember, User, WorkspaceMember
 from plane.db.models.project import ROLE
 
 AGENT = ROLE.AGENT.value
@@ -73,6 +79,16 @@ def _payload(request):
     return data
 
 
+def _is_uuid(value):
+    if not isinstance(value, str):
+        return False
+    try:
+        uuid.UUID(value)
+    except ValueError:
+        return False
+    return True
+
+
 def _reject_extra_keys(data, allowed, what):
     extra = sorted(set(data.keys()) - set(allowed))
     if extra:
@@ -87,17 +103,22 @@ def check_issue_state_change(request, view):
     """Work item PATCH: state change only, through an allowed transition, never on an epic."""
     data = _payload(request)
     _reject_extra_keys(data, ISSUE_STATE_KEYS | ISSUE_STATE_META_KEYS, "change the state of a work item")
-    targets = {str(data[key]) for key in ISSUE_STATE_KEYS if data.get(key)}
-    if len(targets) > 1:
-        # "state" and "state_id" both map to Issue.state: never let one hide the other
-        raise AgentDenied("Send the target state only once.", AGENT_FIELD_NOT_ALLOWED, fields=sorted(ISSUE_STATE_KEYS))
-    to_state_id = data.get("state_id") or data.get("state")
-    if not to_state_id:
+    sent = sorted(key for key in ISSUE_STATE_KEYS if key in data)
+    if not sent:
         raise AgentDenied(
             "Agents can only change the state of a work item.",
             AGENT_FIELD_NOT_ALLOWED,
             fields=sorted(data.keys()),
         )
+    empty = [key for key in sent if not data[key]]
+    if empty:
+        # a null state is saved as the project's default state
+        raise AgentDenied("The target state can't be empty.", AGENT_FIELD_NOT_ALLOWED, fields=empty)
+    targets = {str(data[key]) for key in sent}
+    if len(targets) > 1:
+        # "state" and "state_id" both map to Issue.state: never let one hide the other
+        raise AgentDenied("Send the target state only once.", AGENT_FIELD_NOT_ALLOWED, fields=sorted(ISSUE_STATE_KEYS))
+    to_state_id = targets.pop()
     issue = (
         Issue.objects.filter(pk=view.kwargs.get("pk"), project_id=view.kwargs.get("project_id"))
         .select_related("type")
@@ -151,9 +172,12 @@ def check_comment_asset(request, view):
 
 def check_comment_asset_link(request, view):
     """Bulk asset link: the agent's own comment images, attached to the agent's own comment."""
-    asset_ids = _payload(request).get("asset_ids") or []
-    if not isinstance(asset_ids, list) or not asset_ids:
+    data = _payload(request)
+    if "asset_ids" not in data:
         return  # the view answers 400
+    asset_ids = data["asset_ids"]
+    if not isinstance(asset_ids, list) or not asset_ids or not all(_is_uuid(asset_id) for asset_id in asset_ids):
+        raise AgentDenied("Send the comment image ids as a list.", AGENT_FIELD_NOT_ALLOWED, fields=["asset_ids"])
     own_comment_assets = FileAsset.objects.filter(
         id__in=asset_ids,
         created_by=request.user,
@@ -266,18 +290,21 @@ def is_agent_request(request, view):
     if cached is not None:
         return cached
     user = request.user
-    is_agent = False
+    memberships = []
     project_id = _view_project_id(view)
     if project_id:
-        is_agent = ProjectMember.objects.filter(member=user, project_id=project_id, is_active=True, role=AGENT).exists()
-    if not is_agent:
-        slug = view.kwargs.get("slug")
-        workspace_id = view.kwargs.get("workspace_id")
-        if slug or workspace_id:
-            workspace_filter = {"workspace__slug": slug} if slug else {"workspace_id": workspace_id}
-            is_agent = WorkspaceMember.objects.filter(
-                member=user, is_active=True, role=AGENT, **workspace_filter
-            ).exists()
+        memberships.append(
+            Exists(ProjectMember.objects.filter(member=user, project_id=project_id, is_active=True, role=AGENT))
+        )
+    slug = view.kwargs.get("slug")
+    workspace_id = view.kwargs.get("workspace_id")
+    if slug or workspace_id:
+        workspace_filter = {"workspace__slug": slug} if slug else {"workspace_id": workspace_id}
+        memberships.append(
+            Exists(WorkspaceMember.objects.filter(member=user, is_active=True, role=AGENT, **workspace_filter))
+        )
+    # one query: project row OR workspace row
+    is_agent = bool(memberships) and User.objects.filter(pk=user.pk).filter(reduce(operator.or_, memberships)).exists()
     request._jp_is_agent = is_agent
     return is_agent
 

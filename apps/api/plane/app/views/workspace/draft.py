@@ -41,6 +41,7 @@ from .. import BaseViewSet
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.utils.issue_filters import issue_filters
 from plane.utils.host import base_host
+from plane.utils.workflow import assert_create_state_allowed  # Jira-parity workflows
 
 
 class WorkspaceDraftIssueViewSet(BaseViewSet):
@@ -231,6 +232,10 @@ class WorkspaceDraftIssueViewSet(BaseViewSet):
         )
 
         if serializer.is_valid():
+            # Jira-parity workflows: creating in a state = moving there from the default state
+            assert_create_state_allowed(
+                project_id=draft_issue.project_id, validated_data=serializer.validated_data, user=request.user
+            )
             serializer.save()
 
             issue_activity.delay(

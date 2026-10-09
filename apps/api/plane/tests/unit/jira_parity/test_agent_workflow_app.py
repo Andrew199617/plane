@@ -324,21 +324,34 @@ class TestAssignmentAndMembers:
         assert ProjectMember.objects.get(pk=row.pk).role == AGENT
 
     def test_workspace_role_change_cascades(self, session_client, project, workspace, member):
+        from plane.utils.agent import create_agent_user
+
+        def patch_role(user, role):
+            workspace_member = WorkspaceMember.objects.get(workspace=workspace, member=user)
+            return session_client.patch(
+                f"/api/workspaces/{SLUG}/members/{workspace_member.id}/", {"role": role}, format="json"
+            )
+
         other = Project.objects.create(name="Other", identifier="OTHR", workspace=workspace)
-        workspace_member = WorkspaceMember.objects.get(workspace=workspace, member=member)
-        response = session_client.patch(
-            f"/api/workspaces/{SLUG}/members/{workspace_member.id}/", {"role": AGENT}, format="json"
-        )
-        assert response.status_code == 200, response.content
-        assert set(ProjectMember.objects.filter(member=member, is_active=True).values_list("project_id", "role")) == {
+        # agent accounts join every project as Agents
+        bot = create_agent_user(workspace, "Cascade Bot").member
+        assert set(ProjectMember.objects.filter(member=bot, is_active=True).values_list("project_id", "role")) == {
             (project.id, AGENT),
             (other.id, AGENT),
         }
-        response = session_client.patch(
-            f"/api/workspaces/{SLUG}/members/{workspace_member.id}/", {"role": MEMBER}, format="json"
-        )
-        assert response.status_code == 200
-        assert set(ProjectMember.objects.filter(member=member).values_list("role", flat=True)) == {MEMBER}
+        # a plain human can't be switched to the Agent role
+        assert patch_role(member, AGENT).status_code == 400
+        assert ProjectMember.objects.get(project=project, member=member).role == MEMBER
+        # a human invited as an agent can leave the role: every project row follows
+        human = _user(workspace, AGENT)
+        for row_project in (project, other):
+            ProjectMember.objects.create(project=row_project, member=human, role=AGENT)
+        response = patch_role(human, MEMBER)
+        assert response.status_code == 200, response.content
+        assert set(ProjectMember.objects.filter(member=human, is_active=True).values_list("project_id", "role")) == {
+            (project.id, MEMBER),
+            (other.id, MEMBER),
+        }
 
     def test_project_create_joins_agents_and_seeds_workflow(self, session_client, agent):
         response = session_client.post(

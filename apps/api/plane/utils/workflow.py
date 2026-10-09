@@ -12,10 +12,14 @@ calls it for the requester's effective project role:
 - v1    PATCH /api/v1/workspaces/<slug>/projects/<pid>/work-items/<id>/ (IssueDetailAPIEndpoint.patch)
 - v1    PATCH .../intake-issues/<id>/                                   (IntakeIssueDetailAPIEndpoint.patch)
 - the Agent guard (plane.app.permissions.agent.check_issue_state_change)
-CE has no bulk state-update endpoint, and cycle/module operations never change state. Creating a
-work item is not a transition. QuerySet.update/bulk_update bypass this module by design (system
-jobs such as the auto-close task); any future bulk path MUST call `assert_state_transition_allowed`
-per work item.
+- creation: app POST .../issues/, v1 POST .../work-items/, POST .../draft-to-issue/<id>/
+Views pass the validated payload: an explicit null state is checked as a move to the project's
+default state, where Issue.save() puts the work item (`assert_state_change_allowed`). Creating a work
+item in an explicit state counts as a move from the default state, so creating it in the default
+state (or without one) is always allowed (`assert_create_state_allowed`); intake items are created in
+Triage and are not checked. CE has no bulk state-update endpoint, and cycle/module operations never
+change state. QuerySet.update/bulk_update bypass this module by design (system jobs such as the
+auto-close task); any future bulk path MUST call `assert_state_transition_allowed` per work item.
 
 Data model: db.StateTransition(project, from_state (NULL = any state), to_state,
 roles: list[int] of ProjectMember.role values, exclude_epics, is_active) + Project.is_workflow_enabled.
@@ -29,9 +33,11 @@ Semantics:
    normalised so "Todo" == "To Do").
 4. Member (15) / Guest (5): unrestricted unless the project's workflow is enabled AND at least one
    active rule lists that role; then only the listed (from, to) pairs are allowed. Rules with
-   exclude_epics=True do not apply to epics. Moving out of the Triage state (intake) is unrestricted.
-Forbidden -> HTTP 403 {"error", "code": "STATE_TRANSITION_NOT_ALLOWED" | "AGENT_EPIC_STATE_CHANGE_FORBIDDEN",
-"from_state_id", "to_state_id", "allowed_state_ids"}.
+   exclude_epics=True do not apply to epics. Moving out of the Triage state (intake) counts as moving
+   out of the default state: Triage -> default state (what accepting does) is always allowed.
+5. Anyone else (e.g. a creator removed from the project) can't change states (PROJECT_MEMBERSHIP_REQUIRED).
+Forbidden -> HTTP 403 {"error", "code": "STATE_TRANSITION_NOT_ALLOWED" | "AGENT_EPIC_STATE_CHANGE_FORBIDDEN"
+| "PROJECT_MEMBERSHIP_REQUIRED", "from_state_id", "to_state_id", "allowed_state_ids"}.
 
 Standard states (every project): To Do (unstarted, default), In Progress (started), In Review
 (started), Done (completed), Won't Fix (cancelled) + the hidden Triage state. New projects get them
@@ -46,8 +52,9 @@ import uuid
 
 # Django imports
 from django.db import transaction
-from django.db.models import F, Q
-from django.db.models.functions import Coalesce, Now
+from django.db.models import F, Q, TextField
+from django.db.models.functions import Cast, Coalesce, Now
+from django.utils import timezone
 
 # Third party imports
 from rest_framework import status
@@ -55,13 +62,20 @@ from rest_framework.exceptions import APIException
 
 # Module imports
 from plane.db.models import (
+    AnalyticView,
+    CycleUserProperties,
     DraftIssue,
     Issue,
+    IssueActivity,
+    IssueView,
+    ModuleUserProperties,
     Project,
     ProjectMember,
+    ProjectUserProperty,
     State,
     StateTransition,
     WorkspaceMember,
+    WorkspaceUserProperties,
 )
 from plane.db.models.project import ROLE
 from plane.db.models.state import DEFAULT_STATES, StateGroup
@@ -73,6 +87,11 @@ AGENT = ROLE.AGENT.value
 
 STATE_TRANSITION_NOT_ALLOWED = "STATE_TRANSITION_NOT_ALLOWED"
 AGENT_EPIC_STATE_CHANGE_FORBIDDEN = "AGENT_EPIC_STATE_CHANGE_FORBIDDEN"
+PROJECT_MEMBERSHIP_REQUIRED = "PROJECT_MEMBERSHIP_REQUIRED"
+_FIXED_MESSAGES = {
+    AGENT_EPIC_STATE_CHANGE_FORBIDDEN: "Agents can't change the state of an epic.",
+    PROJECT_MEMBERSHIP_REQUIRED: "Only active project members can change the state of this work item.",
+}
 
 # Roles that transition rules may list (admins always bypass the workflow).
 RULE_ROLES = (ROLE.MEMBER.value, ROLE.AGENT.value, ROLE.GUEST.value)
@@ -186,6 +205,14 @@ def _is_triage_state(state_id):
     return State.all_state_objects.filter(pk=state_id, group=StateGroup.TRIAGE.value).exists()
 
 
+def get_default_state_id(project_id):
+    """The state Issue._ensure_default_state gives a work item saved without one (None: no states)."""
+    states = State.objects.filter(project_id=project_id, is_triage=False)
+    return (
+        states.filter(default=True).values_list("id", flat=True).first() or states.values_list("id", flat=True).first()
+    )
+
+
 def _valid_uuid(value):
     try:
         return uuid.UUID(str(value))
@@ -257,6 +284,14 @@ def allowed_target_state_ids(project_id, from_state_id, role, epic=False):
     return _targets(pairs, from_state_id)
 
 
+def _policy_source(project_id, from_state_id, role):
+    """The state the rules are applied from: leaving Triage counts as leaving the default state
+    (accepting an intake item lands there), except for agents."""
+    if role != AGENT and from_state_id is not None and _is_triage_state(from_state_id):
+        return get_default_state_id(project_id)
+    return from_state_id
+
+
 def is_transition_allowed(*, project_id, issue, to_state_id, role=None, user=None):
     """Return (allowed, error_code) for moving `issue` to `to_state_id`.
 
@@ -272,26 +307,28 @@ def is_transition_allowed(*, project_id, issue, to_state_id, role=None, user=Non
             return True, None
         role = get_effective_project_role(user, project_id)
         if role is None:
-            return False, STATE_TRANSITION_NOT_ALLOWED
+            return False, PROJECT_MEMBERSHIP_REQUIRED
     if role >= ADMIN:
         return True, None
     epic = is_epic_issue(issue)
     if role == AGENT and epic:
         return False, AGENT_EPIC_STATE_CHANGE_FORBIDDEN
-    if role != AGENT and from_state_id is not None and _is_triage_state(from_state_id):
+    source = _policy_source(project_id, from_state_id, role)
+    if source is not None and str(source) == str(to_state_id):
         return True, None
-    allowed = allowed_target_state_ids(project_id, from_state_id, role, epic=epic)
+    allowed = allowed_target_state_ids(project_id, source, role, epic=epic)
     if allowed is None or str(to_state_id) in allowed:
         return True, None
     return False, STATE_TRANSITION_NOT_ALLOWED
 
 
-def assert_state_transition_allowed(*, issue, to_state_id, user=None, role=None, project_id=None):
+def assert_state_transition_allowed(*, issue, to_state_id, user=None, role=None, project_id=None, creating=False):
     """Raise StateTransitionNotAllowed (HTTP 403) unless the move is allowed. No-op when the payload
     does not change the state or carries an invalid id (the serializer reports that as a 400).
 
     `to_state_id` may be a State instance (e.g. `serializer.validated_data.get("state")`), so views
     call this between `serializer.is_valid()` and `serializer.save()` whatever key carried the state.
+    A None target is a no-op here: views use `assert_state_change_allowed`, which resolves it.
     """
     to_state_id = getattr(to_state_id, "pk", to_state_id)
     if to_state_id in (None, "") or _valid_uuid(to_state_id) is None:
@@ -303,12 +340,9 @@ def assert_state_transition_allowed(*, issue, to_state_id, user=None, role=None,
     if allowed:
         return
     from_state_id = getattr(issue, "state_id", None)
-    if code == AGENT_EPIC_STATE_CHANGE_FORBIDDEN:
+    if code in _FIXED_MESSAGES:
         raise StateTransitionNotAllowed(
-            code=code,
-            message="Agents can't change the state of an epic.",
-            from_state_id=from_state_id,
-            to_state_id=to_state_id,
+            code=code, message=_FIXED_MESSAGES[code], from_state_id=from_state_id, to_state_id=to_state_id
         )
     names = dict(
         State.all_state_objects.filter(pk__in=[s for s in (from_state_id, to_state_id) if s]).values_list("id", "name")
@@ -316,13 +350,42 @@ def assert_state_transition_allowed(*, issue, to_state_id, user=None, role=None,
     from_name = names.get(_valid_uuid(from_state_id), "this state") if from_state_id else "no state"
     to_name = names.get(_valid_uuid(to_state_id), "that state")
     effective_role = _role_value(role) if role is not None else get_effective_project_role(user, project_id)
-    allowed_ids = allowed_target_state_ids(project_id, from_state_id, effective_role, epic=is_epic_issue(issue))
+    source = _policy_source(project_id, from_state_id, effective_role)
+    allowed_ids = allowed_target_state_ids(project_id, source, effective_role, epic=is_epic_issue(issue))
+    if creating:
+        message = f"You can't create a work item in '{to_name}'."
+    else:
+        message = f"You can't move this work item from '{from_name}' to '{to_name}'."
     raise StateTransitionNotAllowed(
         code=code,
-        message=f"You can't move this work item from '{from_name}' to '{to_name}'.",
+        message=message,
         from_state_id=from_state_id,
         to_state_id=to_state_id,
         allowed_state_ids=allowed_ids or [],
+    )
+
+
+def assert_state_change_allowed(*, issue, validated_data, user=None, role=None, project_id=None):
+    """`assert_state_transition_allowed` for a validated (partial) update payload. An explicit null
+    state is checked as a move to the default state, where Issue.save() puts the work item."""
+    if "state" not in validated_data:
+        return
+    project_id = project_id or issue.project_id
+    to_state = validated_data["state"]
+    if to_state is None:
+        to_state = get_default_state_id(project_id)
+    assert_state_transition_allowed(issue=issue, to_state_id=to_state, user=user, role=role, project_id=project_id)
+
+
+def assert_create_state_allowed(*, project_id, validated_data, user=None, role=None):
+    """Creating a work item in an explicit state counts as moving it there from the project's
+    default state (where it would start otherwise); creating it there, or without a state, is free."""
+    to_state = validated_data.get("state")
+    if to_state is None:
+        return
+    new_issue = Issue(project_id=project_id, state_id=get_default_state_id(project_id), type=validated_data.get("type"))
+    assert_state_transition_allowed(
+        issue=new_issue, to_state_id=to_state, user=user, role=role, project_id=project_id, creating=True
     )
 
 
@@ -359,16 +422,99 @@ def get_my_transitions(project_id, user):
 # ------------------------------------------------------------------ standard states + seeding
 
 
-def _repoint_state(source, target):
-    """Move every work item / draft from `source` to `target`; returns the moved work-item count."""
+def _repoint_state(source, target, actor_id=None):
+    """Move every work item / draft from `source` to `target` (with a state activity per work item);
+    returns the moved work-item count."""
     issues = Issue.all_objects.filter(state_id=source.id)
+    issue_ids = list(issues.values_list("id", flat=True))
     if target.group == StateGroup.COMPLETED.value:
         moved = issues.update(state_id=target.id, completed_at=Coalesce(F("completed_at"), Now()))
     else:
         moved = issues.update(state_id=target.id, completed_at=None)
+    epoch = int(timezone.now().timestamp())
+    IssueActivity.objects.bulk_create(
+        [
+            IssueActivity(
+                issue_id=issue_id,
+                actor_id=actor_id,
+                verb="updated",
+                old_value=source.name,
+                new_value=target.name,
+                field="state",
+                project_id=source.project_id,
+                workspace_id=source.workspace_id,
+                comment="updated the state to",
+                old_identifier=source.id,
+                new_identifier=target.id,
+                epoch=epoch,
+            )
+            for issue_id in issue_ids
+        ],
+        batch_size=1000,
+    )
     DraftIssue.all_objects.filter(state_id=source.id).update(state_id=target.id)
     Project.all_objects.filter(default_state_id=source.id).update(default_state_id=target.id)
     return moved
+
+
+# Saved filters that may reference a state id: (model, JSON fields) as in migration 0124_jp_priorities.
+STATE_FILTER_MODELS = (
+    (IssueView, ("filters", "rich_filters", "query")),
+    (ProjectUserProperty, ("filters", "rich_filters")),
+    (CycleUserProperties, ("filters", "rich_filters")),
+    (ModuleUserProperties, ("filters", "rich_filters")),
+    (WorkspaceUserProperties, ("filters", "rich_filters")),
+    (AnalyticView, ("query", "query_dict")),
+    (ProjectMember, ("view_props", "default_props")),
+)
+STATE_FILTER_KEYS = frozenset({"state", "state__in", "state_id", "state_id__in"})
+
+
+def _remap_ids(value, mapping):
+    if isinstance(value, str):
+        return ",".join(dict.fromkeys(mapping.get(part, part) for part in value.split(",")))
+    if isinstance(value, list):
+        return list(dict.fromkeys(mapping.get(v, v) if isinstance(v, str) else v for v in value))
+    return value
+
+
+def remap_state_filter_tree(node, mapping):
+    """Walk dicts/lists (and/or/not trees included) and remap state ids under state filter keys."""
+    if isinstance(node, dict):
+        return {
+            key: _remap_ids(value, mapping) if key in STATE_FILTER_KEYS else remap_state_filter_tree(value, mapping)
+            for key, value in node.items()
+        }
+    if isinstance(node, list):
+        return [remap_state_filter_tree(item, mapping) for item in node]
+    return node
+
+
+def rewrite_saved_state_filters(workspace_id, mapping):
+    """Point saved filters of the workspace at `mapping` {old state id: new state id} instead."""
+    mapping = {str(old): str(new) for old, new in mapping.items()}
+    if not mapping:
+        return
+    for model, fields in STATE_FILTER_MODELS:
+        texts = {f"_jp_{field}_text": Cast(field, TextField()) for field in fields}
+        mentions = Q()
+        for alias in texts:
+            for old in mapping:
+                mentions |= Q(**{f"{alias}__contains": old})
+        rows = model._base_manager.filter(workspace_id=workspace_id).annotate(**texts).filter(mentions)
+        changed = []
+        for row in rows.only("pk", *fields).iterator(chunk_size=500):
+            dirty = False
+            for field in fields:
+                value = getattr(row, field)
+                new_value = remap_state_filter_tree(value, mapping)
+                if new_value != value:
+                    setattr(row, field, new_value)
+                    dirty = True
+            if dirty:
+                changed.append(row)
+        if changed:
+            model._base_manager.bulk_update(changed, list(fields), batch_size=500)
 
 
 def _remove_state(source):
@@ -385,7 +531,8 @@ def ensure_standard_states(project):
       alias ("Todo" -> "To Do", "Cancelled" -> "Won't Fix"), is adopted and renamed in place (keeps
       its id, so work items and activity stay valid); missing ones are created
     - Backlog (and duplicate aliases) are merged: their work items move to To Do / the matching
-      standard state, then the empty state is removed
+      standard state (with a state activity each), saved filters are repointed, then the empty
+      state is removed
     - To Do becomes the only default state; standard states get the standard group/order
     - any other custom state is left untouched
     Returns (states_by_key, summary).
@@ -443,14 +590,18 @@ def ensure_standard_states(project):
     for key, aliases in STANDARD_STATE_ALIASES.items():
         for alias in (*aliases, *STANDARD_STATE_MERGES.get(key, ())):
             merge_into.setdefault(alias, key)
+    repointed = {}
     for state in states:
         if state.id in used:
             continue
         key = merge_into.get(normalize_state_name(state.name))
         if key is None or key not in by_key:
             continue
-        summary["merged"][state.name] = _repoint_state(state, by_key[key])
+        # like the auto-close/archive jobs, system state changes are attributed to the project creator
+        summary["merged"][state.name] = _repoint_state(state, by_key[key], actor_id=project.created_by_id)
         _remove_state(state)
+        repointed[state.id] = by_key[key].id
+    rewrite_saved_state_filters(project.workspace_id, repointed)
 
     todo = by_key.get("todo")
     if todo is not None:

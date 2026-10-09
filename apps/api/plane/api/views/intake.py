@@ -32,7 +32,7 @@ from plane.utils.host import base_host
 from plane.utils.content_validator import validate_html_content
 from plane.utils.priority import resolve_request_priority
 from plane.utils.project_defaults import assign_default_assignee
-from plane.utils.workflow import assert_state_transition_allowed  # Jira-parity workflows
+from plane.utils.workflow import assert_state_change_allowed  # Jira-parity workflows
 from .base import BaseAPIView
 from plane.db.models.intake import SourceType
 from plane.utils.openapi import (
@@ -393,10 +393,8 @@ class IntakeIssueDetailAPIEndpoint(BaseAPIView):
 
             if not issue_serializer.is_valid():
                 return Response(issue_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            # Jira-parity: role-based state transitions (leaving Triage is always allowed)
-            assert_state_transition_allowed(
-                issue=issue, to_state_id=issue_serializer.validated_data.get("state"), user=request.user
-            )
+            # Jira-parity: role-based state transitions (Triage -> default state is always allowed)
+            assert_state_change_allowed(issue=issue, validated_data=issue_serializer.validated_data, user=request.user)
 
         # Only project admins and members can edit intake issue attributes
         if project_member.role > 15:

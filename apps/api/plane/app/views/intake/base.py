@@ -52,7 +52,7 @@ from plane.app.views.base import BaseAPIView
 from plane.utils.timezone_converter import user_timezone_converter
 from plane.utils.global_paginator import paginate
 from plane.utils.host import base_host
-from plane.utils.workflow import assert_state_transition_allowed  # Jira-parity workflows
+from plane.utils.workflow import assert_state_change_allowed  # Jira-parity workflows
 from plane.db.models.intake import SourceType
 
 
@@ -415,10 +415,8 @@ class IntakeIssueViewSet(BaseViewSet):
 
             if not issue_serializer.is_valid():
                 return Response(issue_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            # Jira-parity: role-based state transitions (leaving Triage is always allowed)
-            assert_state_transition_allowed(
-                issue=issue, to_state_id=issue_serializer.validated_data.get("state"), user=request.user
-            )
+            # Jira-parity: role-based state transitions (Triage -> default state is always allowed)
+            assert_state_change_allowed(issue=issue, validated_data=issue_serializer.validated_data, user=request.user)
 
         # Validate intake issue data if user has permission
         intake_serializer = None

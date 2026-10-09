@@ -263,7 +263,7 @@ class TestTransitions:
         # inactive rule only -> fallback applies
         assert workflow.allowed_target_state_ids(project.id, states["To Do"].id, AGENT) == _ids(states["In Progress"])
 
-    def test_leaving_triage_is_unrestricted_for_members(self, project, states):
+    def test_leaving_triage_counts_as_leaving_the_default_state(self, project, states):
         Project.objects.filter(pk=project.pk).update(is_workflow_enabled=True)
         StateTransition.objects.create(
             project=project,
@@ -273,9 +273,20 @@ class TestTransitions:
             roles=[MEMBER],
         )
         issue = _issue(project, states["Triage"])
+        # Triage -> default state (what accepting does) is always allowed
+        assert workflow.is_transition_allowed(
+            project_id=project.id, issue=issue, to_state_id=states["To Do"].id, role=MEMBER
+        )[0]
+        # any other target follows the rules of the default state
+        assert workflow.is_transition_allowed(
+            project_id=project.id, issue=issue, to_state_id=states["In Progress"].id, role=MEMBER
+        )[0]
         assert workflow.is_transition_allowed(
             project_id=project.id, issue=issue, to_state_id=states["Done"].id, role=MEMBER
-        )[0]
+        ) == (False, workflow.STATE_TRANSITION_NOT_ALLOWED)
+        with pytest.raises(workflow.StateTransitionNotAllowed) as exc:
+            workflow.assert_state_transition_allowed(issue=issue, to_state_id=states["Done"], role=MEMBER)
+        assert exc.value.detail["allowed_state_ids"] == _ids(states["In Progress"])
         assert not workflow.is_transition_allowed(
             project_id=project.id, issue=issue, to_state_id=states["Done"].id, role=AGENT
         )[0]

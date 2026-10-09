@@ -44,6 +44,7 @@ export type TMyStateTransitions =
 /** Known `code` values of HTTP 403 responses from forbidden transitions / agent writes. */
 export type TJiraParityForbiddenCode =
   | "STATE_TRANSITION_NOT_ALLOWED"
+  | "PROJECT_MEMBERSHIP_REQUIRED"
   | "AGENT_EPIC_STATE_CHANGE_FORBIDDEN"
   | "AGENT_FIELD_NOT_ALLOWED";
 

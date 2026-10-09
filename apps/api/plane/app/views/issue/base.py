@@ -73,7 +73,7 @@ from plane.utils.issue_filters import issue_filters
 from plane.utils.order_queryset import order_issue_queryset
 from plane.utils.paginator import GroupedOffsetPaginator, SubGroupedOffsetPaginator
 from plane.utils.timezone_converter import user_timezone_converter
-from plane.utils.workflow import assert_state_transition_allowed  # Jira-parity workflows
+from plane.utils.workflow import assert_create_state_allowed, assert_state_change_allowed  # Jira-parity workflows
 from plane.utils.jira_parity.description_migration import (  # Jira-parity: editor id-only saves
     audit_snapshot,
     is_description_migration_update,
@@ -424,6 +424,10 @@ class IssueViewSet(BaseViewSet):
         )
 
         if serializer.is_valid():
+            # Jira-parity: creating in a state = moving there from the default state
+            assert_create_state_allowed(
+                project_id=project_id, validated_data=serializer.validated_data, user=request.user
+            )
             serializer.save()
 
             # Track the issue
@@ -694,9 +698,7 @@ class IssueViewSet(BaseViewSet):
         serializer = IssueCreateSerializer(issue, data=request.data, partial=True, context={"project_id": project_id})
         if serializer.is_valid():
             # Jira-parity: role-based state transitions (HTTP 403 STATE_TRANSITION_NOT_ALLOWED)
-            assert_state_transition_allowed(
-                issue=issue, to_state_id=serializer.validated_data.get("state"), user=request.user
-            )
+            assert_state_change_allowed(issue=issue, validated_data=serializer.validated_data, user=request.user)
             serializer.save()
             restore_audit_fields(Issue, issue.pk, audit_before)
             # Check if the update is a migration description update
