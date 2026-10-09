@@ -156,9 +156,10 @@ def category_group_values(
     filters: Optional[Mapping[str, Any]] = None,
     queryset: Optional[QuerySet] = None,
 ) -> List[Any]:
-    """issue_group_values() for a category board: project-bound groups are limited to the
-    category's projects (no empty columns for the rest of the workspace); every other field is
-    delegated to the shared plane.utils.grouper.issue_group_values."""
+    """issue_group_values() for a category board: project-bound groups are limited to `project_ids`
+    (the category's projects the requester is a member of, so no columns for the rest of the
+    workspace or for projects the requester cannot see); every other field is delegated to the
+    shared plane.utils.grouper.issue_group_values."""
     from plane.utils.grouper import issue_group_values
 
     project_ids = list(project_ids)

@@ -12,6 +12,7 @@ import { describe, test } from "node:test";
 import {
   computeReorderedSortOrders,
   findProjectStateByName,
+  getCategoryBoardCycleNameParam,
   getCategoryBoardQueryParamsByLayout,
   getCategoryProjectIds,
   getStateNameColumns,
@@ -187,6 +188,19 @@ describe("normalizeCategoryBoardQuickFilters", () => {
   test("anything else becomes empty filters", () => {
     for (const stored of [undefined, null, "x", 1, { cycle_names: "Sprint 1" }, { type_ids: ["a"] }])
       assert.deepEqual(normalizeCategoryBoardQuickFilters(stored), { cycle_names: [] });
+  });
+});
+
+describe("getCategoryBoardCycleNameParam", () => {
+  test("sends the exact names as a JSON array (comma-safe, no 'None' sentinel)", () => {
+    const names = ["Sprint 1, part 2", "None", "Sprint 3"];
+    const param = getCategoryBoardCycleNameParam(names);
+    assert.equal(param, '["Sprint 1, part 2","None","Sprint 3"]');
+    assert.deepEqual(JSON.parse(param), names);
+  });
+
+  test("no selection, no param", () => {
+    assert.equal(getCategoryBoardCycleNameParam([]), undefined);
   });
 });
 

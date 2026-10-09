@@ -40,7 +40,7 @@ from django.db.models.functions import Coalesce
 from rest_framework import serializers
 
 # Module imports
-from plane.db.models import DraftIssue, Issue, IssueActivity, IssueType, Project, ProjectIssueType
+from plane.db.models import DraftIssue, Issue, IssueActivity, IssueType, Project, ProjectIssueType, ProjectMember
 from plane.utils.exception_logger import log_exception
 
 logger = logging.getLogger("plane.api")
@@ -369,15 +369,26 @@ def set_default_work_item_type(issue_type):
     return issue_type
 
 
-def annotate_issue_count(queryset):
-    """Annotate `issue_count` = live (not deleted) work items of each type, incl. archived/drafts."""
-    count_subquery = (
-        Issue.all_objects.filter(type_id=OuterRef("id"), deleted_at__isnull=True)
-        .order_by()
-        .values("type_id")
-        .annotate(count=Count("id"))
-        .values("count")
+def visible_issues_q(user):
+    """Work items `user` can see: active project memberships; guests of projects without
+    guest_view_all_features only their own work items (same rule as the issue lists)."""
+    memberships = ProjectMember.objects.filter(member=user, is_active=True)
+    full_access = memberships.filter(Q(role__gt=5) | Q(role=5, project__guest_view_all_features=True))
+    own_only = memberships.filter(role=5, project__guest_view_all_features=False)
+    return Q(project_id__in=full_access.values("project_id")) | Q(
+        project_id__in=own_only.values("project_id"), created_by=user
     )
+
+
+def annotate_issue_count(queryset, user=None):
+    """Annotate `issue_count` = live (not deleted) work items of each type, incl. archived/drafts.
+
+    With `user`, only the work items that user can see are counted (visible_issues_q).
+    """
+    issues = Issue.all_objects.filter(type_id=OuterRef("id"), deleted_at__isnull=True)
+    if user is not None:
+        issues = issues.filter(visible_issues_q(user))
+    count_subquery = issues.order_by().values("type_id").annotate(count=Count("id")).values("count")
     return queryset.annotate(issue_count=Coalesce(Subquery(count_subquery, output_field=IntegerField()), Value(0)))
 
 

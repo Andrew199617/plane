@@ -346,10 +346,11 @@ class TestSerializerHelpers:
         from plane.utils.issue_filters import issue_filters
 
         type_id = uuid.uuid4()
-        assert issue_filters({"issue_type": f"{type_id},not-a-uuid"}, "GET") == {"type_id__in": [type_id]}
+        # string ids: stored (POST) view queries are JSON
+        assert issue_filters({"issue_type": f"{type_id},not-a-uuid"}, "GET") == {"type_id__in": [str(type_id)]}
         assert issue_filters({"issue_type": "None"}, "GET") == {"type__isnull": True}
         assert issue_filters({"issue_type": [str(type_id)]}, "POST", prefix="issue__") == {
-            "issue__type_id__in": [type_id]
+            "issue__type_id__in": [str(type_id)]
         }
         assert issue_filters({"issue_type": ""}, "GET") == {}
 

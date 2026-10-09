@@ -33,7 +33,7 @@ export type TProjectCategoryCycle = {
 /**
  * Master-board quick filters that are not part of the rich filter expression (project, work item type, priority,
  * assignee, ... are rich filters):
- * - cycle_names: sprint (cycle) NAMES across the category's projects, sent as `cycle_name=<a>,<b>`
+ * - cycle_names: sprint (cycle) NAMES across the category's projects, sent as a JSON array `cycle_name=["<a>","<b>"]`
  */
 export type TCategoryBoardQuickFilters = {
   cycle_names: string[];

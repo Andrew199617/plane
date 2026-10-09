@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
+import json
 import re
 import uuid
 from datetime import timedelta
 
+from django.db.models import Q
 from django.utils import timezone
 
 from plane.utils.priority import remap_priority_tokens
@@ -441,32 +443,65 @@ def filter_state_name(params, issue_filter, method, prefix=""):
     return issue_filter
 
 
+def _jp_match_issues(issue_filter, prefix, condition):
+    # Filter kwargs cannot express OR: match the issues satisfying `condition` (a Q on Issue) by id
+    from plane.db.models import Issue
+
+    issues = Issue.all_objects.filter(condition)
+    key = f"{prefix}id__in"
+    if key in issue_filter:  # set by another OR filter: both apply
+        issues = issues.filter(id__in=issue_filter[key])
+    issue_filter[key] = issues.values("id")
+
+
+def _jp_cycle_names(value):
+    """(names, no_sprint) of `cycle_name`: a JSON array of exact names, null meaning "no sprint"
+    (comma-safe, sent by the master board), else legacy comma-separated names with "None"."""
+    if isinstance(value, str) and value.startswith("["):
+        try:
+            items = json.loads(value)
+        except ValueError:
+            items = None
+        if isinstance(items, list):
+            names = [item for item in items if isinstance(item, str) and item.strip()]
+            return list(dict.fromkeys(names)), None in items
+    names = _jp_split_values(value)
+    return [name for name in names if name != "None"], "None" in names
+
+
 def filter_cycle_name(params, issue_filter, method, prefix=""):
-    names = _jp_split_values(params.get("cycle_name"))
-    if "None" in names:
-        issue_filter[f"{prefix}issue_cycle__cycle_id__isnull"] = True
-    names = [name for name in names if name != "None"]
-    if names:
-        issue_filter[f"{prefix}issue_cycle__cycle__name__in"] = names
-        issue_filter[f"{prefix}issue_cycle__cycle__deleted_at__isnull"] = True
-    if names or f"{prefix}issue_cycle__cycle_id__isnull" in issue_filter:
-        issue_filter[f"{prefix}issue_cycle__deleted_at__isnull"] = True
+    names, no_sprint = _jp_cycle_names(params.get("cycle_name"))
+    in_sprints = {
+        "issue_cycle__cycle__name__in": names,
+        "issue_cycle__deleted_at__isnull": True,
+        "issue_cycle__cycle__deleted_at__isnull": True,
+    }
+    without_sprint = {"issue_cycle__cycle_id__isnull": True, "issue_cycle__deleted_at__isnull": True}
+    if names and no_sprint and method == "GET":
+        _jp_match_issues(issue_filter, prefix, Q(**in_sprints) | Q(**without_sprint))
+        return issue_filter
+    # stored (non-GET) queries must stay JSON: "no sprint" + names keeps only the names there
+    conditions = in_sprints if names else without_sprint if no_sprint else {}
+    issue_filter.update({f"{prefix}{key}": value for key, value in conditions.items()})
     return issue_filter
 
 
 def filter_issue_type(params, issue_filter, method, prefix=""):
     # Jira-parity work item types: legacy `issue_type=<id>[,<id>|None]` (group "load more", sub-items)
     values = _jp_split_values(params.get("issue_type"))
-    if "None" in values:
-        issue_filter[f"{prefix}type__isnull"] = True
-    type_ids = filter_valid_uuids([value for value in values if value != "None"])
-    if type_ids:
+    no_type = "None" in values
+    type_ids = [str(type_id) for type_id in filter_valid_uuids([value for value in values if value != "None"])]
+    if no_type and type_ids and method == "GET":
+        _jp_match_issues(issue_filter, prefix, Q(type__isnull=True) | Q(type_id__in=type_ids))
+    elif type_ids:
         issue_filter[f"{prefix}type_id__in"] = type_ids
+    elif no_type:
+        issue_filter[f"{prefix}type__isnull"] = True
     return issue_filter
 
 
 def filter_project_category(params, issue_filter, method, prefix=""):
-    categories = filter_valid_uuids(_jp_split_values(params.get("project_category")))
+    categories = [str(category) for category in filter_valid_uuids(_jp_split_values(params.get("project_category")))]
     if categories:
         issue_filter[f"{prefix}project__category_id__in"] = categories
     return issue_filter

@@ -100,8 +100,9 @@ class TestMasterBoardIssueFilters:
 
     def test_project_category(self):
         category_id = uuid.uuid4()
+        # string ids: stored (POST) view queries are JSON
         assert issue_filters({"project_category": f"{category_id},null,bad"}, "GET") == {
-            "project__category_id__in": [category_id]
+            "project__category_id__in": [str(category_id)]
         }
         assert issue_filters({"project_category": "bad"}, "GET") == {}
 

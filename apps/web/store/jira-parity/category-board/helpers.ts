@@ -71,6 +71,13 @@ export const normalizeCategoryBoardQuickFilters = (stored: unknown): TCategoryBo
   };
 };
 
+/**
+ * `cycle_name` query param for the selected sprint names: a JSON array of the exact names, so names containing commas
+ * (or a sprint literally named "None") reach the server unchanged. Undefined when no sprint is selected.
+ */
+export const getCategoryBoardCycleNameParam = (cycleNames: string[]): string | undefined =>
+  cycleNames.length > 0 ? JSON.stringify(cycleNames) : undefined;
+
 export type TStateNameColumn = {
   /** state name (column id) */
   name: string;

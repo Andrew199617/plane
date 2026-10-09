@@ -218,7 +218,8 @@ class ProjectCategoryIssuesEndpoint(WorkspaceViewIssuesViewSet):
                 on_results=on_results,
             )
 
-        project_ids = category_project_ids(category.id)
+        # Columns only from the projects whose issues the requester can see (same scope as the rows)
+        project_ids = member_project_ids(category_project_ids(category.id), request.user)
 
         def group_values(field):
             return category_group_values(

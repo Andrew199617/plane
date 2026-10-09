@@ -38,6 +38,7 @@ import { IssueFilterHelperStore } from "@/store/issue/helpers/issue-filter-helpe
 import type { IIssueRootStore } from "@/store/issue/root.store";
 // local imports
 import {
+  getCategoryBoardCycleNameParam,
   getCategoryBoardQueryParamsByLayout,
   normalizeCategoryBoardQuickFilters,
   sanitizeCategoryBoardDisplayFilters,
@@ -185,8 +186,8 @@ export class CategoryBoardIssuesFilter extends IssueFilterHelperStore implements
       }
 
       // sprints (cycles) by name across the category's projects
-      if (quickFilters.cycle_names.length > 0)
-        paginationParams[JP_CATEGORY_BOARD_CYCLE_NAME_PARAM] = quickFilters.cycle_names.join(",");
+      const cycleNameParam = getCategoryBoardCycleNameParam(quickFilters.cycle_names);
+      if (cycleNameParam) paginationParams[JP_CATEGORY_BOARD_CYCLE_NAME_PARAM] = cycleNameParam;
 
       return paginationParams;
     }

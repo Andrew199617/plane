@@ -7,6 +7,8 @@
 - GET/POST          /api/workspaces/<slug>/work-item-types/
 - GET/PATCH/DELETE  /api/workspaces/<slug>/work-item-types/<id>/          (writes: workspace admin)
 - GET               /api/workspaces/<slug>/projects/<project_id>/work-item-types/  (active, enabled)
+
+`issue_count` is workspace-wide for workspace admins, else it only counts work items the requester can see.
 """
 
 # Django imports
@@ -20,7 +22,7 @@ from rest_framework.response import Response
 from plane.app.permissions import ROLE, allow_permission
 from plane.app.serializers.jira_parity.work_item_types import WorkItemTypeSerializer
 from plane.app.views.base import BaseAPIView
-from plane.db.models import IssueType, Project, ProjectIssueType, Workspace
+from plane.db.models import IssueType, Project, ProjectIssueType, Workspace, WorkspaceMember
 from plane.utils.work_item_types import (
     annotate_issue_count,
     ensure_workspace_work_item_types,
@@ -35,17 +37,29 @@ READ_ROLES = [ROLE.ADMIN, ROLE.MEMBER, ROLE.AGENT, ROLE.GUEST]
 DUPLICATE_NAME_ERROR = {"name": ["A work item type with this name already exists."]}
 
 
-def _types_queryset(workspace_id):
+def _types_queryset(workspace_id, user=None):
     # Hierarchy order: Epic, standard types (by name), Sub-task
-    return annotate_issue_count(IssueType.objects.filter(workspace_id=workspace_id)).order_by("-level", "name")
+    return annotate_issue_count(IssueType.objects.filter(workspace_id=workspace_id), user=user).order_by(
+        "-level", "name"
+    )
+
+
+def _count_scope_user(request, workspace_id):
+    """None (workspace-wide issue_count, the count that blocks deletes) for workspace admins, else
+    the requester: their counts only cover the work items they can see."""
+    is_admin = WorkspaceMember.objects.filter(
+        workspace_id=workspace_id, member=request.user, is_active=True, role=ROLE.ADMIN.value
+    ).exists()
+    return None if is_admin else request.user
 
 
 class WorkItemTypeEndpoint(BaseAPIView):
     @allow_permission(READ_ROLES, level="WORKSPACE")
     def get(self, request, slug, pk=None):
         workspace = Workspace.objects.get(slug=slug)
+        types = _types_queryset(workspace.id, user=_count_scope_user(request, workspace.id))
         if pk is not None:
-            issue_type = _types_queryset(workspace.id).filter(pk=pk).first()
+            issue_type = types.filter(pk=pk).first()
             if issue_type is None:
                 return Response({"error": "Work item type not found."}, status=status.HTTP_404_NOT_FOUND)
             return Response(WorkItemTypeSerializer(issue_type).data, status=status.HTTP_200_OK)
@@ -53,10 +67,7 @@ class WorkItemTypeEndpoint(BaseAPIView):
         # Lazily seed the standard types for workspaces created before the feature existed
         if not IssueType.objects.filter(workspace_id=workspace.id).exists():
             ensure_workspace_work_item_types(workspace)
-        return Response(
-            WorkItemTypeSerializer(_types_queryset(workspace.id), many=True).data,
-            status=status.HTTP_200_OK,
-        )
+        return Response(WorkItemTypeSerializer(types, many=True).data, status=status.HTTP_200_OK)
 
     @allow_permission([ROLE.ADMIN], level="WORKSPACE")
     def post(self, request, slug):
@@ -139,7 +150,8 @@ class ProjectWorkItemTypeEndpoint(BaseAPIView):
         if not active_ids or active_ids - linked_ids or not project.is_issue_type_enabled:
             # Self-heal: every project has every workspace type enabled
             seed_project_work_item_types(project)
-        issue_types = _types_queryset(project.workspace_id).filter(
+        count_user = _count_scope_user(request, project.workspace_id)
+        issue_types = _types_queryset(project.workspace_id, user=count_user).filter(
             is_active=True,
             project_issue_types__project_id=project.id,
             project_issue_types__deleted_at__isnull=True,
