@@ -78,6 +78,9 @@ class Cycle(ProjectBaseModel):
     TIMEZONE_CHOICES = tuple(zip(pytz.common_timezones, pytz.common_timezones))
     timezone = models.CharField(max_length=255, default="UTC", choices=TIMEZONE_CHOICES)
     version = models.IntegerField(default=1)
+    # jira-parity: explicit sprint lifecycle (future -> active -> closed), see plane.utils.jira_parity.sprints
+    started_at = models.DateTimeField(null=True, blank=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Cycle"

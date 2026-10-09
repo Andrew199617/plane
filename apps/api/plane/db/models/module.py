@@ -56,12 +56,9 @@ def get_default_display_properties():
 
 
 class ModuleStatus(models.TextChoices):
-    BACKLOG = "backlog"
-    PLANNED = "planned"
-    IN_PROGRESS = "in-progress"
-    PAUSED = "paused"
-    COMPLETED = "completed"
-    CANCELLED = "cancelled"
+    # jira-parity: modules are Jira releases (fix versions)
+    UNRELEASED = "unreleased"
+    RELEASED = "released"
 
 
 class Module(ProjectBaseModel):
@@ -72,15 +69,12 @@ class Module(ProjectBaseModel):
     start_date = models.DateField(null=True)
     target_date = models.DateField(null=True)
     status = models.CharField(
+        # jira-parity: modules are Jira releases (fix versions)
         choices=(
-            ("backlog", "Backlog"),
-            ("planned", "Planned"),
-            ("in-progress", "In Progress"),
-            ("paused", "Paused"),
-            ("completed", "Completed"),
-            ("cancelled", "Cancelled"),
+            ("unreleased", "Unreleased"),
+            ("released", "Released"),
         ),
-        default="planned",
+        default="unreleased",
         max_length=20,
     )
     lead = models.ForeignKey("db.User", on_delete=models.SET_NULL, related_name="module_leads", null=True)

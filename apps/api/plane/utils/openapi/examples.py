@@ -441,7 +441,7 @@ MODULE_EXAMPLE = OpenApiExample(
         "description": "User authentication and authorization features",
         "start_date": "2024-01-01",
         "target_date": "2024-02-15",
-        "status": "in-progress",
+        "status": "unreleased",
         "total_issues": 12,
         "completed_issues": 5,
         "cancelled_issues": 0,
