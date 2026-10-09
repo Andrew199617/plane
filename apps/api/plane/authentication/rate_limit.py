@@ -19,7 +19,7 @@ from plane.authentication.adapter.error import (
     AuthenticationException,
     AUTHENTICATION_ERROR_CODES,
 )
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 from plane.utils.path_validator import get_safe_redirect_url
 
 
@@ -78,7 +78,7 @@ def throttle_auth_redirect(*, is_app=False, is_space=False):
                     error_message="RATE_LIMIT_EXCEEDED",
                 )
                 url = get_safe_redirect_url(
-                    base_url=base_host(request=request, is_app=is_app, is_space=is_space),
+                    base_url=redirect_host(request=request, is_app=is_app, is_space=is_space),
                     next_path=request.POST.get("next_path"),
                     params=exc.get_error_dict(),
                 )

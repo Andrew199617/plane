@@ -16,10 +16,11 @@ from rest_framework.views import APIView
 
 # Module imports
 from plane.authentication.provider.credentials.magic_code import MagicCodeProvider
+from plane.authentication.adapter.base import is_non_interactive_account
 from plane.authentication.utils.login import user_login
 from plane.bgtasks.magic_link_code_task import magic_link
 from plane.license.models import Instance
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 from plane.db.models import User
 from plane.authentication.adapter.error import (
     AuthenticationException,
@@ -51,6 +52,9 @@ class MagicGenerateSpaceEndpoint(APIView):
         try:
             validate_email(email)
             adapter = MagicCodeProvider(request=request, key=email)
+            # jira-parity: bots/agents can't sign in interactively; same response, but no code is issued
+            if is_non_interactive_account(User.objects.filter(email=email).first()):
+                return Response({"key": f"magic_{email}"}, status=status.HTTP_200_OK)
             key, token = adapter.initiate()
             # If the smtp is configured send through here
             magic_link.delay(email, key, token)
@@ -74,7 +78,7 @@ class MagicSignInSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True),
+                base_url=redirect_host(request=request, is_space=True),
                 next_path=next_path,
                 params=params,
             )
@@ -89,7 +93,7 @@ class MagicSignInSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True),
+                base_url=redirect_host(request=request, is_space=True),
                 next_path=next_path,
                 params=params,
             )
@@ -103,16 +107,16 @@ class MagicSignInSpaceEndpoint(View):
             user_login(request=request, user=user, is_space=True)
             # redirect to referer path
             next_path = validate_next_path(next_path=next_path)
-            url = f"{base_host(request=request, is_space=True).rstrip('/')}{next_path}"
-            if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts()):
+            url = f"{redirect_host(request=request, is_space=True).rstrip('/')}{next_path}"
+            if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts(url)):
                 return HttpResponseRedirect(url)
             else:
-                return HttpResponseRedirect(base_host(request=request, is_space=True))
+                return HttpResponseRedirect(redirect_host(request=request, is_space=True))
 
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True),
+                base_url=redirect_host(request=request, is_space=True),
                 next_path=next_path,
                 params=params,
             )
@@ -134,7 +138,7 @@ class MagicSignUpSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True),
+                base_url=redirect_host(request=request, is_space=True),
                 next_path=next_path,
                 params=params,
             )
@@ -149,7 +153,7 @@ class MagicSignUpSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True),
+                base_url=redirect_host(request=request, is_space=True),
                 next_path=next_path,
                 params=params,
             )
@@ -162,16 +166,16 @@ class MagicSignUpSpaceEndpoint(View):
             user_login(request=request, user=user, is_space=True)
             # redirect to referer path
             next_path = validate_next_path(next_path=next_path)
-            url = f"{base_host(request=request, is_space=True).rstrip('/')}{next_path}"
-            if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts()):
+            url = f"{redirect_host(request=request, is_space=True).rstrip('/')}{next_path}"
+            if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts(url)):
                 return HttpResponseRedirect(url)
             else:
-                return HttpResponseRedirect(base_host(request=request, is_space=True))
+                return HttpResponseRedirect(redirect_host(request=request, is_space=True))
 
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True),
+                base_url=redirect_host(request=request, is_space=True),
                 next_path=next_path,
                 params=params,
             )

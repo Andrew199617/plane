@@ -27,7 +27,8 @@ from plane.bgtasks.forgot_password_task import forgot_password
 from plane.license.models import Instance
 from plane.db.models import User
 from plane.license.utils.instance_value import get_configuration_value
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import base_host, redirect_host
+from plane.authentication.adapter.base import is_non_interactive_account
 from plane.authentication.adapter.error import (
     AuthenticationException,
     AUTHENTICATION_ERROR_CODES,
@@ -79,6 +80,9 @@ class ForgotPasswordEndpoint(APIView):
 
         # Get the user
         user = User.objects.filter(email=email).first()
+        # jira-parity: bots/agents can't sign in interactively; same response, but no reset link is sent
+        if is_non_interactive_account(user):
+            return Response({"message": "Check your email to reset your password"}, status=status.HTTP_200_OK)
         if user:
             # Get the reset token for user
             uidb64, token = generate_password_token(user=user)
@@ -110,7 +114,7 @@ class ResetPasswordEndpoint(View):
                 )
                 params = exc.get_error_dict()
                 url = urljoin(
-                    base_host(request=request, is_app=True),
+                    redirect_host(request=request, is_app=True),
                     "accounts/reset-password?" + urlencode(params),
                 )
                 return HttpResponseRedirect(url)
@@ -123,7 +127,7 @@ class ResetPasswordEndpoint(View):
                 )
                 params = exc.get_error_dict()
                 url = urljoin(
-                    base_host(request=request, is_app=True),
+                    redirect_host(request=request, is_app=True),
                     "accounts/reset-password?" + urlencode(params),
                 )
                 return HttpResponseRedirect(url)
@@ -136,7 +140,7 @@ class ResetPasswordEndpoint(View):
                     error_message="INVALID_PASSWORD",
                 )
                 url = urljoin(
-                    base_host(request=request, is_app=True),
+                    redirect_host(request=request, is_app=True),
                     "accounts/reset-password?" + urlencode(exc.get_error_dict()),
                 )
                 return HttpResponseRedirect(url)
@@ -149,7 +153,7 @@ class ResetPasswordEndpoint(View):
                     error_message="PASSWORD_TOO_WEAK",
                 )
                 url = urljoin(
-                    base_host(request=request, is_app=True),
+                    redirect_host(request=request, is_app=True),
                     "accounts/reset-password?" + urlencode(exc.get_error_dict()),
                 )
                 return HttpResponseRedirect(url)
@@ -160,7 +164,7 @@ class ResetPasswordEndpoint(View):
             user.save()
 
             url = urljoin(
-                base_host(request=request, is_app=True),
+                redirect_host(request=request, is_app=True),
                 "sign-in?" + urlencode({"success": True}),
             )
             return HttpResponseRedirect(url)
@@ -170,7 +174,7 @@ class ResetPasswordEndpoint(View):
                 error_message="EXPIRED_PASSWORD_TOKEN",
             )
             url = urljoin(
-                base_host(request=request, is_app=True),
+                redirect_host(request=request, is_app=True),
                 "accounts/reset-password?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)

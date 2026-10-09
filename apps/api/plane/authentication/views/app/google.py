@@ -16,7 +16,7 @@ from plane.authentication.utils.login import user_login
 from plane.authentication.utils.redirection_path import get_redirection_path
 from plane.authentication.utils.user_auth_workflow import post_user_auth_workflow
 from plane.license.models import Instance
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 from plane.authentication.adapter.error import (
     AuthenticationException,
     AUTHENTICATION_ERROR_CODES,
@@ -26,7 +26,7 @@ from plane.utils.path_validator import get_safe_redirect_url
 
 class GoogleOauthInitiateEndpoint(View):
     def get(self, request):
-        request.session["host"] = base_host(request=request, is_app=True)
+        request.session["host"] = redirect_host(request=request, is_app=True)
         next_path = request.GET.get("next_path")
         if next_path:
             request.session["next_path"] = str(next_path)
@@ -40,7 +40,7 @@ class GoogleOauthInitiateEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_app=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -53,7 +53,7 @@ class GoogleOauthInitiateEndpoint(View):
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_app=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -71,7 +71,7 @@ class GoogleCallbackEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_app=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
         if not code:
@@ -81,7 +81,7 @@ class GoogleCallbackEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_app=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
         try:
@@ -94,11 +94,11 @@ class GoogleCallbackEndpoint(View):
                 path = next_path
             else:
                 path = get_redirection_path(user=user)
-            url = get_safe_redirect_url(base_url=base_host(request=request, is_app=True), next_path=path, params={})
+            url = get_safe_redirect_url(base_url=redirect_host(request=request, is_app=True), next_path=path, params={})
             return HttpResponseRedirect(url)
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_app=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)

@@ -88,7 +88,7 @@ def _contains_suspicious_patterns(path: str) -> bool:
     return False
 
 
-def get_allowed_hosts() -> list[str]:
+def get_allowed_hosts(url: str | None = None) -> list[str]:
     """Get the allowed hosts from the settings."""
     allowed_hosts = []
     # Include every configured base URL; WEB_URL and APP_BASE_URL may differ
@@ -99,6 +99,13 @@ def get_allowed_hosts() -> list[str]:
             host = urlparse(setting).netloc
             if host and host not in allowed_hosts:
                 allowed_hosts.append(host)
+    # jira-parity: also allow `url`'s host when its scheme://host is exactly a CORS_ALLOWED_ORIGINS
+    # entry (auth redirects go back to the request's allowed origin, see redirect_host()).
+    if url:
+        parsed = urlparse(url)
+        if f"{parsed.scheme}://{parsed.netloc}" in getattr(settings, "CORS_ALLOWED_ORIGINS", []):
+            if parsed.netloc not in allowed_hosts:
+                allowed_hosts.append(parsed.netloc)
     return allowed_hosts
 
 
@@ -194,7 +201,7 @@ def get_safe_redirect_url(base_url: str, next_path: str = "", params: dict = {})
         url = base_url
 
     # Check if the URL is allowed
-    if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts()):
+    if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts(base_url)):
         return url
 
     # Return the base URL if the URL is not allowed

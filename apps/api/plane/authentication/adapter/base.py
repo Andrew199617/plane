@@ -32,6 +32,14 @@ from plane.utils.ip_address import get_client_ip
 from .error import AUTHENTICATION_ERROR_CODES, AuthenticationException
 
 
+def is_non_interactive_account(user):
+    """jira-parity: bots (is_bot) and agent accounts (bot_type AGENT_BOT_TYPE) act only through API
+    tokens: no interactive sign-in, magic codes or password-reset links."""
+    from plane.utils.agent import AGENT_BOT_TYPE  # lazy: avoids an import cycle
+
+    return bool(user) and (user.is_bot or user.bot_type == AGENT_BOT_TYPE)
+
+
 class Adapter:
     """Common interface for all auth providers"""
 
@@ -336,7 +344,8 @@ class Adapter:
         # flow (email/password, magic code, or any OAuth provider). A brand-new
         # signup can never be a bot — bots are provisioned internally, never through
         # this path — so guarding on an existing `user` record is sufficient.
-        if user and user.is_bot:
+        # jira-parity: agent accounts (bot_type "AGENT") are rejected the same way.
+        if is_non_interactive_account(user):
             raise AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["BOT_USER_LOGIN_FORBIDDEN"],
                 error_message="BOT_USER_LOGIN_FORBIDDEN",

@@ -22,7 +22,7 @@ from plane.authentication.adapter.error import (
 )
 from django.middleware.csrf import get_token
 from plane.utils.cache import invalidate_cache
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 
 
 class CSRFTokenEndpoint(APIView):
@@ -40,7 +40,7 @@ def csrf_failure(request, reason=""):
     return render(
         request,
         "csrf_failure.html",
-        {"reason": reason, "root_url": base_host(request=request)},
+        {"reason": reason, "root_url": redirect_host(request=request)},
     )
 
 

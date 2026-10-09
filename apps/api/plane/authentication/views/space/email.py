@@ -14,7 +14,7 @@ from plane.authentication.provider.credentials.email import EmailProvider
 from plane.authentication.utils.login import user_login
 from plane.authentication.rate_limit import throttle_auth_redirect
 from plane.license.models import Instance
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 from plane.db.models import User
 from plane.authentication.adapter.error import (
     AUTHENTICATION_ERROR_CODES,
@@ -37,7 +37,7 @@ class SignInAuthSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -54,7 +54,7 @@ class SignInAuthSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -70,7 +70,7 @@ class SignInAuthSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -85,7 +85,7 @@ class SignInAuthSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -96,15 +96,15 @@ class SignInAuthSpaceEndpoint(View):
             user_login(request=request, user=user, is_space=True)
             # redirect to referer path
             next_path = validate_next_path(next_path=next_path)
-            url = f"{base_host(request=request, is_space=True).rstrip('/')}{next_path}"
-            if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts()):
+            url = f"{redirect_host(request=request, is_space=True).rstrip('/')}{next_path}"
+            if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts(url)):
                 return HttpResponseRedirect(url)
             else:
-                return HttpResponseRedirect(base_host(request=request, is_space=True))
+                return HttpResponseRedirect(redirect_host(request=request, is_space=True))
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -123,7 +123,7 @@ class SignUpAuthSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -139,7 +139,7 @@ class SignUpAuthSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
         # Validate the email
@@ -155,7 +155,7 @@ class SignUpAuthSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -170,7 +170,7 @@ class SignUpAuthSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -181,14 +181,14 @@ class SignUpAuthSpaceEndpoint(View):
             user_login(request=request, user=user, is_space=True)
             # redirect to referer path
             next_path = validate_next_path(next_path=next_path)
-            url = f"{base_host(request=request, is_space=True).rstrip('/')}{next_path}"
-            if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts()):
+            url = f"{redirect_host(request=request, is_space=True).rstrip('/')}{next_path}"
+            if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts(url)):
                 return HttpResponseRedirect(url)
             else:
-                return HttpResponseRedirect(base_host(request=request, is_space=True))
+                return HttpResponseRedirect(redirect_host(request=request, is_space=True))
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)

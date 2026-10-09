@@ -19,6 +19,7 @@ def base_host(
     is_admin: bool = False,
     is_space: bool = False,
     is_app: bool = False,
+    allow_request_origin: bool = False,
 ) -> str:
     """Utility function to return host / origin from the request"""
     # Calculate the base origin from request
@@ -27,12 +28,15 @@ def base_host(
     if not base_origin:
         raise ImproperlyConfigured("APP_BASE_URL or WEB_URL is not set")
 
-    # Redirect back to the origin the request came from when it is an allowed
-    # origin (e.g. localhost on the desktop vs. a LAN or VPN host name on a phone).
-    request_origin = f"{request.scheme}://{request.get_host()}"
-    origin_allowed = request_origin in getattr(settings, "CORS_ALLOWED_ORIGINS", [])
-    if origin_allowed:
-        base_origin = request_origin
+    # jira-parity: with allow_request_origin (interactive auth redirects only, never emailed or
+    # stored links) go back to the request's own origin when it is an allowed origin
+    # (e.g. localhost on the desktop vs. a LAN or VPN host name on a phone).
+    origin_allowed = False
+    if allow_request_origin:
+        request_origin = f"{request.scheme}://{request.get_host()}"
+        origin_allowed = request_origin in getattr(settings, "CORS_ALLOWED_ORIGINS", [])
+        if origin_allowed:
+            base_origin = request_origin
 
     # Admin redirection
     if is_admin:

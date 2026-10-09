@@ -15,7 +15,7 @@ from plane.authentication.utils.login import user_login
 from plane.authentication.utils.redirection_path import get_redirection_path
 from plane.authentication.utils.user_auth_workflow import post_user_auth_workflow
 from plane.license.models import Instance
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 from plane.authentication.adapter.error import (
     AuthenticationException,
     AUTHENTICATION_ERROR_CODES,
@@ -26,7 +26,7 @@ from plane.utils.path_validator import get_safe_redirect_url
 class GitHubOauthInitiateEndpoint(View):
     def get(self, request):
         # Get host and next path
-        request.session["host"] = base_host(request=request, is_app=True)
+        request.session["host"] = redirect_host(request=request, is_app=True)
         next_path = request.GET.get("next_path")
         if next_path:
             request.session["next_path"] = str(next_path)
@@ -40,7 +40,7 @@ class GitHubOauthInitiateEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_app=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
         try:
@@ -52,7 +52,7 @@ class GitHubOauthInitiateEndpoint(View):
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_app=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -70,7 +70,7 @@ class GitHubCallbackEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_app=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -81,7 +81,7 @@ class GitHubCallbackEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_app=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -96,11 +96,11 @@ class GitHubCallbackEndpoint(View):
                 path = get_redirection_path(user=user)
 
             # Get the safe redirect URL
-            url = get_safe_redirect_url(base_url=base_host(request=request, is_app=True), next_path=path, params={})
+            url = get_safe_redirect_url(base_url=redirect_host(request=request, is_app=True), next_path=path, params={})
             return HttpResponseRedirect(url)
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_app=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)

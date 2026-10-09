@@ -27,7 +27,8 @@ from plane.bgtasks.forgot_password_task import forgot_password
 from plane.license.models import Instance
 from plane.db.models import User
 from plane.license.utils.instance_value import get_configuration_value
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import base_host, redirect_host
+from plane.authentication.adapter.base import is_non_interactive_account
 from plane.authentication.adapter.error import (
     AuthenticationException,
     AUTHENTICATION_ERROR_CODES,
@@ -91,6 +92,9 @@ class ForgotPasswordSpaceEndpoint(APIView):
 
         # Get the user
         user = User.objects.filter(email=email).first()
+        # jira-parity: bots/agents can't sign in interactively; same response, but no reset link is sent
+        if is_non_interactive_account(user):
+            return Response({"message": "Check your email to reset your password"}, status=status.HTTP_200_OK)
         if user:
             # Get the reset token for user
             uidb64, token = generate_password_token(user=user)
@@ -122,7 +126,7 @@ class ResetPasswordSpaceEndpoint(View):
                     error_message="INVALID_PASSWORD_TOKEN",
                 )
                 params = exc.get_error_dict()
-                url = f"{base_host(request=request, is_space=True)}/accounts/reset-password/?{urlencode(params)}"
+                url = f"{redirect_host(request=request, is_space=True)}/accounts/reset-password/?{urlencode(params)}"
                 return HttpResponseRedirect(url)
 
             password = request.POST.get("password", False)
@@ -132,7 +136,7 @@ class ResetPasswordSpaceEndpoint(View):
                     error_code=AUTHENTICATION_ERROR_CODES["INVALID_PASSWORD"],
                     error_message="INVALID_PASSWORD",
                 )
-                url = f"{base_host(request=request, is_space=True)}/accounts/reset-password/?{urlencode(exc.get_error_dict())}"  # noqa: E501
+                url = f"{redirect_host(request=request, is_space=True)}/accounts/reset-password/?{urlencode(exc.get_error_dict())}"  # noqa: E501
                 return HttpResponseRedirect(url)
 
             # Check the password complexity
@@ -142,7 +146,7 @@ class ResetPasswordSpaceEndpoint(View):
                     error_code=AUTHENTICATION_ERROR_CODES["PASSWORD_TOO_WEAK"],
                     error_message="PASSWORD_TOO_WEAK",
                 )
-                url = f"{base_host(request=request, is_space=True)}/accounts/reset-password/?{urlencode(exc.get_error_dict())}"  # noqa: E501
+                url = f"{redirect_host(request=request, is_space=True)}/accounts/reset-password/?{urlencode(exc.get_error_dict())}"  # noqa: E501
                 return HttpResponseRedirect(url)
 
             # set_password also hashes the password that the user will get
@@ -150,11 +154,11 @@ class ResetPasswordSpaceEndpoint(View):
             user.is_password_autoset = False
             user.save()
 
-            return HttpResponseRedirect(base_host(request=request, is_space=True))
+            return HttpResponseRedirect(redirect_host(request=request, is_space=True))
         except DjangoUnicodeDecodeError:
             exc = AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["EXPIRED_PASSWORD_TOKEN"],
                 error_message="EXPIRED_PASSWORD_TOKEN",
             )
-            url = f"{base_host(request=request, is_space=True)}/accounts/reset-password/?{urlencode(exc.get_error_dict())}"  # noqa: E501
+            url = f"{redirect_host(request=request, is_space=True)}/accounts/reset-password/?{urlencode(exc.get_error_dict())}"  # noqa: E501
             return HttpResponseRedirect(url)

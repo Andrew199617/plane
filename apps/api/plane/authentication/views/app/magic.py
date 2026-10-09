@@ -15,12 +15,13 @@ from rest_framework.views import APIView
 
 # Module imports
 from plane.authentication.provider.credentials.magic_code import MagicCodeProvider
+from plane.authentication.adapter.base import is_non_interactive_account
 from plane.authentication.utils.login import user_login
 from plane.authentication.utils.redirection_path import get_redirection_path
 from plane.authentication.utils.user_auth_workflow import post_user_auth_workflow
 from plane.bgtasks.magic_link_code_task import magic_link
 from plane.license.models import Instance
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 from plane.db.models import User, Profile
 from plane.authentication.adapter.error import (
     AuthenticationException,
@@ -52,6 +53,9 @@ class MagicGenerateEndpoint(APIView):
         try:
             validate_email(email)
             adapter = MagicCodeProvider(request=request, key=email)
+            # jira-parity: bots/agents can't sign in interactively; same response, but no code is issued
+            if is_non_interactive_account(User.objects.filter(email=email).first()):
+                return Response({"key": f"magic_{email}"}, status=status.HTTP_200_OK)
             key, token = adapter.initiate()
             # If the smtp is configured send through here
             magic_link.delay(email, key, token)
@@ -76,7 +80,7 @@ class MagicSignInEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -92,7 +96,7 @@ class MagicSignInEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -117,7 +121,7 @@ class MagicSignInEndpoint(View):
                 path = str(next_path) if next_path else str(get_redirection_path(user=user))
             # redirect to referer path
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=path,
                 params={},
             )
@@ -126,7 +130,7 @@ class MagicSignInEndpoint(View):
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -148,7 +152,7 @@ class MagicSignUpEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -162,7 +166,7 @@ class MagicSignUpEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -185,7 +189,7 @@ class MagicSignUpEndpoint(View):
                 path = get_redirection_path(user=user)
             # redirect to referer path
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=path,
                 params={},
             )
@@ -194,7 +198,7 @@ class MagicSignUpEndpoint(View):
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )

@@ -769,7 +769,13 @@ class TestBotUserLoginBlocked:
     ):
         """The same block applies via a second provider (magic code), proving the
         guard sits at the shared chokepoint rather than in one provider."""
-        token = _generate_magic_token(api_client, self.BOT_EMAIL)
+        # jira-parity: magic-generate issues no code to bots, so seed one to reach the chokepoint.
+        token = "123456"
+        redis_instance().set(
+            f"magic_{self.BOT_EMAIL}",
+            json.dumps({"current_attempt": 0, "email": self.BOT_EMAIL, "token": token}),
+            ex=600,
+        )
         url = reverse("magic-sign-in")
         response = django_client.post(url, {"email": self.BOT_EMAIL, "code": token}, follow=False)
         assert response.status_code == 302

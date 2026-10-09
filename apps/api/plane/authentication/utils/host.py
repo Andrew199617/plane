@@ -18,17 +18,21 @@ def base_host(
     is_admin: bool = False,
     is_space: bool = False,
     is_app: bool = False,
+    allow_request_origin: bool = False,
 ) -> str:
     """Utility function to return host / origin from the request"""
     # Calculate the base origin from request
     base_origin = settings.WEB_URL or settings.APP_BASE_URL
 
-    # Redirect back to the origin the request came from when it is an allowed
-    # origin (e.g. localhost on the desktop vs. a LAN or VPN host name on a phone).
-    request_origin = f"{request.scheme}://{request.get_host()}"
-    origin_allowed = request_origin in getattr(settings, "CORS_ALLOWED_ORIGINS", [])
-    if origin_allowed:
-        base_origin = request_origin
+    # jira-parity: with allow_request_origin (interactive auth redirects only, never emailed or
+    # stored links) go back to the request's own origin when it is an allowed origin
+    # (e.g. localhost on the desktop vs. a LAN or VPN host name on a phone).
+    origin_allowed = False
+    if allow_request_origin:
+        request_origin = f"{request.scheme}://{request.get_host()}"
+        origin_allowed = request_origin in getattr(settings, "CORS_ALLOWED_ORIGINS", [])
+        if origin_allowed:
+            base_origin = request_origin
 
     # Admin redirection
     if is_admin:
@@ -68,6 +72,12 @@ def base_host(
             return base_origin
 
     return base_origin
+
+
+def redirect_host(request: Request | HttpRequest, **kwargs) -> str:
+    """jira-parity: base_host() for interactive auth redirect responses (may follow the request's
+    allowed origin). Emailed or stored links (reset, invite, activation) must use base_host()."""
+    return base_host(request, allow_request_origin=True, **kwargs)
 
 
 def user_ip(request: Request | HttpRequest) -> str:
