@@ -25,7 +25,10 @@ export const PowerKWorkItemCyclesMenu = observer(function PowerKWorkItemCyclesMe
   // derived values
   const projectCycleIds = workItemDetails.project_id ? getProjectCycleIds(workItemDetails.project_id) : undefined;
   const cyclesList = projectCycleIds ? projectCycleIds.map((cycleId) => getCycleById(cycleId)) : undefined;
-  const filteredCyclesList = cyclesList ? cyclesList.filter((cycle) => !!cycle) : undefined;
+  // jira-parity: closed (completed) sprints can't receive work items
+  const filteredCyclesList = cyclesList
+    ? cyclesList.filter((cycle): cycle is ICycle => !!cycle && cycle.status?.toLowerCase() !== "completed")
+    : undefined;
 
   if (!filteredCyclesList) return <Spinner />;
 

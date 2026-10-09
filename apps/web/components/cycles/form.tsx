@@ -32,6 +32,8 @@ type Props = {
   setActiveProject: (projectId: string) => void;
   data?: ICycle | null;
   isMobile?: boolean;
+  /** jira-parity: suggested name of a new sprint (`sprints/next-name/`); never overrides what the user typed */
+  defaultName?: string;
 };
 
 const defaultValues: Partial<ICycle> = {
@@ -42,7 +44,16 @@ const defaultValues: Partial<ICycle> = {
 };
 
 export function CycleForm(props: Props) {
-  const { handleFormSubmit, handleClose, status, projectId, setActiveProject, data, isMobile = false } = props;
+  const {
+    handleFormSubmit,
+    handleClose,
+    status,
+    projectId,
+    setActiveProject,
+    data,
+    isMobile = false,
+    defaultName,
+  } = props;
   // plane hooks
   const { t } = useTranslation();
   // store hooks
@@ -54,6 +65,8 @@ export function CycleForm(props: Props) {
     handleSubmit,
     control,
     reset,
+    getFieldState,
+    setValue,
   } = useForm<ICycle>({
     defaultValues: {
       project_id: projectId,
@@ -72,6 +85,12 @@ export function CycleForm(props: Props) {
       ...data,
     });
   }, [data, reset]);
+
+  // jira-parity: pre-fill a new sprint's name until the user edits it
+  useEffect(() => {
+    if (data || !defaultName || getFieldState("name").isDirty) return;
+    setValue("name", defaultName);
+  }, [data, defaultName, getFieldState, setValue]);
 
   return (
     <form onSubmit={handleSubmit((formData) => handleFormSubmit(formData))}>
@@ -124,6 +143,7 @@ export function CycleForm(props: Props) {
                       value={value}
                       onChange={onChange}
                       tabIndex={getIndex("description")}
+                      // oxlint-disable-next-line jsx_a11y/no-autofocus -- the name field opens focused in the modal
                       autoFocus
                       aria-label={t("title")}
                     />
@@ -146,7 +166,8 @@ export function CycleForm(props: Props) {
                       autoResize
                       maxRows={8}
                       name="description"
-                      placeholder={t("description")}
+                      placeholder={t("jp_sprints.goal.placeholder")}
+                      aria-label={t("jp_sprints.goal.label")}
                       value={value}
                       onChange={onChange}
                       tabIndex={getIndex("description")}
@@ -168,7 +189,6 @@ export function CycleForm(props: Props) {
                     <DateRangeSelect
                       variant="pill-md"
                       className="h-7"
-                      minDate={new Date()}
                       value={{
                         from: getDate(startDateValue) ?? null,
                         to: getDate(endDateValue) ?? null,

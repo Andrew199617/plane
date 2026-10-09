@@ -158,7 +158,6 @@ export const CycleSidebarHeader = observer(function CycleSidebarHeader(props: Pr
                   <div className="h-7">
                     <DateRangeSelect
                       variant="pill-sm"
-                      minDate={new Date()}
                       value={{
                         from: getDate(startDateValue) ?? null,
                         to: getDate(endDateValue) ?? null,

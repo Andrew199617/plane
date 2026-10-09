@@ -111,6 +111,9 @@ export interface ICycle extends TProgressSnapshot {
   project_detail: IProjectDetails;
   progress: any[];
   version: number;
+  // jira-parity sprints: set by the explicit Start / Complete sprint actions (read-only)
+  started_at?: string | null;
+  completed_at?: string | null;
 }
 
 export interface CycleIssueResponse {

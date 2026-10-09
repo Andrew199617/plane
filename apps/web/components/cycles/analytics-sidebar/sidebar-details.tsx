@@ -50,12 +50,8 @@ export const CycleSidebarDetails = observer(function CycleSidebarDetails(props: 
   const cycleOwnerDetails = cycleDetails ? getUserDetails(cycleDetails.owned_by_id) : undefined;
 
   const isEstimatePointValid = isEmpty(cycleDetails?.progress_snapshot || {})
-    ? estimateType && estimateType?.type == EEstimateSystem.POINTS
-      ? true
-      : false
-    : isEmpty(cycleDetails?.progress_snapshot?.estimate_distribution || {})
-      ? false
-      : true;
+    ? !!estimateType && estimateType?.type == EEstimateSystem.POINTS
+    : !isEmpty(cycleDetails?.progress_snapshot?.estimate_distribution || {});
 
   const issueEstimatePointCount =
     isCompleted && !isEmpty(cycleDetails?.progress_snapshot)
@@ -68,7 +64,18 @@ export const CycleSidebarDetails = observer(function CycleSidebarDetails(props: 
   return (
     <div className="flex w-full flex-col gap-5">
       {cycleDetails?.description && (
-        <TextArea size="lg" surface="inline" autoResize value={cycleDetails.description} disabled />
+        // jira-parity: the description is the sprint goal
+        <div className="flex flex-col gap-1">
+          <span className="text-13 font-medium text-tertiary">{t("jp_sprints.goal.label")}</span>
+          <TextArea
+            size="lg"
+            surface="inline"
+            autoResize
+            value={cycleDetails.description}
+            aria-label={t("jp_sprints.goal.label")}
+            disabled
+          />
+        </div>
       )}
 
       <div className="flex flex-col gap-5 pt-2.5 pb-6">

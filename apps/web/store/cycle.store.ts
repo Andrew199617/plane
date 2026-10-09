@@ -1,10 +1,10 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  * See the LICENSE file for details.
  */
 
-import { isPast, isToday } from "date-fns";
 import { sortBy, set, isEmpty } from "lodash-es";
 import { action, computed, observable, makeObservable, runInAction } from "mobx";
 import { computedFn } from "mobx-utils";
@@ -16,9 +16,12 @@ import type {
   TCycleEstimateDistribution,
   TCycleDistribution,
   TCycleEstimateType,
+  TSprintCompleteResponse,
+  TSprintMoveTarget,
+  TSprintStartPayload,
 } from "@plane/types";
 import type { DistributionUpdates } from "@plane/utils";
-import { orderCycles, shouldFilterCycle, getDate, updateDistribution } from "@plane/utils";
+import { orderCycles, shouldFilterCycle, updateDistribution } from "@plane/utils";
 // helpers
 // services
 import { CycleService } from "@/services/cycle.service";
@@ -87,6 +90,19 @@ export interface ICycleStore {
     data: Partial<ICycle>
   ) => Promise<ICycle>;
   deleteCycle: (workspaceSlug: string, projectId: string, cycleId: string) => Promise<void>;
+  // jira-parity sprints lifecycle
+  startCycle: (
+    workspaceSlug: string,
+    projectId: string,
+    cycleId: string,
+    payload: TSprintStartPayload
+  ) => Promise<ICycle>;
+  completeCycle: (
+    workspaceSlug: string,
+    projectId: string,
+    cycleId: string,
+    moveTo: TSprintMoveTarget
+  ) => Promise<TSprintCompleteResponse>;
   // favorites
   addCycleToFavorites: (workspaceSlug: string, projectId: string, cycleId: string) => Promise<any>;
   removeCycleFromFavorites: (workspaceSlug: string, projectId: string, cycleId: string) => Promise<void>;
@@ -143,6 +159,8 @@ export class CycleStore implements ICycleStore {
       fetchCycleDetails: action,
       updateCycleDetails: action,
       deleteCycle: action,
+      startCycle: action,
+      completeCycle: action,
       addCycleToFavorites: action,
       removeCycleFromFavorites: action,
       archiveCycle: action,
@@ -177,14 +195,10 @@ export class CycleStore implements ICycleStore {
   get currentProjectCompletedCycleIds() {
     const projectId = this.rootStore.router.projectId;
     if (!projectId || !this.fetchedMap[projectId]) return null;
-    let completedCycles = Object.values(this.cycleMap ?? {}).filter((c) => {
-      const endDate = getDate(c.end_date);
-      const hasEndDatePassed = endDate && isPast(endDate);
-      const isEndDateToday = endDate && isToday(endDate);
-      return (
-        c.project_id === projectId && ((hasEndDatePassed && !isEndDateToday) || c.status?.toLowerCase() === "completed")
-      );
-    });
+    // jira-parity sprints: the server status (state-based, never date-based) is the single source of truth
+    let completedCycles = Object.values(this.cycleMap ?? {}).filter(
+      (c) => c.project_id === projectId && c.status?.toLowerCase() === "completed"
+    );
     completedCycles = sortBy(completedCycles, [(c) => c.sort_order]);
     const completedCycleIds = completedCycles.map((c) => c.id);
     return completedCycleIds;
@@ -196,13 +210,10 @@ export class CycleStore implements ICycleStore {
   get currentProjectIncompleteCycleIds() {
     const projectId = this.rootStore.router.projectId;
     if (!projectId || !this.fetchedMap[projectId]) return null;
-    let incompleteCycles = Object.values(this.cycleMap ?? {}).filter((c) => {
-      const endDate = getDate(c.end_date);
-      const hasEndDatePassed = endDate && isPast(endDate);
-      return (
-        c.project_id === projectId && !hasEndDatePassed && !c?.archived_at && c.status?.toLowerCase() !== "completed"
-      );
-    });
+    // jira-parity sprints: state-based (future + active sprints), whatever their planned dates
+    let incompleteCycles = Object.values(this.cycleMap ?? {}).filter(
+      (c) => c.project_id === projectId && !c?.archived_at && c.status?.toLowerCase() !== "completed"
+    );
     incompleteCycles = sortBy(incompleteCycles, [(c) => c.sort_order]);
     const incompleteCycleIds = incompleteCycles.map((c) => c.id);
     return incompleteCycleIds;
@@ -625,6 +636,92 @@ export class CycleStore implements ICycleStore {
         if (this.rootStore.favorite.entityMap[cycleId]) this.rootStore.favorite.removeFavoriteFromStore(cycleId);
       });
     });
+
+  /**
+   * @description jira-parity: starts a future sprint (it becomes the project's active sprint)
+   * @param workspaceSlug
+   * @param projectId
+   * @param cycleId
+   * @param payload name, sprint goal (description) and the start / end dates
+   * @returns the started cycle
+   */
+  startCycle = async (workspaceSlug: string, projectId: string, cycleId: string, payload: TSprintStartPayload) => {
+    const response = await this.cycleService.startCycle(workspaceSlug, projectId, cycleId, payload);
+    runInAction(() => {
+      set(this.cycleMap, [response.id], { ...this.cycleMap[response.id], ...response });
+      set(this.activeCycleIdMap, [response.id], true);
+    });
+    void this.refreshAfterSprintTransition(workspaceSlug, projectId, [response.id]);
+    return response;
+  };
+
+  /**
+   * @description jira-parity: completes the active sprint and moves its open work items
+   * @param workspaceSlug
+   * @param projectId
+   * @param cycleId
+   * @param moveTo "backlog", "new" (a new future sprint) or the id of a future sprint
+   * @returns the complete response (closed cycle, moved count, target, new sprint)
+   */
+  completeCycle = async (workspaceSlug: string, projectId: string, cycleId: string, moveTo: TSprintMoveTarget) => {
+    const response = await this.cycleService.completeCycle(workspaceSlug, projectId, cycleId, { move_to: moveTo });
+    const targetCycleId = response.moved_to?.id ?? null;
+    runInAction(() => {
+      if (response.cycle?.id) set(this.cycleMap, [response.cycle.id], { ...this.cycleMap[cycleId], ...response.cycle });
+      delete this.activeCycleIdMap[cycleId];
+      if (response.new_sprint?.id) set(this.cycleMap, [response.new_sprint.id], response.new_sprint);
+      // keep the loaded work items in sync: open ones (backlog / unstarted / started) left the closed sprint
+      if (response.moved_issues > 0) {
+        const { issuesMap, updateIssue } = this.rootStore.issue.issues;
+        const stateMap = this.rootStore.state.stateMap;
+        Object.values(issuesMap).forEach((issue) => {
+          if (issue?.cycle_id !== cycleId) return;
+          const group = issue.state_id ? stateMap[issue.state_id]?.group : undefined;
+          if (group === "backlog" || group === "unstarted" || group === "started")
+            updateIssue(issue.id, { cycle_id: targetCycleId });
+        });
+      }
+    });
+    void this.refreshAfterSprintTransition(
+      workspaceSlug,
+      projectId,
+      [cycleId, targetCycleId].filter((id): id is string => !!id)
+    );
+    return response;
+  };
+
+  /**
+   * @description jira-parity: re-syncs what a sprint start / completion changed without toggling the list loader:
+   * every project cycle (statuses, counts), the details of the affected cycles and the open cycle's work items.
+   */
+  private refreshAfterSprintTransition = async (workspaceSlug: string, projectId: string, cycleIds: string[]) => {
+    try {
+      const cycles = await this.cycleService.getCyclesWithParams(workspaceSlug, projectId);
+      runInAction(() => {
+        cycles.forEach((cycle) => {
+          set(this.cycleMap, [cycle.id], { ...this.cycleMap[cycle.id], ...cycle });
+          if (cycle.status?.toLowerCase() === "current") set(this.activeCycleIdMap, [cycle.id], true);
+          else delete this.activeCycleIdMap[cycle.id];
+        });
+        set(this.fetchedMap, projectId, true);
+      });
+    } catch (error) {
+      console.error("Failed to refresh sprints after a sprint transition", error);
+    }
+    // details + per-state-group counts (the progress endpoint) of the affected cycles
+    await Promise.allSettled(
+      cycleIds.flatMap((id) => [
+        this.fetchCycleDetails(workspaceSlug, projectId, id),
+        this.fetchActiveCycleProgress(workspaceSlug, projectId, id),
+      ])
+    );
+    const routeCycleId = this.rootStore.router.cycleId;
+    if (routeCycleId && cycleIds.includes(routeCycleId)) {
+      await this.rootStore.issue.cycleIssues
+        .fetchIssuesWithExistingPagination(workspaceSlug, projectId, "mutation", routeCycleId)
+        .catch(() => undefined);
+    }
+  };
 
   /**
    * @description adds a cycle to favorites

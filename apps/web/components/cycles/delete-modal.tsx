@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -50,7 +51,7 @@ export const CycleDeleteModal = observer(function CycleDeleteModal(props: ICycle
           setToast({
             type: "success",
             title: "Success!",
-            message: "Cycle deleted successfully.",
+            message: "Sprint deleted successfully.",
           });
         })
         .catch((errors) => {
@@ -82,12 +83,12 @@ export const CycleDeleteModal = observer(function CycleDeleteModal(props: ICycle
       handleSubmit={formSubmit}
       isSubmitting={loader}
       isOpen={isOpen}
-      title="Delete cycle"
+      title="Delete sprint"
       content={
         <>
-          Are you sure you want to delete cycle{' "'}
+          Are you sure you want to delete sprint{' "'}
           <span className="font-medium break-words text-primary">{cycle?.name}</span>
-          {'"'}? All of the data related to the cycle will be permanently removed. This action cannot be undone.
+          {'"'}? All of the data related to the sprint will be permanently removed. This action cannot be undone.
         </>
       }
     />

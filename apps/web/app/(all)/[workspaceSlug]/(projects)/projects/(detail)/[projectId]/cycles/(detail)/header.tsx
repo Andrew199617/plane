@@ -32,6 +32,7 @@ import { WorkItemsModal } from "@/components/analytics/work-items/modal";
 import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
 import { CycleQuickActions } from "@/components/cycles/quick-actions";
 import { CycleSelect } from "@/components/dropdowns/cycle/cycle-select";
+import { SprintActionButtons } from "@/components/jira-parity/sprints/sprint-action-buttons";
 import {
   DisplayFiltersSelection,
   FiltersDropdown,
@@ -139,7 +140,7 @@ export const CycleIssuesHeader = observer(function CycleIssuesHeader() {
               <Breadcrumbs.Item
                 component={
                   <BreadcrumbLink
-                    label="Cycles"
+                    label="Sprints"
                     href={`/${workspaceSlug}/projects/${projectId}/cycles/`}
                     icon={<CyclesOutline className="h-4 w-4 text-tertiary" />}
                   />
@@ -164,7 +165,7 @@ export const CycleIssuesHeader = observer(function CycleIssuesHeader() {
             </Breadcrumbs>
             {workItemsCount && workItemsCount > 0 ? (
               <Tooltip
-                label={`There are ${workItemsCount} ${workItemsCount > 1 ? "work items" : "work item"} in this cycle`}
+                label={`There are ${workItemsCount} ${workItemsCount > 1 ? "work items" : "work item"} in this sprint`}
                 layout="stacked"
                 side="bottom"
                 disabled={isMobile}
@@ -224,6 +225,13 @@ export const CycleIssuesHeader = observer(function CycleIssuesHeader() {
               />
             </FiltersDropdown>
 
+            {/* jira-parity: Start sprint (future) / Complete sprint (active); Admin / Member only */}
+            <SprintActionButtons
+              workspaceSlug={workspaceSlug}
+              projectId={projectId}
+              cycleId={cycleId}
+              className="flex"
+            />
             {canUserCreateIssue && (
               <>
                 <span className="hidden @4xl:flex">

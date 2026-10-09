@@ -1,0 +1,62 @@
+{
+  "jp_sprints": {
+    "actions": {
+      "start": "Start sprint",
+      "complete": "Complete sprint",
+      "start_blocked": "{name} is already active. Complete it before starting another sprint.",
+      "start_blocked_unknown": "Another sprint is already active. Complete it before starting another sprint."
+    },
+    "duration": {
+      "one_week": "1 week",
+      "two_weeks": "2 weeks",
+      "three_weeks": "3 weeks",
+      "four_weeks": "4 weeks",
+      "custom": "Custom"
+    },
+    "goal": {
+      "label": "Sprint goal",
+      "placeholder": "Sprint goal"
+    },
+    "start_modal": {
+      "title": "Start sprint",
+      "work_item_count": "{count, plural, one {# work item will be included in this sprint.} other {# work items will be included in this sprint.}}",
+      "name": "Sprint name",
+      "name_required": "Sprint name is required",
+      "name_max_length": "Sprint name must be less than 255 characters",
+      "duration": "Duration",
+      "start_date": "Start date",
+      "end_date": "End date",
+      "select_date": "Select a date",
+      "end_date_hint": "Picking an end date switches the duration to Custom.",
+      "dates_required": "Pick a start date and an end date",
+      "end_before_start": "The end date can't be before the start date",
+      "goal_placeholder": "What do you want to achieve in this sprint?",
+      "cancel": "Cancel",
+      "submit": "Start",
+      "submitting": "Starting"
+    },
+    "complete_modal": {
+      "title": "Complete {name}",
+      "summary": "{done, plural, one {# work item done} other {# work items done}}, {open} open",
+      "all_done": "All work items in this sprint are done.",
+      "move_to": "Move open work items to",
+      "move_to_hint": "Done work items stay in this sprint.",
+      "new_sprint": "New sprint",
+      "backlog": "Backlog",
+      "cancel": "Cancel",
+      "submit": "Complete sprint",
+      "submitting": "Completing"
+    },
+    "toasts": {
+      "started_title": "Sprint started",
+      "started": "{name} is now the active sprint.",
+      "completed_title": "Sprint completed",
+      "completed": "{name} has been completed.",
+      "completed_moved": "{name} has been completed. {count, plural, one {# open work item} other {# open work items}} moved to {target}.",
+      "completed_moved_backlog": "{name} has been completed. {count, plural, one {# open work item} other {# open work items}} moved to the backlog.",
+      "error_title": "Error!",
+      "start_error": "Couldn't start the sprint. Please try again.",
+      "complete_error": "Couldn't complete the sprint. Please try again."
+    }
+  }
+}

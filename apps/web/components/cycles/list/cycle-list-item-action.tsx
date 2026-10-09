@@ -31,6 +31,7 @@ import { getDate, getFileURL, generateQueryParams } from "@plane/utils";
 // components
 import { ButtonAvatars } from "@/components/dropdowns/member/avatar";
 import { MergedDateDisplay } from "@/components/dropdowns/merged-date";
+import { SprintActionButtons } from "@/components/jira-parity/sprints/sprint-action-buttons";
 // hooks
 import { useCycle } from "@/hooks/store/use-cycle";
 import { useMember } from "@/hooks/store/use-member";
@@ -242,7 +243,6 @@ export const CycleListItemAction = observer(function CycleListItemAction(props: 
             <DateRangeSelect
               variant="select-ghost-md"
               className="flex h-6 w-full cursor-auto items-center gap-1.5 rounded-sm p-0 text-11 text-tertiary [&>div]:hover:bg-transparent"
-              minDate={new Date()}
               value={{
                 from: getDate(cycleDetails.start_date) ?? null,
                 to: getDate(cycleDetails.end_date) ?? null,
@@ -282,6 +282,8 @@ export const CycleListItemAction = observer(function CycleListItemAction(props: 
           </div>
         </Tooltip>
       )}
+      {/* jira-parity: Start sprint (future) / Complete sprint (active) */}
+      <SprintActionButtons workspaceSlug={workspaceSlug} projectId={projectId} cycleId={cycleId} />
       {isEditingAllowed && !cycleDetails.archived_at && (
         <FavoriteStar
           onClick={(e) => {

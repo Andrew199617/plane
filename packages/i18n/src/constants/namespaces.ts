@@ -42,6 +42,7 @@ export const NAMESPACES = [
   "jp-project-categories",
   "jp-time-tracking",
   "jp-priorities",
+  "jp-sprints",
 ] as const;
 
 export type TNamespace = (typeof NAMESPACES)[number];

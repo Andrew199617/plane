@@ -65,7 +65,7 @@ export const ActiveCycleProgress = observer(function ActiveCycleProgress(props: 
             size="md"
             variant="brand"
             showValue={false}
-            aria-label="Cycle progress"
+            aria-label="Sprint progress"
           />
         )}
       </div>
@@ -75,7 +75,9 @@ export const ActiveCycleProgress = observer(function ActiveCycleProgress(props: 
           {Object.keys(groupedIssues).map((group, index) => (
             <>
               {groupedIssues[group] > 0 && (
+                // oxlint-disable-next-line react/no-array-index-key -- state groups have no id
                 <div key={index}>
+                  {/* oxlint-disable-next-line jsx_a11y/click-events-have-key-events, jsx_a11y/no-static-element-interactions */}
                   <div
                     className="flex cursor-pointer items-center justify-between gap-2 text-13"
                     onClick={() => {

@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -19,6 +20,7 @@ import { ContextMenu, getRenderableItems, resolveItemVariant } from "@plane/bloc
 import { copyUrlToClipboard } from "@plane/utils";
 // hooks
 import { useCycleMenuItems } from "@/components/common/quick-actions-helper";
+import { useSprintActions } from "@/components/jira-parity/sprints/use-sprint-actions";
 import { useCycle } from "@/hooks/store/use-cycle";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
@@ -86,7 +88,12 @@ export const CycleQuickActions = observer(function CycleQuickActions(props: Prop
         });
       });
 
+  // jira-parity: Start / Complete sprint
+  const sprintActions = useSprintActions({ workspaceSlug, projectId, cycleId });
+
   const menuResult = useCycleMenuItems({
+    sprintItems: sprintActions.menuItems,
+    archiveDisabledHint: t("project_cycles.only_completed_cycles_can_be_archived"),
     cycleDetails: cycleDetails ?? undefined,
     workspaceSlug,
     projectId,
@@ -138,6 +145,7 @@ export const CycleQuickActions = observer(function CycleQuickActions(props: Prop
             projectId={projectId}
           />
           {additionalModals}
+          {sprintActions.modals}
         </div>
       )}
       <ContextMenu parentRef={parentRef} items={CONTEXT_MENU_ITEMS} />

@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -5,10 +6,9 @@
  */
 
 import { useEffect, useState } from "react";
-import { mutate } from "swr";
 // types
 import { setToast } from "@plane/blocks/toast";
-import type { CycleDateCheckData, ICycle, TCycleTabOptions } from "@plane/types";
+import type { ICycle, TCycleTabOptions } from "@plane/types";
 // ui
 import { Dialog, DialogContent } from "@makeplane/propel/components/dialog";
 // hooks
@@ -37,6 +37,7 @@ export function CycleCreateUpdateModal(props: CycleModalProps) {
   const { isOpen, handleClose, data, workspaceSlug, projectId } = props;
   // states
   const [activeProject, setActiveProject] = useState<string | null>(null);
+  const [nextSprintName, setNextSprintName] = useState<string | undefined>(undefined);
   // store hooks
   const { workspaceProjectIds } = useProject();
   const { createCycle, updateCycleDetails } = useCycle();
@@ -48,29 +49,20 @@ export function CycleCreateUpdateModal(props: CycleModalProps) {
     if (!workspaceSlug || !projectId) return;
 
     const selectedProjectId = payload.project_id ?? projectId.toString();
+    // jira-parity: a new sprint is always a future sprint (it only becomes active via "Start sprint")
     await createCycle(workspaceSlug, selectedProjectId, payload)
       .then((_res) => {
-        // mutate when the current cycle creation is active
-        if (payload.start_date && payload.end_date) {
-          const currentDate = new Date();
-          const cycleStartDate = new Date(payload.start_date);
-          const cycleEndDate = new Date(payload.end_date);
-          if (currentDate >= cycleStartDate && currentDate <= cycleEndDate) {
-            mutate(`PROJECT_ACTIVE_CYCLE_${selectedProjectId}`);
-          }
-        }
-
         setToast({
           type: "success",
           title: "Success!",
-          message: "Cycle created successfully.",
+          message: "Sprint created successfully.",
         });
       })
       .catch((err) => {
         setToast({
           type: "error",
           title: "Error!",
-          message: err?.detail ?? "Error in creating cycle. Please try again.",
+          message: err?.detail ?? "Error in creating sprint. Please try again.",
         });
       });
   };
@@ -84,26 +76,16 @@ export function CycleCreateUpdateModal(props: CycleModalProps) {
         setToast({
           type: "success",
           title: "Success!",
-          message: "Cycle updated successfully.",
+          message: "Sprint updated successfully.",
         });
       })
       .catch((err) => {
         setToast({
           type: "error",
           title: "Error!",
-          message: err?.detail ?? "Error in updating cycle. Please try again.",
+          message: err?.detail ?? "Error in updating sprint. Please try again.",
         });
       });
-  };
-
-  const dateChecker = async (projectId: string, payload: CycleDateCheckData) => {
-    let status = false;
-
-    await cycleService.cycleDateCheck(workspaceSlug, projectId, payload).then((res) => {
-      status = res.status;
-    });
-
-    return status;
   };
 
   const handleFormSubmit = async (formData: Partial<ICycle>) => {
@@ -115,46 +97,36 @@ export function CycleCreateUpdateModal(props: CycleModalProps) {
       end_date: renderFormattedPayloadDate(formData.end_date) ?? null,
     };
 
-    let isDateValid: boolean = true;
-
-    if (payload.start_date && payload.end_date) {
-      if (data?.id) {
-        // Update existing cycle - only check dates if they've changed
-        const originalStartDate = renderFormattedPayloadDate(data.start_date) ?? null;
-        const originalEndDate = renderFormattedPayloadDate(data.end_date) ?? null;
-        const hasDateChanged = payload.start_date !== originalStartDate || payload.end_date !== originalEndDate;
-
-        if (hasDateChanged) {
-          isDateValid = await dateChecker(projectId, {
-            start_date: payload.start_date,
-            end_date: payload.end_date,
-            cycle_id: data.id,
-          });
-        }
-      } else {
-        // Create new cycle - always check dates
-        isDateValid = await dateChecker(projectId, {
-          start_date: payload.start_date,
-          end_date: payload.end_date,
-        });
-      }
-    }
-
-    if (isDateValid) {
-      if (data?.id) await handleUpdateCycle(data.id, payload);
-      else {
-        await handleCreateCycle(payload).then(() => {
-          setCycleTab("all");
-        });
-      }
-      handleClose();
-    } else
-      setToast({
-        type: "error",
-        title: "Error!",
-        message: "You already have a cycle on the given dates, if you want to create a draft cycle, remove the dates.",
+    // jira-parity: overlapping sprint dates are allowed (no date-check round trip); dates stay optional
+    if (data?.id) await handleUpdateCycle(data.id, payload);
+    else {
+      await handleCreateCycle(payload).then(() => {
+        setCycleTab("all");
       });
+    }
+    handleClose();
   };
+
+  // jira-parity: a new sprint's name continues the project's "<series> Sprint N" naming
+  useEffect(() => {
+    if (!isOpen || data || !workspaceSlug || !activeProject) {
+      setNextSprintName(undefined);
+      return;
+    }
+    let isCurrent = true;
+    const fetchNextSprintName = async () => {
+      try {
+        const response = await cycleService.getNextSprintName(workspaceSlug, activeProject);
+        if (isCurrent && response?.name) setNextSprintName(response.name);
+      } catch {
+        // no suggestion: the name field simply stays empty
+      }
+    };
+    void fetchNextSprintName();
+    return () => {
+      isCurrent = false;
+    };
+  }, [isOpen, data, workspaceSlug, activeProject]);
 
   useEffect(() => {
     // if modal is closed, reset active project to null
@@ -196,6 +168,7 @@ export function CycleCreateUpdateModal(props: CycleModalProps) {
           setActiveProject={setActiveProject}
           data={data}
           isMobile={isMobile}
+          defaultName={nextSprintName}
         />
       </DialogContent>
     </Dialog>
