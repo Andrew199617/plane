@@ -157,6 +157,10 @@ if (-not $BackendOnly) {
   }
   $env:TURBO_TELEMETRY_DISABLED = '1'
   $env:DO_NOT_TRACK = '1'
+  # web-dev serves the app same-origin: it proxies /api, /auth, /static, /live and /uploads (MinIO :9300) and the
+  # client uses relative URLs (apps/web/vite.config.ts; only read by the web dev server, never by builds).
+  $env:PLANE_WEB_DEV_PROXY = '1'
+  $env:PLANE_WEB_UPLOADS_PROXY_TARGET = 'http://127.0.0.1:9300'
   if (-not (Test-Path (Join-Path $Root 'packages\utils\dist'))) {
     Write-Step 'Building workspace packages (first run)'
     Push-Location $Root; try { & pnpm turbo run build --filter=./packages/*; if ($LASTEXITCODE -ne 0) { throw 'package build failed' } } finally { Pop-Location }
