@@ -69,7 +69,7 @@ class ModuleWriteSerializer(BaseSerializer):
         if module_name:
             # Lookup for the module name in the module table for that project
             if Module.objects.filter(name=module_name, project=project).exists():
-                raise serializers.ValidationError({"error": "Module with this name already exists"})
+                raise serializers.ValidationError({"error": "A release with this name already exists"})
 
         module = Module.objects.create(**validated_data, project=project)
         if members is not None:
@@ -97,7 +97,7 @@ class ModuleWriteSerializer(BaseSerializer):
         if module_name:
             # Lookup for the module name in the module table for that project
             if Module.objects.filter(name=module_name, project=instance.project).exclude(id=instance.id).exists():
-                raise serializers.ValidationError({"error": "Module with this name already exists"})
+                raise serializers.ValidationError({"error": "A release with this name already exists"})
 
         if members is not None:
             ModuleMember.objects.filter(module=instance).delete()

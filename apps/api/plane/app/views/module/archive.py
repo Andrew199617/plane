@@ -543,11 +543,7 @@ class ModuleArchiveUnarchiveEndpoint(BaseAPIView):
 
     def post(self, request, slug, project_id, module_id):
         module = Module.objects.get(pk=module_id, project_id=project_id, workspace__slug=slug)
-        if module.status not in ["completed", "cancelled"]:
-            return Response(
-                {"error": "Only completed or cancelled modules can be archived"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+        # jira-parity: releases can be archived whatever their status (Jira fix versions)
         module.archived_at = timezone.now()
         module.save()
         UserFavorite.objects.filter(

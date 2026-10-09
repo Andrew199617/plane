@@ -412,7 +412,7 @@ class ModuleViewSet(BaseViewSet):
         )
 
         if not queryset.exists():
-            return Response({"error": "Module not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Release not found"}, status=status.HTTP_404_NOT_FOUND)
 
         estimate_type = Project.objects.filter(
             workspace__slug=slug,
@@ -656,13 +656,13 @@ class ModuleViewSet(BaseViewSet):
 
         if not current_module:
             return Response(
-                {"error": "Module not found"},
+                {"error": "Release not found"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
         if current_module.archived_at:
             return Response(
-                {"error": "Archived module cannot be updated"},
+                {"error": "Archived releases can't be updated"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         current_instance = json.dumps(ModuleSerializer(current_module).data, cls=DjangoJSONEncoder)
