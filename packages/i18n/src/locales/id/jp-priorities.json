@@ -1,9 +1,9 @@
 {
   "jp_priorities": {
-    "highest": "Highest",
-    "high": "High",
-    "medium": "Medium",
-    "low": "Low",
-    "lowest": "Lowest"
+    "highest": "Tertinggi",
+    "high": "Tinggi",
+    "medium": "Sedang",
+    "low": "Rendah",
+    "lowest": "Terendah"
   }
 }

@@ -1,9 +1,9 @@
 {
   "jp_priorities": {
-    "highest": "Highest",
-    "high": "High",
-    "medium": "Medium",
-    "low": "Low",
-    "lowest": "Lowest"
+    "highest": "Höchste",
+    "high": "Hoch",
+    "medium": "Mittel",
+    "low": "Niedrig",
+    "lowest": "Niedrigste"
   }
 }

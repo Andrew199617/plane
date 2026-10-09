@@ -1,9 +1,9 @@
 {
   "jp_priorities": {
-    "highest": "Highest",
-    "high": "High",
-    "medium": "Medium",
-    "low": "Low",
-    "lowest": "Lowest"
+    "highest": "En yüksek",
+    "high": "Yüksek",
+    "medium": "Orta",
+    "low": "Düşük",
+    "lowest": "En düşük"
   }
 }

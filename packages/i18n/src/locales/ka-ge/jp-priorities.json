@@ -1,9 +1,9 @@
 {
   "jp_priorities": {
-    "highest": "Highest",
-    "high": "High",
-    "medium": "Medium",
-    "low": "Low",
-    "lowest": "Lowest"
+    "highest": "უმაღლესი",
+    "high": "მაღალი",
+    "medium": "საშუალო",
+    "low": "დაბალი",
+    "lowest": "უდაბლესი"
   }
 }

@@ -1,9 +1,9 @@
 {
   "jp_priorities": {
-    "highest": "Highest",
-    "high": "High",
-    "medium": "Medium",
-    "low": "Low",
-    "lowest": "Lowest"
+    "highest": "Cao nhất",
+    "high": "Cao",
+    "medium": "Trung bình",
+    "low": "Thấp",
+    "lowest": "Thấp nhất"
   }
 }
