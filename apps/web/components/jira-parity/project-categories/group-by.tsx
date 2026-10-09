@@ -57,10 +57,25 @@ export const getStateNameGroupByColumns = (_params: TGetColumns): IGroupByColumn
   );
 };
 
+/** Id of the state named `stateName` in the project (a "state__name" column resolved for one work item). */
+export const getProjectStateIdByName = (projectId: string | null | undefined, stateName: string): string | undefined =>
+  findProjectStateByName(Object.values(store.state.stateMap ?? {}), projectId, stateName)?.id;
+
+/** Thrown by resolveStateNameGroupDrop; useGroupIssuesDragNDrop shows it as a translated toast. */
+export class StateNameDropError extends Error {
+  stateName: string;
+
+  constructor(stateName: string) {
+    super(`No state named "${stateName}" in the work item's project`);
+    this.name = "StateNameDropError";
+    this.stateName = stateName;
+  }
+}
+
 /**
  * Called by handleGroupDragDrop (issue-layouts/utils.tsx) before the work item is updated: when the board is grouped
  * (or sub-grouped) by state NAME, the dropped column's name is resolved to the state with that name in the work
- * item's own project. Throws (shown as a toast) when that project has no such state.
+ * item's own project. Throws a StateNameDropError when that project has no such state.
  */
 export const resolveStateNameGroupDrop = (
   updatedIssue: Partial<TIssue>,
@@ -82,14 +97,7 @@ export const resolveStateNameGroupDrop = (
 
   if (!targetStateName) return updatedIssue;
 
-  const targetState = findProjectStateByName(
-    Object.values(store.state.stateMap ?? {}),
-    sourceIssue.project_id,
-    targetStateName
-  );
-  if (!targetState) {
-    const message = `"${targetStateName}" is not a status of this work item's project`;
-    throw Object.assign(new Error(message), { detail: message });
-  }
-  return { ...updatedIssue, state_id: targetState.id };
+  const targetStateId = getProjectStateIdByName(sourceIssue.project_id, targetStateName);
+  if (!targetStateId) throw new StateNameDropError(targetStateName);
+  return { ...updatedIssue, state_id: targetStateId };
 };

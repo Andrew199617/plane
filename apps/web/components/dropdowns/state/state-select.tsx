@@ -17,6 +17,7 @@ import { useTranslation } from "@plane/i18n";
 import type { IState, TPaginatedResponse } from "@plane/types";
 // components
 import { getJiraParityForbiddenMessage } from "@/components/jira-parity/workflows/errors";
+import { hasTransitionsForState } from "@/components/jira-parity/workflows/helpers";
 // hooks
 import { useProjectState } from "@/hooks/store/use-project-state";
 import { useIsAgent } from "@/hooks/store/jira-parity/use-is-agent";
@@ -69,7 +70,7 @@ const toOption = (state: IState): StateOption => ({
  * as one page.
  *
  * Jira-parity: `allowedStateIds` comes from the current user's allowed transitions (workflows store),
- * using `value` as the from-state.
+ * using the work item's persisted state (else `value`) as the from-state.
  */
 export const StateSelect = observer(function StateSelect(props: StateSelectWebProps) {
   const {
@@ -101,18 +102,24 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
   } = useIssueDetail();
   const isAgent = useIsAgent(projectId);
   const workItem = workItemId ? getIssueById(workItemId) : undefined;
-  const allowedStateIds = disableWorkflowFilter ? null : getAllowedStateIds(projectId, value, isWorkItemEpic(workItem));
+  // the persisted state is the from-state (a form value may already hold the picked target)
+  const fromStateId = workItem && workItem.project_id === projectId ? (workItem.state_id ?? value) : value;
+  const allowedStateIds = disableWorkflowFilter
+    ? null
+    : getAllowedStateIds(projectId, fromStateId, isWorkItemEpic(workItem));
   const canAgentChangeState =
     isAgent && !!workItem && !workItem.archived_at && (allowedStateIds === null || allowedStateIds.size > 1);
   const isDisabled = !!disabled && !canAgentChangeState;
-  const hasMyTransitions = !!getMyTransitions(projectId);
+  const myTransitions = getMyTransitions(projectId);
+  // missing, or loaded before the from-state was created
+  const needsMyTransitions = !myTransitions || (!!fromStateId && !hasTransitionsForState(myTransitions, fromStateId));
 
   // jira-parity: agents only get an enabled dropdown once their transitions are known, so load them up
   // front on surfaces outside the project pages (workspace views, boards); requests are shared per project.
   useEffect(() => {
-    if (!isAgent || disableWorkflowFilter || hasMyTransitions || !workspaceSlug || !projectId) return;
-    void ensureMyTransitions(workspaceSlug.toString(), projectId);
-  }, [isAgent, disableWorkflowFilter, hasMyTransitions, workspaceSlug, projectId, ensureMyTransitions]);
+    if (!isAgent || disableWorkflowFilter || !needsMyTransitions || !workspaceSlug || !projectId) return;
+    void ensureMyTransitions(workspaceSlug.toString(), projectId, fromStateId);
+  }, [isAgent, disableWorkflowFilter, needsMyTransitions, workspaceSlug, projectId, fromStateId, ensureMyTransitions]);
 
   // jira-parity: callers whose update promise rejects (list/kanban chips, spreadsheet) get a toast; the
   // issue store has already rolled the optimistic change back.
@@ -150,10 +157,8 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
         await fetchProjectStates(workspaceSlug.toString(), projectId);
         stateIds = getProjectStateIds(projectId);
       }
-      // jira-parity: outside project pages the transitions may not be loaded yet
-      if (!disableWorkflowFilter && !getMyTransitions(projectId)) {
-        await ensureMyTransitions(workspaceSlug.toString(), projectId);
-      }
+      // jira-parity: outside project pages the transitions may not be loaded yet (or predate the from-state)
+      if (!disableWorkflowFilter) await ensureMyTransitions(workspaceSlug.toString(), projectId, fromStateId);
       const query = search?.trim().toLowerCase();
       const results = (stateIds ?? [])
         .map((stateId) => getStateById(stateId))
@@ -169,7 +174,7 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
       fetchProjectStates,
       getStateById,
       disableWorkflowFilter,
-      getMyTransitions,
+      fromStateId,
       ensureMyTransitions,
     ]
   );

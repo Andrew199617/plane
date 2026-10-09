@@ -65,7 +65,8 @@
       "no_projects_description": "Assign projects to this category in Settings > Project categories to fill its board.",
       "not_found_title": "Board not found",
       "not_found_description": "This project category does not exist anymore or you cannot access it.",
-      "go_to_projects": "Go to projects"
+      "go_to_projects": "Go to projects",
+      "state_not_in_project": "\"{state}\" is not a status of this work item's project"
     },
     "sidebar": {
       "boards": "Boards",

@@ -8,6 +8,7 @@ import { useCallback, useState } from "react";
 import { useParams } from "next/navigation";
 import type { TIssueGroupByOptions } from "@plane/types";
 // jira-parity
+import { getProjectStateIdByName } from "@/components/jira-parity/project-categories/group-by";
 import { isWorkflowDropAllowed as isDropAllowedByWorkflow } from "@/components/jira-parity/workflows/helpers";
 import { useWorkflows } from "@/hooks/store/jira-parity/use-workflows";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
@@ -56,6 +57,7 @@ export const useWorkFlowFDragNDrop = (groupBy: TIssueGroupByOptions | undefined,
         destinationSubGroupId,
         isStateOnlyUser,
         canTransition: (fromStateId, toStateId) => canTransition(projectId, fromStateId, toStateId, isEpic),
+        getStateIdByName: (stateName) => getProjectStateIdByName(projectId, stateName),
       });
     },
     [groupBy, subGroupBy, workspaceSlug, getIssueById, getStateById, isAgentInProject, isWorkItemEpic, canTransition]

@@ -24,6 +24,20 @@ export const getAllowedTargetStateIds = (
   return new Set([fromStateId, ...(transitions?.[fromStateId] ?? [])]);
 };
 
+/**
+ * Whether the loaded transitions know `fromStateId`. The server lists every state of the project, so a missing
+ * from-state was created after the load (refetch instead of treating it as "no transitions").
+ */
+export const hasTransitionsForState = (myTransitions: TMyStateTransitions, fromStateId: string): boolean =>
+  !myTransitions.restricted || fromStateId in (myTransitions.transitions ?? {});
+
+/** Group-by key whose columns are state NAMES shared across projects (category master boards). */
+const STATE_NAME_GROUP_BY = "state__name";
+
+/** Whether a group-by key's columns are states (by id, or by name across projects). */
+const isStateGroupBy = (groupBy: string | null | undefined): boolean =>
+  groupBy === "state" || groupBy === STATE_NAME_GROUP_BY;
+
 export type TWorkflowDropContext = {
   /** Display grouping of the layout. */
   groupBy: string | null | undefined;
@@ -36,12 +50,18 @@ export type TWorkflowDropContext = {
   isStateOnlyUser: boolean;
   /** Workflow check for a state change (from -> to). */
   canTransition: (fromStateId: string, toStateId: string) => boolean;
+  /**
+   * Resolves a "state__name" column (a state NAME) to the state with that name in the work item's project.
+   * Unresolved columns are left to the drop handler (it reports a missing state) and the server.
+   */
+  getStateIdByName?: (stateName: string) => string | undefined;
 };
 
 /**
  * Decides whether a kanban/list drop is allowed by the workflow.
  * - Non-state groupings are unaffected for regular users.
  * - State-only users (agents) may only change the state: any other grouping change, or a pure reorder, is blocked.
+ * - "state" and "state__name" (category master boards) groupings are both state changes.
  */
 export const isWorkflowDropAllowed = (context: TWorkflowDropContext): boolean => {
   const {
@@ -53,10 +73,11 @@ export const isWorkflowDropAllowed = (context: TWorkflowDropContext): boolean =>
     destinationSubGroupId,
     isStateOnlyUser,
     canTransition,
+    getStateIdByName,
   } = context;
 
-  const isGroupedByState = groupBy === "state";
-  const isSubGroupedByState = subGroupBy === "state";
+  const isGroupedByState = isStateGroupBy(groupBy);
+  const isSubGroupedByState = isStateGroupBy(subGroupBy);
   const groupChanged = !!sourceGroupId && !!destinationGroupId && sourceGroupId !== destinationGroupId;
   const subGroupChanged =
     !!subGroupBy && !!sourceSubGroupId && !!destinationSubGroupId && sourceSubGroupId !== destinationSubGroupId;
@@ -67,10 +88,17 @@ export const isWorkflowDropAllowed = (context: TWorkflowDropContext): boolean =>
     if (changesOtherField || !changesState) return false;
   }
 
+  const isTransitionAllowed = (byName: boolean, fromGroupId: string, toGroupId: string): boolean => {
+    if (!byName) return canTransition(fromGroupId, toGroupId);
+    const fromStateId = getStateIdByName?.(fromGroupId);
+    const toStateId = getStateIdByName?.(toGroupId);
+    return !fromStateId || !toStateId || canTransition(fromStateId, toStateId);
+  };
+
   if (groupChanged && isGroupedByState && sourceGroupId && destinationGroupId)
-    return canTransition(sourceGroupId, destinationGroupId);
+    return isTransitionAllowed(groupBy === STATE_NAME_GROUP_BY, sourceGroupId, destinationGroupId);
   if (subGroupChanged && isSubGroupedByState && sourceSubGroupId && destinationSubGroupId)
-    return canTransition(sourceSubGroupId, destinationSubGroupId);
+    return isTransitionAllowed(subGroupBy === STATE_NAME_GROUP_BY, sourceSubGroupId, destinationSubGroupId);
   return true;
 };
 

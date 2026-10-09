@@ -17,6 +17,7 @@ import {
   getRoleEpicScope,
   getRulesSignature,
   getWorkflowCellKey,
+  hasTransitionsForState,
   isWorkflowDropAllowed,
   parseWorkflowCellKey,
   rulesToWorkflowDraft,
@@ -218,6 +219,128 @@ test("regular users: non-state groupings and reorders are unaffected", () => {
     }),
     false
   );
+});
+
+// --- "state__name" grouping (category master boards) ----------------------------------------
+const STATE_IDS_BY_NAME: Record<string, string> = {
+  "To Do": TODO,
+  "In Progress": IN_PROGRESS,
+  "In Review": IN_REVIEW,
+  Done: DONE,
+};
+const getStateIdByName = (stateName: string) => STATE_IDS_BY_NAME[stateName];
+
+test("agent drop between state-name columns resolves the names and checks the transition", () => {
+  const checked: string[] = [];
+  assertEqual(
+    isWorkflowDropAllowed({
+      groupBy: "state__name",
+      subGroupBy: undefined,
+      sourceGroupId: "To Do",
+      destinationGroupId: "In Progress",
+      isStateOnlyUser: true,
+      canTransition: (from, to) => {
+        checked.push(`${from}->${to}`);
+        return agentCanTransition(from, to);
+      },
+      getStateIdByName,
+    }),
+    true
+  );
+  assertEqual(checked, [`${TODO}->${IN_PROGRESS}`]);
+  assertEqual(
+    isWorkflowDropAllowed({
+      groupBy: "state__name",
+      subGroupBy: undefined,
+      sourceGroupId: "To Do",
+      destinationGroupId: "Done",
+      isStateOnlyUser: true,
+      canTransition: agentCanTransition,
+      getStateIdByName,
+    }),
+    false
+  );
+});
+
+test("agent reorder within a state-name column is blocked", () => {
+  assertEqual(
+    isWorkflowDropAllowed({
+      groupBy: "state__name",
+      subGroupBy: undefined,
+      sourceGroupId: "To Do",
+      destinationGroupId: "To Do",
+      isStateOnlyUser: true,
+      canTransition: agentCanTransition,
+      getStateIdByName,
+    }),
+    false
+  );
+});
+
+test("agent state change through a state-name sub-grouping is checked", () => {
+  const base = {
+    groupBy: "priority",
+    subGroupBy: "state__name",
+    sourceGroupId: "high",
+    destinationGroupId: "high",
+    sourceSubGroupId: "In Progress",
+    isStateOnlyUser: true,
+    canTransition: agentCanTransition,
+    getStateIdByName,
+  };
+  assertEqual(isWorkflowDropAllowed({ ...base, destinationSubGroupId: "In Review" }), true);
+  assertEqual(isWorkflowDropAllowed({ ...base, destinationSubGroupId: "To Do" }), false);
+});
+
+test("restricted members are pre-checked on state-name boards", () => {
+  assertEqual(
+    isWorkflowDropAllowed({
+      groupBy: "state__name",
+      subGroupBy: undefined,
+      sourceGroupId: "To Do",
+      destinationGroupId: "Done",
+      isStateOnlyUser: false,
+      canTransition: deny,
+      getStateIdByName,
+    }),
+    false
+  );
+});
+
+test("unresolved state-name columns are left to the drop handler and the server", () => {
+  // the work item's project has no "Won't Fix" state: the drop handler reports it
+  assertEqual(
+    isWorkflowDropAllowed({
+      groupBy: "state__name",
+      subGroupBy: undefined,
+      sourceGroupId: "To Do",
+      destinationGroupId: "Won't Fix",
+      isStateOnlyUser: true,
+      canTransition: deny,
+      getStateIdByName,
+    }),
+    true
+  );
+  // no resolver: an agent's column change is still a state change, not "another field"
+  assertEqual(
+    isWorkflowDropAllowed({
+      groupBy: "state__name",
+      subGroupBy: undefined,
+      sourceGroupId: "To Do",
+      destinationGroupId: "In Progress",
+      isStateOnlyUser: true,
+      canTransition: deny,
+    }),
+    true
+  );
+});
+
+// --- hasTransitionsForState -----------------------------------------------------------------
+test("loaded transitions know every state of the project, not states created later", () => {
+  assertEqual(hasTransitionsForState(AGENT_TRANSITIONS, TODO), true);
+  assertEqual(hasTransitionsForState(AGENT_TRANSITIONS, DONE), true);
+  assertEqual(hasTransitionsForState(AGENT_TRANSITIONS, "created-later"), false);
+  assertEqual(hasTransitionsForState({ restricted: false }, "created-later"), true);
 });
 
 // --- matrix draft <-> rules -----------------------------------------------------------------
