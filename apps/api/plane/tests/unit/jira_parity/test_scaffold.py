@@ -122,16 +122,21 @@ class TestEnsureProjectMember:
         assert again.is_active and again.role == 10
 
     @pytest.mark.django_db
-    def test_never_downgrades_admin(self, project, other_user):
+    def test_never_downgrades_active_admin(self, project, other_user):
         ensure_project_member(project, other_user, 20)
         member = ensure_project_member(project, other_user, 10)
         member.refresh_from_db()
-        assert member.role == 20
-
-        ProjectMember.objects.filter(id=member.id).update(is_active=False)
-        member = ensure_project_member(project, other_user, 5)
-        member.refresh_from_db()
         assert member.role == 20 and member.is_active
+
+    @pytest.mark.django_db
+    @pytest.mark.parametrize("requested", [15, 10, 5])
+    def test_reactivation_drops_stale_admin_role(self, project, other_user, requested):
+        # e.g. a project admin removed from the workspace and re-invited as a guest or an agent
+        member = ensure_project_member(project, other_user, 20)
+        ProjectMember.objects.filter(id=member.id).update(is_active=False)
+        member = ensure_project_member(project, other_user, requested, update_role=False)
+        member.refresh_from_db()
+        assert member.role == requested and member.is_active
 
     @pytest.mark.django_db
     def test_update_role_flag(self, project, other_user):

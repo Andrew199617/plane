@@ -234,6 +234,18 @@ class TestApplyProjectLeadChange:
         assert _role(bare_project, member_b) == 15
 
     @pytest.mark.django_db
+    def test_stale_admin_row_is_reactivated_with_capped_role(self, bare_project, create_user, workspace):
+        # a former project admin, removed from the workspace and re-invited as a guest
+        guest = _make_user("stale-admin@plane.so", workspace, role=5)
+        ProjectMember.objects.create(project=bare_project, member=guest, role=20, is_active=False)
+        _set(bare_project, project_lead=guest, default_assignee=create_user)
+        apply_project_lead_change(
+            bare_project, old_lead_id=create_user.id, old_default_assignee_id=create_user.id, requested_data={}
+        )
+        member = ProjectMember.objects.get(project=bare_project, member=guest)
+        assert (member.role, member.is_active) == (5, True)
+
+    @pytest.mark.django_db
     def test_failures_are_swallowed(self, bare_project, create_user, member_b):
         _set(bare_project, project_lead=member_b, default_assignee=create_user)
         with mock.patch("plane.utils.project_defaults.ensure_project_member", side_effect=RuntimeError("boom")):

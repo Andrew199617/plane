@@ -13,12 +13,15 @@ Semantics
 - A team is linked to projects through TeamProject rows. `auto_join=True` links it to every
   non-archived project, including projects created later (apply_auto_join_teams).
 - Effective project role of a team member = resolve_project_role(workspace role, team role); a user
-  in several teams linked to the same project gets the highest role.
+  in several teams linked to the same project gets the highest role. The Agent role (10) only
+  applies to agent accounts: other workspace members of a team with that role get Member.
 - Provisioning goes through plane.utils.project_membership.ensure_project_member (idempotent,
-  never downgrades an Admin). A missing/inactive membership is created/reactivated with the
+  never downgrades an active Admin). A missing/inactive membership is created/reactivated with the
   effective role and marked as team-provisioned; an active membership is only ever upgraded
-  (or, when the team role itself changes, set to the new effective role). The project lead's
-  row is never modified.
+  (or, when the team role itself changes and the membership is team-provisioned, set to the new
+  effective role). The project lead's row is never modified.
+- An admin adding, editing or removing a member by hand (ProjectMemberViewSet) makes the
+  membership a manual one: the provenance marker is dropped (clear_team_provisioning).
 - Deprovisioning (member leaves a team, team unlinked from a project, team deleted) deactivates
   (soft, is_active=False) only memberships that are team-provisioned AND no longer covered by
   any team. Never deactivated: workspace admins, workspace agents (agent auto-join owns them),
@@ -91,7 +94,8 @@ def resolve_project_role(workspace_role, team_role):
 
     The workspace role caps/overrides the team role, mirroring ProjectMemberViewSet.create:
     workspace admins are always project admins, workspace agents are always project agents and
-    workspace guests are always project guests. Workspace members get the team role.
+    workspace guests are always project guests. Workspace members get the team role, except the
+    Agent role, which is reserved for agent accounts (agent_role_mismatch): they get Member.
     """
     if workspace_role == ADMIN:
         return ADMIN
@@ -99,6 +103,8 @@ def resolve_project_role(workspace_role, team_role):
         return AGENT
     if workspace_role == GUEST:
         return GUEST
+    if team_role == AGENT:
+        return MEMBER
     return team_role
 
 
@@ -165,8 +171,8 @@ def sync_project_team_members(project, *, user_ids=None, apply_roles=False):
     - missing / inactive membership -> created / reactivated with the effective role and marked
       as team-provisioned
     - active membership -> upgraded when the effective role is higher; with apply_roles=True
-      (the team role changed) set to the effective role (ensure_project_member never
-      downgrades an Admin)
+      (the team role changed) a team-provisioned one is set to the effective role
+      (ensure_project_member never downgrades an active Admin)
     - the project lead's active row is never modified
 
     Returns the ids of users whose membership was created or reactivated.
@@ -183,6 +189,13 @@ def sync_project_team_members(project, *, user_ids=None, apply_roles=False):
     existing = {
         pm.member_id: pm for pm in ProjectMember.objects.filter(project_id=project.id, member_id__in=list(desired))
     }
+    marked = set()
+    if apply_roles:
+        marked = set(
+            TeamProvisionedMember.objects.filter(project_id=project.id, member_id__in=list(desired)).values_list(
+                "member_id", flat=True
+            )
+        )
     provisioned = []
     with transaction.atomic():
         for member_id, role in desired.items():
@@ -190,7 +203,7 @@ def sync_project_team_members(project, *, user_ids=None, apply_roles=False):
             if current is not None and current.is_active:
                 if member_id == project.project_lead_id:
                     continue
-                if (apply_roles and role != current.role) or role > current.role:
+                if role > current.role or (member_id in marked and role != current.role):
                     ensure_project_member(project, member_id, role)
                 continue
             ensure_project_member(project, member_id, role)
@@ -266,6 +279,12 @@ def deprovision_project_members(project, candidate_user_ids, *, deactivate=True)
                 deactivated = list(to_deactivate)
         TeamProvisionedMember.objects.filter(project_id=project.id, member_id__in=marked).delete(soft=False)
     return deactivated
+
+
+def clear_team_provisioning(project_id, user_ids):
+    """Drop the provenance markers of these memberships: an admin added, edited or removed them by
+    hand, so they are manual memberships from now on (team changes never deactivate them)."""
+    TeamProvisionedMember.objects.filter(project_id=project_id, member_id__in=list(user_ids)).delete(soft=False)
 
 
 def sync_team(team, *, user_ids=None, apply_roles=False):

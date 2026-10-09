@@ -9,9 +9,10 @@ lead/default assignee, Jira import) goes through `ensure_project_member` so the 
 one place:
 
 - missing row      -> create it (ProjectMember.save also creates the ProjectUserProperty row)
-- inactive row     -> reactivate it (is_active=True) with the requested role
+- inactive row     -> reactivate it (is_active=True) with the requested role (the stale role of a
+                      deactivated row never survives: callers cap the requested role)
 - active row       -> set the requested role when `update_role` is True (the default)
-- an existing Admin (20) is NEVER downgraded, whatever the requested role
+- an active Admin (20) is NEVER downgraded, whatever the requested role
 """
 
 # Python imports
@@ -41,7 +42,7 @@ def _user_id(user):
 
 
 def _resolve_role(current_role, requested_role):
-    """Never downgrade an Admin; otherwise the requested role wins."""
+    """Never downgrade an active Admin; otherwise the requested role wins."""
     if current_role == ROLE.ADMIN.value and requested_role < ROLE.ADMIN.value:
         return current_role
     return requested_role
@@ -99,7 +100,7 @@ def ensure_project_member(project, user, role, *, update_role=True):
     if not member.is_active:
         member.is_active = True
         update_fields.append("is_active")
-        new_role = _resolve_role(member.role, role)
+        new_role = role
     elif update_role:
         new_role = _resolve_role(member.role, role)
     else:

@@ -36,7 +36,7 @@
       "description": "Description",
       "description_placeholder": "What is this team for?",
       "default_role": "Default project role",
-      "default_role_help": "Role members get in every project this team is added to. Workspace admins always stay project admins, agents stay agents and guests stay guests. Existing project admins are never demoted.",
+      "default_role_help": "Role members get in every project this team is added to. Workspace admins always stay project admins, agents stay agents and guests stay guests; the Agent role only applies to agent accounts (other members get Member). Lowering the role only changes memberships the team created, and project admins are never demoted.",
       "auto_join": "Add to all projects",
       "auto_join_help": "Adds the team to every existing project and to every project created later.",
       "members": "Members",
@@ -63,7 +63,7 @@
       "member": "Member",
       "member_description": "Creates and edits work items",
       "agent": "Agent",
-      "agent_description": "Comments and moves work items through allowed transitions",
+      "agent_description": "Agent accounts only: comments and moves work items through allowed transitions",
       "guest": "Guest",
       "guest_description": "Limited, mostly read-only access"
     },

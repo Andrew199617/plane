@@ -4,6 +4,7 @@
 
 """Jira-parity teams: session API (/api/workspaces/<slug>/teams/...) and project-create auto-join."""
 
+from unittest import mock
 from uuid import uuid4
 
 import pytest
@@ -11,7 +12,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from plane.db.models import Project, ProjectMember, Team, User, Workspace, WorkspaceMember
-from plane.db.models.team import TeamMember, TeamProject
+from plane.db.models.team import TeamMember, TeamProject, TeamProvisionedMember
 
 BASE = "/api/workspaces/test-workspace/teams/"
 
@@ -236,3 +237,57 @@ class TestProjectCreateAutoJoin:
         assert TeamProject.objects.filter(team=team, project=project).exists()
         assert _pm(project, create_user).role == 20
         assert _pm(project, member).role == 15
+
+
+@pytest.mark.contract
+@pytest.mark.django_db
+class TestProjectMembersManagedByHand:
+    """An admin adding, editing or removing a team-provisioned member by hand makes the membership a
+    manual one: the user then keeps it when they leave the team."""
+
+    def _provisioned(self, session_client, workspace, project):
+        user = _user(workspace, 15)
+        team = session_client.post(
+            BASE, {"name": "Devs", "member_ids": [str(user.id)], "project_ids": [str(project.id)]}, format="json"
+        ).json()
+        assert TeamProvisionedMember.objects.filter(project=project, member=user).exists()
+        return user, f"{BASE}{team['id']}/members/{user.id}/"
+
+    def _members_url(self, project):
+        return f"/api/workspaces/test-workspace/projects/{project.id}/members/"
+
+    def _add(self, session_client, project, user):
+        with mock.patch("plane.app.views.project.member.project_add_user_email"):
+            response = session_client.post(
+                self._members_url(project), {"members": [{"member_id": str(user.id), "role": 15}]}, format="json"
+            )
+        assert response.status_code == status.HTTP_201_CREATED, response.data
+
+    def test_removed_then_re_added_by_hand(self, session_client, workspace, project):
+        user, team_member_url = self._provisioned(session_client, workspace, project)
+        response = session_client.delete(f"{self._members_url(project)}{_pm(project, user).id}/")
+        assert response.status_code == status.HTTP_204_NO_CONTENT
+        assert not TeamProvisionedMember.objects.filter(project=project, member=user).exists()
+
+        self._add(session_client, project, user)
+        session_client.delete(team_member_url)
+        assert _pm(project, user).is_active
+
+    def test_re_added_by_hand_after_leaving(self, session_client, workspace, project):
+        user, team_member_url = self._provisioned(session_client, workspace, project)
+        leave = _client(user).post(f"{self._members_url(project)}leave/")
+        assert leave.status_code == status.HTTP_204_NO_CONTENT
+
+        self._add(session_client, project, user)
+        session_client.delete(team_member_url)
+        assert _pm(project, user).is_active
+
+    def test_role_changed_by_hand(self, session_client, workspace, project):
+        user, team_member_url = self._provisioned(session_client, workspace, project)
+        response = session_client.patch(
+            f"{self._members_url(project)}{_pm(project, user).id}/", {"role": 20}, format="json"
+        )
+        assert response.status_code == status.HTTP_200_OK, response.data
+
+        session_client.delete(team_member_url)
+        assert _pm(project, user).is_active and _pm(project, user).role == 20

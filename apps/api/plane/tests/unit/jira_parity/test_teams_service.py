@@ -58,7 +58,9 @@ class TestResolveProjectRole:
             (15, 20, 20),
             (15, 5, 5),
             (15, 15, 15),
-            (15, 10, 10),
+            # the Agent role is reserved for agent accounts
+            (15, 10, 15),
+            (5, 10, 5),
         ],
     )
     def test_table(self, workspace_role, team_role, expected):
@@ -158,6 +160,43 @@ class TestProvisioning:
         svc.update_team_settings(team, role_changed=True)
         assert _pm(project, member).role == 5
         assert _pm(project, lead).role == 15
+
+    def test_role_change_only_applies_to_team_provisioned_memberships(self, workspace, project):
+        provisioned, manual, manual_guest = _user(workspace, 15), _user(workspace, 15), _user(workspace, 15)
+        ensure_project_member(project, manual, 15)
+        ensure_project_member(project, manual_guest, 5)
+        team = _team(workspace, role=15)
+        svc.add_team_members(team, [provisioned.id, manual.id, manual_guest.id])
+        svc.link_team_projects(team, [project.id])
+        assert _pm(project, manual_guest).role == 15  # upgraded, still not team-provisioned
+
+        team.default_project_role = 5
+        team.save()
+        svc.update_team_settings(team, role_changed=True)
+        assert _pm(project, provisioned).role == 5
+        assert _pm(project, manual).role == 15 and _pm(project, manual_guest).role == 15
+
+        team.default_project_role = 20
+        team.save()
+        svc.update_team_settings(team, role_changed=True)
+        assert {_pm(project, user).role for user in (provisioned, manual, manual_guest)} == {20}
+
+    def test_stale_admin_row_is_reactivated_with_the_effective_role(self, workspace, project):
+        # a former project admin, removed from the workspace and re-invited as a guest
+        guest = _user(workspace, 5)
+        ProjectMember.objects.create(project=project, member=guest, role=20, is_active=False)
+        team = _team(workspace, role=20)
+        svc.add_team_members(team, [guest.id])
+        svc.link_team_projects(team, [project.id])
+        assert (_pm(project, guest).role, _pm(project, guest).is_active) == (5, True)
+
+    def test_agent_role_team_gives_people_the_member_role(self, workspace, project):
+        person, agent = _user(workspace, 15), _user(workspace, 10)
+        team = _team(workspace, "Agents", role=10, auto_join=True)
+        svc.add_team_members(team, [person.id, agent.id])
+        svc.link_team_projects(team, all_projects=True)
+        assert _pm(project, person).role == 15
+        assert _pm(project, agent).role == 10
 
     def test_auto_join_enable_links_all_projects(self, workspace, project):
         second = _project(workspace, "TMB")
@@ -273,6 +312,16 @@ class TestDeprovisioning:
         svc.add_team_members(team, [user.id])
         svc.link_team_projects(team, [project.id])
         svc.delete_team(team, remove_from_projects=False)
+        assert _pm(project, user).is_active
+
+    def test_cleared_marker_keeps_membership(self, workspace, project):
+        user = _user(workspace, 15)
+        team = _team(workspace)
+        svc.add_team_members(team, [user.id])
+        svc.link_team_projects(team, [project.id])
+        svc.clear_team_provisioning(project.id, [user.id])
+        assert not TeamProvisionedMember.objects.filter(project=project, member=user).exists()
+        svc.remove_team_member(team, user.id)
         assert _pm(project, user).is_active
 
     def test_re_adding_reprovisions(self, workspace, project):

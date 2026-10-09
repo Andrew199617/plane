@@ -23,6 +23,7 @@ from plane.bgtasks.project_add_user_email_task import project_add_user_email
 from plane.utils.host import base_host
 from plane.app.permissions.base import allow_permission, ROLE
 from plane.utils.agent import agent_role_mismatch
+from plane.utils.teams import clear_team_provisioning
 
 
 class ProjectMemberViewSet(BaseViewSet):
@@ -142,6 +143,9 @@ class ProjectMemberViewSet(BaseViewSet):
         project_members = ProjectMember.objects.bulk_create(bulk_project_members, batch_size=10, ignore_conflicts=True)
 
         _ = ProjectUserProperty.objects.bulk_create(bulk_issue_props, batch_size=10, ignore_conflicts=True)
+
+        # Jira-parity: memberships managed by hand are no longer team-provisioned
+        clear_team_provisioning(project_id, [member.get("member_id") for member in members])
 
         project_members = ProjectMember.objects.filter(
             project_id=project_id,
@@ -300,6 +304,9 @@ class ProjectMemberViewSet(BaseViewSet):
 
         if serializer.is_valid():
             serializer.save()
+            # Jira-parity: memberships managed by hand are no longer team-provisioned
+            if "role" in request.data or "is_active" in request.data:
+                clear_team_provisioning(project_id, [project_member.member_id])
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -334,6 +341,8 @@ class ProjectMemberViewSet(BaseViewSet):
 
         project_member.is_active = False
         project_member.save()
+        # Jira-parity: memberships managed by hand are no longer team-provisioned
+        clear_team_provisioning(project_id, [project_member.member_id])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])

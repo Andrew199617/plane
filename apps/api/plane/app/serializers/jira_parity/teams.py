@@ -74,6 +74,8 @@ class TeamSerializer(BaseSerializer):
         return (value or "").strip()
 
     def validate_default_project_role(self, value):
+        # Agent (10) stays allowed (the seeded Agents team uses it); it only applies to agent
+        # accounts, other members of such a team get Member (teams.resolve_project_role).
         if value not in allowed_project_roles():
             raise serializers.ValidationError(
                 f"Invalid role. Allowed values: {sorted(allowed_project_roles(), reverse=True)}."
