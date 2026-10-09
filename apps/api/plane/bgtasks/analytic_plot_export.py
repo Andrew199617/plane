@@ -38,8 +38,8 @@ row_mapping = {
     "issue_count": "Issue Count",
     "priority": "Priority",
     "estimate": "Estimate",
-    "issue_cycle__cycle_id": "Cycle",
-    "issue_module__module_id": "Module",
+    "issue_cycle__cycle_id": "Sprint",
+    "issue_module__module_id": "Release",
 }
 
 ASSIGNEE_ID = "assignees__id"
