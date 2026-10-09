@@ -5,13 +5,27 @@
  */
 
 import { replaceUnderscoreIfSnakeCase } from "@plane/utils";
-import type { TNotificationContentMap } from "@/components/workspace-notifications/sidebar/notification-card/content";
+import type {
+  TNotificationContentHandler,
+  TNotificationContentMap,
+} from "@/components/workspace-notifications/sidebar/notification-card/content";
 // jira-parity: estimate fields render as Jira durations ("1w 2d") instead of raw minutes
 import { JP_TIME_TRACKING_NOTIFICATION_CONTENT_MAP } from "@/components/jira-parity/time-tracking/notification-content";
+
+// jira-parity: cycles / modules are labelled Sprint / Release; describe the change instead of the raw field key
+const sprintReleaseContent =
+  (label: string): TNotificationContentHandler =>
+  ({ verb }) => {
+    if (verb === "updated") return { action: `set the ${label}`, showConnector: true };
+    if (verb === "deleted") return { action: `removed this work item from the ${label}`, value: null };
+    return { action: `added this work item to the ${label}`, showConnector: false };
+  };
 
 // Additional notification content map for CE (empty - EE extends this)
 export const ADDITIONAL_NOTIFICATION_CONTENT_MAP: TNotificationContentMap = {
   ...JP_TIME_TRACKING_NOTIFICATION_CONTENT_MAP,
+  cycles: sprintReleaseContent("sprint"),
+  modules: sprintReleaseContent("release"),
 };
 
 // Fallback action renderer for fields not in the map

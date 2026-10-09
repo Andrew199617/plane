@@ -148,11 +148,11 @@ export const ANALYTICS_X_AXIS_VALUES: { value: ChartXAxisProperty; label: string
   },
   {
     value: ChartXAxisProperty.CYCLES,
-    label: "Cycle",
+    label: "Sprint",
   },
   {
     value: ChartXAxisProperty.MODULES,
-    label: "Module",
+    label: "Release",
   },
   {
     value: ChartXAxisProperty.COMPLETED_AT,

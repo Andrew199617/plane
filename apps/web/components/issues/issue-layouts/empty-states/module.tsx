@@ -53,14 +53,14 @@ export const ModuleEmptyState = observer(function ModuleEmptyState() {
         setToast({
           type: "success",
           title: "Success!",
-          message: "Work items added to the module successfully.",
+          message: "Work items added to the release successfully.",
         })
       )
       .catch(() =>
         setToast({
           type: "error",
           title: "Error!",
-          message: "Selected work items could not be added to the module. Please try again.",
+          message: "Selected work items could not be added to the release. Please try again.",
         })
       );
   };

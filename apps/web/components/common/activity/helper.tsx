@@ -179,7 +179,7 @@ export const messages = (activity: TProjectActivity): { message: string | ReactN
         message: (
           <>
             <span>
-              {verb} this project {verb === "removed" ? "from" : "to"} the cycle{" "}
+              {verb} this project {verb === "removed" ? "from" : "to"} the sprint{" "}
             </span>
             {verb !== "removed" ? (
               <a
@@ -191,7 +191,7 @@ export const messages = (activity: TProjectActivity): { message: string | ReactN
                 {activity.new_value}
               </a>
             ) : (
-              <span className="font-medium text-primary">{activity.old_value || "Unknown cycle"}</span>
+              <span className="font-medium text-primary">{activity.old_value || "Unknown sprint"}</span>
             )}
           </>
         ),
@@ -201,10 +201,10 @@ export const messages = (activity: TProjectActivity): { message: string | ReactN
         message: (
           <>
             <span>
-              {verb} this project {verb === "removed" ? "from" : "to"} the module{" "}
+              {verb} this project {verb === "removed" ? "from" : "to"} the release{" "}
             </span>
             <span className="font-medium text-primary">
-              {verb === "removed" ? oldValue : newValue || "Unknown module"}
+              {verb === "removed" ? oldValue : newValue || "Unknown release"}
             </span>
           </>
         ),
@@ -252,7 +252,13 @@ export const messages = (activity: TProjectActivity): { message: string | ReactN
         ),
       };
     case "module_view":
+      return {
+        message: <>{getBooleanActionText(newValue)} releases</>,
+      };
     case "cycle_view":
+      return {
+        message: <>{getBooleanActionText(newValue)} sprints</>,
+      };
     case "issue_views_view":
     case "page_view":
     case "intake_view":

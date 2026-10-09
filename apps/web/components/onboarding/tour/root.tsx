@@ -46,17 +46,17 @@ const TOUR_STEPS: {
   },
   {
     key: "cycles",
-    title: "Move with cycles",
+    title: "Move with sprints",
     description:
-      "Cycles help you and your team to progress faster, similar to the sprints commonly used in agile development.",
+      "Sprints are time-boxed iterations your team starts and completes, helping you deliver work in focused increments.",
     image: CyclesTour,
     prevStep: "work-items",
     nextStep: "modules",
   },
   {
     key: "modules",
-    title: "Break into modules",
-    description: "Modules break your big thing into Projects or Features, to help you organize better.",
+    title: "Ship with releases",
+    description: "Releases are the versions you ship. Assign work items to a release and track it to its release date.",
     image: ModulesTour,
     prevStep: "cycles",
     nextStep: "views",

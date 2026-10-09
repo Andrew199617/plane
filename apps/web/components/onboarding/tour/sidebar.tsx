@@ -22,12 +22,12 @@ const sidebarOptions: {
   },
   {
     key: "cycles",
-    label: "Cycles",
+    label: "Sprints",
     Icon: CyclesOutline,
   },
   {
     key: "modules",
-    label: "Modules",
+    label: "Releases",
     Icon: ModuleOutline,
   },
   {

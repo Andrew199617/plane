@@ -51,7 +51,7 @@ export type ModuleSelectProps =
 function triggerLabel(selected: ModuleOption[], showCountOnMultiple: boolean, placeholder?: string): string {
   if (selected.length === 0) return placeholder ?? "";
   if (selected.length === 1) return selected[0]?.name ?? "";
-  if (showCountOnMultiple) return `${selected.length} modules`;
+  if (showCountOnMultiple) return `${selected.length} releases`;
   return selected.map((module) => module.name).join(", ");
 }
 
@@ -69,7 +69,7 @@ export function ModuleSelect(props: ModuleSelectProps) {
       variant,
       disabled = false,
       placeholder = "",
-      searchPlaceholder = "Search modules...",
+      searchPlaceholder = "Search releases...",
       onClose,
       className,
       showIdentifier = false,
@@ -123,7 +123,7 @@ export function ModuleSelect(props: ModuleSelectProps) {
     variant,
     disabled = false,
     placeholder = "",
-    searchPlaceholder = "Search modules...",
+    searchPlaceholder = "Search releases...",
     onClose,
     className,
     showIdentifier = false,
