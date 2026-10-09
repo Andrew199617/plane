@@ -13,13 +13,22 @@ import { JP_PROJECT_CATEGORIES_SWR_KEY } from "@plane/constants";
 // hooks
 import { useProjectCategories } from "@/hooks/store/jira-parity/use-project-categories";
 
-/** Runs once the workspace is loaded: categories feed the sidebar boards, the projects list and the pickers. */
+/**
+ * Runs once the workspace is loaded: categories feed the sidebar boards, the projects list and the pickers.
+ * The loader is keyed by workspace and the store holds one workspace, so every mount reloads it: own SWR key
+ * (a finished settings-page request must not stand in for it) and no dedupe window.
+ */
 export function useProjectCategoriesWorkspaceBootstrap(workspaceSlug: string): void {
   const { fetchProjectCategories } = useProjectCategories();
   useSWR(
-    workspaceSlug ? JP_PROJECT_CATEGORIES_SWR_KEY(workspaceSlug) : null,
+    workspaceSlug ? [JP_PROJECT_CATEGORIES_SWR_KEY(workspaceSlug), "bootstrap"] : null,
     workspaceSlug ? () => fetchProjectCategories(workspaceSlug) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false, shouldRetryOnError: false }
+    {
+      revalidateOnMount: true,
+      dedupingInterval: 0,
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    }
   );
 }
 

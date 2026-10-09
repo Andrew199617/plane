@@ -15,7 +15,7 @@ import { WorkflowsService } from "@/services/jira-parity/workflows.service";
 // store
 import type { CoreRootStore } from "@/store/root.store";
 // local imports
-import { getAllowedTargetStateIds } from "@/components/jira-parity/workflows/helpers";
+import { getAllowedTargetStateIds, hasTransitionsForState } from "@/components/jira-parity/workflows/helpers";
 
 export interface IWorkflowsStore {
   // observables (keyed by project id)
@@ -45,8 +45,15 @@ export interface IWorkflowsStore {
   // fetch actions
   fetchTransitionRules: (workspaceSlug: string, projectId: string) => Promise<TStateTransitionRule[]>;
   fetchMyTransitions: (workspaceSlug: string, projectId: string) => Promise<TMyStateTransitions>;
-  /** Loads the current user's transitions once per project (concurrent callers share one request). */
-  ensureMyTransitions: (workspaceSlug: string, projectId: string) => Promise<TMyStateTransitions | undefined>;
+  /**
+   * Loads the current user's transitions once per project (concurrent callers share one request). Refetches once
+   * when `fromStateId` is missing from the loaded map (a state created after the load).
+   */
+  ensureMyTransitions: (
+    workspaceSlug: string,
+    projectId: string,
+    fromStateId?: string | null
+  ) => Promise<TMyStateTransitions | undefined>;
   // actions
   replaceTransitionRules: (
     workspaceSlug: string,
@@ -137,10 +144,21 @@ export class WorkflowsStore implements IWorkflowsStore {
   };
 
   private myTransitionsRequests = new Map<string, Promise<TMyStateTransitions | undefined>>();
+  /** `projectId:stateId` pairs already refetched for an unknown from-state (at most one refetch each). */
+  private unknownFromStateRefetches = new Set<string>();
 
-  ensureMyTransitions = (workspaceSlug: string, projectId: string): Promise<TMyStateTransitions | undefined> => {
+  ensureMyTransitions = (
+    workspaceSlug: string,
+    projectId: string,
+    fromStateId?: string | null
+  ): Promise<TMyStateTransitions | undefined> => {
     const loaded = this.myTransitionsMap[projectId];
-    if (loaded) return Promise.resolve(loaded);
+    if (loaded) {
+      const refetchKey = `${projectId}:${fromStateId}`;
+      if (!fromStateId || hasTransitionsForState(loaded, fromStateId) || this.unknownFromStateRefetches.has(refetchKey))
+        return Promise.resolve(loaded);
+      this.unknownFromStateRefetches.add(refetchKey);
+    }
     const pending = this.myTransitionsRequests.get(projectId);
     if (pending) return pending;
     const request = this.fetchMyTransitions(workspaceSlug, projectId)

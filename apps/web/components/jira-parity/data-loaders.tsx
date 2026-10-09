@@ -23,7 +23,10 @@ type TJiraParityWorkspaceDataLoaderProps = {
   workspaceSlug: string;
 };
 
-/** Mounted once in layouts/auth-layout/workspace-wrapper.tsx after the workspace is loaded. */
+/**
+ * Mounted in layouts/auth-layout/workspace-wrapper.tsx after the workspace is loaded, keyed by workspace slug so a
+ * workspace switch remounts it and the bootstraps load the new workspace.
+ */
 export const JiraParityWorkspaceDataLoader = observer(function JiraParityWorkspaceDataLoader(
   props: TJiraParityWorkspaceDataLoaderProps
 ) {
@@ -45,7 +48,7 @@ type TJiraParityProjectDataLoaderProps = {
   projectId: string;
 };
 
-/** Mounted once in layouts/auth-layout/project-wrapper.tsx when the project is accessible. */
+/** Mounted in layouts/auth-layout/project-wrapper.tsx when the project is accessible, keyed by project id. */
 export const JiraParityProjectDataLoader = observer(function JiraParityProjectDataLoader(
   props: TJiraParityProjectDataLoaderProps
 ) {

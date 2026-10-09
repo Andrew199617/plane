@@ -104,7 +104,16 @@ export class ProjectCategoriesStore implements IProjectCategoriesStore {
   );
 
   fetchProjectCategories = async (workspaceSlug: string) => {
+    // never serve another workspace's categories while this workspace loads
+    if (this.fetchedWorkspaceSlug !== workspaceSlug)
+      runInAction(() => {
+        this.categoryMap = {};
+        this.fetchedWorkspaceSlug = null;
+      });
     const categories = await this.service.list(workspaceSlug);
+    // a late response for a workspace the user has left must not replace the current one
+    const routedWorkspaceSlug = this.rootStore.router.workspaceSlug;
+    if (routedWorkspaceSlug && routedWorkspaceSlug !== workspaceSlug) return categories;
     runInAction(() => {
       this.categoryMap = Object.fromEntries(categories.map((category) => [category.id, category]));
       this.fetchedWorkspaceSlug = workspaceSlug;

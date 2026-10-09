@@ -109,7 +109,16 @@ export class TeamsStore implements ITeamsStore {
   };
 
   fetchTeams = async (workspaceSlug: string) => {
+    // never serve another workspace's teams while this workspace loads
+    if (this.fetchedWorkspaceSlug !== workspaceSlug)
+      runInAction(() => {
+        this.teamMap = {};
+        this.fetchedWorkspaceSlug = null;
+      });
     const teams = await this.service.list(workspaceSlug);
+    // a late response for a workspace the user has left must not replace the current one
+    const routedWorkspaceSlug = this.rootStore.router.workspaceSlug;
+    if (routedWorkspaceSlug && routedWorkspaceSlug !== workspaceSlug) return teams;
     runInAction(() => {
       this.teamMap = Object.fromEntries(teams.map((team) => [team.id, team]));
       this.fetchedWorkspaceSlug = workspaceSlug;

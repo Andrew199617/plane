@@ -225,7 +225,7 @@ export const ProjectCategoriesSettingsRoot = observer(function ProjectCategories
     const project = getProjectById(projectId);
     return project && !project.archived_at && !project.category_id;
   }).length;
-  // always refresh on open (the workspace bootstrap shares this key)
+  // always refresh on open
   const { error, isLoading } = useSWR(
     workspaceSlug ? JP_PROJECT_CATEGORIES_SWR_KEY(workspaceSlug) : null,
     workspaceSlug ? () => fetchProjectCategories(workspaceSlug) : null,

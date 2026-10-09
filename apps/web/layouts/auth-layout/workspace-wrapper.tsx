@@ -238,7 +238,9 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
 
   return (
     <>
-      {workspaceSlug && <JiraParityWorkspaceDataLoader workspaceSlug={workspaceSlug.toString()} />}
+      {workspaceSlug && (
+        <JiraParityWorkspaceDataLoader key={workspaceSlug.toString()} workspaceSlug={workspaceSlug.toString()} />
+      )}
       {children}
     </>
   );

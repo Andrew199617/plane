@@ -19,8 +19,9 @@ export function useWorkflowsWorkspaceBootstrap(_workspaceSlug: string): void {
 }
 
 /**
- * Runs once the project is loaded and accessible (mounted in layouts/auth-layout/project-wrapper.tsx).
- * Loads the current user's allowed state transitions, used by state dropdowns and kanban/list drag.
+ * Runs once the project is loaded and accessible (mounted in layouts/auth-layout/project-wrapper.tsx, keyed by
+ * project). Loads the current user's allowed state transitions, used by state dropdowns and kanban/list drag;
+ * refetched on every visit of the project so rules or states changed meanwhile apply.
  */
 export function useWorkflowsProjectBootstrap(workspaceSlug: string, projectId: string): void {
   const { fetchMyTransitions } = useWorkflows();
@@ -28,6 +29,6 @@ export function useWorkflowsProjectBootstrap(workspaceSlug: string, projectId: s
   useSWR(
     workspaceSlug && projectId ? JP_MY_STATE_TRANSITIONS_SWR_KEY(projectId) : null,
     workspaceSlug && projectId ? () => fetchMyTransitions(workspaceSlug, projectId) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false, shouldRetryOnError: false }
+    { revalidateOnMount: true, revalidateOnFocus: false, shouldRetryOnError: false }
   );
 }

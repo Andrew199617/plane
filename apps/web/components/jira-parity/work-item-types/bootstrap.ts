@@ -13,14 +13,18 @@ import { JP_WORK_ITEM_TYPES_SWR_KEY } from "@plane/constants";
 // hooks
 import { useWorkItemTypes } from "@/hooks/store/jira-parity/use-work-item-types";
 
-/** Runs once the workspace is loaded (mounted in layouts/auth-layout/workspace-wrapper.tsx). */
+/**
+ * Runs once the workspace is loaded (mounted in layouts/auth-layout/workspace-wrapper.tsx, keyed by workspace).
+ * The store holds one workspace, so every mount reloads it: own SWR key (a finished settings-page request must not
+ * stand in for it) and no dedupe window.
+ */
 export function useWorkItemTypesWorkspaceBootstrap(workspaceSlug: string): void {
   const { fetchWorkItemTypes } = useWorkItemTypes();
 
   useSWR(
-    workspaceSlug ? JP_WORK_ITEM_TYPES_SWR_KEY(workspaceSlug) : null,
+    workspaceSlug ? [JP_WORK_ITEM_TYPES_SWR_KEY(workspaceSlug), "bootstrap"] : null,
     workspaceSlug ? () => fetchWorkItemTypes(workspaceSlug) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false }
+    { revalidateOnMount: true, dedupingInterval: 0, revalidateOnFocus: false }
   );
 }
 

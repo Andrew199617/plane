@@ -14,15 +14,22 @@ import { JP_TEAMS_SWR_KEY } from "@plane/constants";
 import { useTeams } from "@/hooks/store/jira-parity/use-teams";
 
 /**
- * Runs once the workspace is loaded (mounted in layouts/auth-layout/workspace-wrapper.tsx).
- * Loads the workspace teams (used by the Teams settings page and the member-row team badges).
+ * Runs once the workspace is loaded (mounted in layouts/auth-layout/workspace-wrapper.tsx, keyed by workspace).
+ * Loads the workspace teams (used by the Teams settings page and the member-row team badges). The store holds one
+ * workspace, so every mount reloads it: own SWR key (a finished settings-page request must not stand in for it)
+ * and no dedupe window.
  */
 export function useTeamsWorkspaceBootstrap(workspaceSlug: string): void {
   const { fetchTeams } = useTeams();
   useSWR(
-    workspaceSlug ? JP_TEAMS_SWR_KEY(workspaceSlug) : null,
+    workspaceSlug ? [JP_TEAMS_SWR_KEY(workspaceSlug), "bootstrap"] : null,
     workspaceSlug ? () => fetchTeams(workspaceSlug) : null,
-    { revalidateIfStale: false, revalidateOnFocus: false, shouldRetryOnError: false }
+    {
+      revalidateOnMount: true,
+      dedupingInterval: 0,
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    }
   );
 }
 

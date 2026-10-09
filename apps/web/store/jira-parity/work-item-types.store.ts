@@ -98,7 +98,16 @@ export class WorkItemTypesStore implements IWorkItemTypesStore {
   getProjectWorkItemTypes = computedFn((_projectId: string | null | undefined) => this.activeWorkItemTypes);
 
   fetchWorkItemTypes = async (workspaceSlug: string) => {
+    // never serve another workspace's types while this workspace loads
+    if (this.fetchedWorkspaceSlug !== workspaceSlug)
+      runInAction(() => {
+        this.workItemTypeMap = {};
+        this.fetchedWorkspaceSlug = null;
+      });
     const workItemTypes = await this.service.list(workspaceSlug);
+    // a late response for a workspace the user has left must not replace the current one
+    const routedWorkspaceSlug = this.rootStore.router.workspaceSlug;
+    if (routedWorkspaceSlug && routedWorkspaceSlug !== workspaceSlug) return workItemTypes;
     runInAction(() => {
       this.workItemTypeMap = Object.fromEntries(workItemTypes.map((workItemType) => [workItemType.id, workItemType]));
       this.fetchedWorkspaceSlug = workspaceSlug;

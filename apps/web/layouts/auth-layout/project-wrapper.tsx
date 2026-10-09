@@ -160,7 +160,7 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
 
   return (
     <>
-      <JiraParityProjectDataLoader workspaceSlug={workspaceSlug} projectId={projectId} />
+      <JiraParityProjectDataLoader key={projectId} workspaceSlug={workspaceSlug} projectId={projectId} />
       {children}
     </>
   );

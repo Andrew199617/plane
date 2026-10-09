@@ -47,7 +47,7 @@ export const TeamsSettingsRoot = observer(function TeamsSettingsRoot(props: TTea
   // derived values
   const isAdmin = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
   const canView = allowPermissions([EUserPermissions.ADMIN, EUserPermissions.MEMBER], EUserPermissionsLevel.WORKSPACE);
-  // always refresh on open (the workspace bootstrap shares this key)
+  // always refresh on open
   const { error, isLoading } = useSWR(
     workspaceSlug ? JP_TEAMS_SWR_KEY(workspaceSlug) : null,
     workspaceSlug ? () => fetchTeams(workspaceSlug) : null,
