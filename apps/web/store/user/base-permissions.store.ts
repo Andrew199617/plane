@@ -238,7 +238,8 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
       currentUserRole = parseInt(currentUserRole);
     }
 
-    // Jira-parity: agents inherit guest-level (read-only) access unless a list names AGENT explicitly.
+    // Jira-parity: agents inherit guest-level (read-only) access unless a list names AGENT explicitly
+    // (navigation and page gates list GUEST). Write affordances that list GUEST must exclude agents themselves.
     const isAllowedRole =
       typeof currentUserRole === "number" &&
       (allowPermissions.includes(currentUserRole) ||
