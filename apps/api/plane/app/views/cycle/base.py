@@ -4,7 +4,6 @@
 
 # Python imports
 import json
-import pytz
 
 
 # Django imports
@@ -12,7 +11,6 @@ from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.db.models import (
     Case,
-    CharField,
     Count,
     Exists,
     F,
@@ -58,7 +56,14 @@ from plane.utils.host import base_host
 from plane.utils.cycle_transfer_issues import transfer_cycle_issues
 from .. import BaseAPIView, BaseViewSet
 from plane.bgtasks.webhook_task import model_activity
-from plane.utils.timezone_converter import convert_to_utc, user_timezone_converter
+from plane.utils.timezone_converter import user_timezone_converter
+from plane.utils.jira_parity.sprints import (
+    SPRINT_FIELDS,
+    SprintError,
+    active_sprint_q,
+    sprint_status_case,
+    validate_sprint_update,
+)
 
 
 class CycleViewSet(BaseViewSet):
@@ -74,18 +79,6 @@ class CycleViewSet(BaseViewSet):
             project_id=self.kwargs.get("project_id"),
             workspace__slug=self.kwargs.get("slug"),
         )
-
-        project = Project.objects.get(id=self.kwargs.get("project_id"))
-
-        # Fetch project for the specific record or pass project_id dynamically
-        project_timezone = project.timezone
-
-        # Convert the current time (timezone.now()) to the project's timezone
-        local_tz = pytz.timezone(project_timezone)
-        current_time_in_project_tz = timezone.now().astimezone(local_tz)
-
-        # Convert project local time back to UTC for comparison (start_date is stored in UTC)
-        current_time_in_utc = current_time_in_project_tz.astimezone(pytz.utc)
 
         return self.filter_queryset(
             super()
@@ -149,22 +142,8 @@ class CycleViewSet(BaseViewSet):
                     ),
                 )
             )
-            .annotate(
-                status=Case(
-                    When(
-                        Q(start_date__lte=current_time_in_utc) & Q(end_date__gte=current_time_in_utc),
-                        then=Value("CURRENT"),
-                    ),
-                    When(start_date__gt=current_time_in_utc, then=Value("UPCOMING")),
-                    When(end_date__lt=current_time_in_utc, then=Value("COMPLETED")),
-                    When(
-                        Q(start_date__isnull=True) & Q(end_date__isnull=True),
-                        then=Value("DRAFT"),
-                    ),
-                    default=Value("DRAFT"),
-                    output_field=CharField(),
-                )
-            )
+            # jira-parity: explicit sprint lifecycle (started_at / completed_at), not date-driven
+            .annotate(status=sprint_status_case())
             .annotate(
                 assignee_ids=Coalesce(
                     ArrayAgg(
@@ -193,16 +172,9 @@ class CycleViewSet(BaseViewSet):
         # Fetch project for the specific record or pass project_id dynamically
         project_timezone = project.timezone
 
-        # Convert the current time (timezone.now()) to the project's timezone
-        local_tz = pytz.timezone(project_timezone)
-        current_time_in_project_tz = timezone.now().astimezone(local_tz)
-
-        # Convert project local time back to UTC for comparison (start_date is stored in UTC)
-        current_time_in_utc = current_time_in_project_tz.astimezone(pytz.utc)
-
         # Current Cycle
         if cycle_view == "current":
-            queryset = queryset.filter(start_date__lte=current_time_in_utc, end_date__gte=current_time_in_utc)
+            queryset = queryset.filter(active_sprint_q())  # jira-parity: the started sprint
 
             data = queryset.values(
                 # necessary fields
@@ -229,6 +201,7 @@ class CycleViewSet(BaseViewSet):
                 "status",
                 "version",
                 "created_by",
+                *SPRINT_FIELDS,  # jira-parity
             )
             datetime_fields = ["start_date", "end_date"]
             data = user_timezone_converter(data, datetime_fields, project_timezone)
@@ -262,6 +235,7 @@ class CycleViewSet(BaseViewSet):
             "status",
             "version",
             "created_by",
+            *SPRINT_FIELDS,  # jira-parity
         )
         datetime_fields = ["start_date", "end_date"]
         data = user_timezone_converter(data, datetime_fields, project_timezone)
@@ -303,6 +277,7 @@ class CycleViewSet(BaseViewSet):
                         "assignee_ids",
                         "status",
                         "created_by",
+                        *SPRINT_FIELDS,  # jira-parity
                     )
                     .first()
                 )
@@ -338,25 +313,19 @@ class CycleViewSet(BaseViewSet):
         cycle = queryset.first()
         if cycle.archived_at:
             return Response(
-                {"error": "Archived cycle cannot be updated"},
+                {"error": "Archived sprints can't be updated"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
         current_instance = json.dumps(CycleSerializer(cycle).data, cls=DjangoJSONEncoder)
 
-        request_data = request.data
+        # jira-parity: closed sprints only accept sort_order; active sprints keep their dates
+        try:
+            request_data = validate_sprint_update(cycle, request.data)
+        except SprintError as error:
+            return Response(error.as_response_data(), status=status.HTTP_400_BAD_REQUEST)
 
-        if cycle.end_date is not None and cycle.end_date < timezone.now():
-            if "sort_order" in request_data:
-                # Can only change sort order for a completed cycle``
-                request_data = {"sort_order": request_data.get("sort_order", cycle.sort_order)}
-            else:
-                return Response(
-                    {"error": "The Cycle has already been completed so it cannot be edited"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-
-        serializer = CycleWriteSerializer(cycle, data=request.data, partial=True, context={"project_id": project_id})
+        serializer = CycleWriteSerializer(cycle, data=request_data, partial=True, context={"project_id": project_id})
         if serializer.is_valid():
             serializer.save()
             cycle = queryset.values(
@@ -384,6 +353,7 @@ class CycleViewSet(BaseViewSet):
                 "assignee_ids",
                 "status",
                 "created_by",
+                *SPRINT_FIELDS,  # jira-parity
             ).first()
 
             # Fetch the project timezone
@@ -451,12 +421,13 @@ class CycleViewSet(BaseViewSet):
                 "assignee_ids",
                 "status",
                 "created_by",
+                *SPRINT_FIELDS,  # jira-parity
             )
             .first()
         )
 
         if data is None:
-            return Response({"error": "Cycle not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Sprint not found"}, status=status.HTTP_404_NOT_FOUND)
 
         queryset = queryset.first()
         # Fetch the project timezone
@@ -522,38 +493,14 @@ class CycleDateCheckEndpoint(BaseAPIView):
     def post(self, request, slug, project_id):
         start_date = request.data.get("start_date", False)
         end_date = request.data.get("end_date", False)
-        cycle_id = request.data.get("cycle_id")
         if not start_date or not end_date:
             return Response(
                 {"error": "Start date and end date both are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        start_date = convert_to_utc(date=str(start_date), project_id=project_id, is_start_date=True)
-        end_date = convert_to_utc(
-            date=str(end_date),
-            project_id=project_id,
-        )
-
-        # Check if any cycle intersects in the given interval
-        cycles = Cycle.objects.filter(
-            Q(workspace__slug=slug)
-            & Q(project_id=project_id)
-            & (
-                Q(start_date__lte=start_date, end_date__gte=start_date)
-                | Q(start_date__lte=end_date, end_date__gte=end_date)
-                | Q(start_date__gte=start_date, end_date__lte=end_date)
-            )
-        ).exclude(pk=cycle_id)
-        if cycles.exists():
-            return Response(
-                {
-                    "error": "You have a cycle already on the given dates, if you want to create a draft cycle you can do that by removing dates",  # noqa: E501
-                    "status": False,
-                }
-            )
-        else:
-            return Response({"status": True}, status=status.HTTP_200_OK)
+        # jira-parity: sprints may overlap in planned dates (one *active* sprint is enforced on start instead)
+        return Response({"status": True}, status=status.HTTP_200_OK)
 
 
 class CycleFavoriteViewSet(BaseViewSet):
@@ -598,7 +545,7 @@ class TransferCycleIssueEndpoint(BaseAPIView):
 
         if not new_cycle_id:
             return Response(
-                {"error": "New Cycle Id is required"},
+                {"error": "Choose the sprint to move the work items to"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -660,7 +607,7 @@ class CycleProgressEndpoint(BaseAPIView):
     def get(self, request, slug, project_id, cycle_id):
         cycle = Cycle.objects.filter(workspace__slug=slug, project_id=project_id, id=cycle_id).first()
         if not cycle:
-            return Response({"error": "Cycle not found"}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"error": "Sprint not found"}, status=status.HTTP_404_NOT_FOUND)
         aggregate_estimates = (
             Issue.issue_objects.filter(
                 estimate_point__estimate__type="points",
@@ -806,7 +753,7 @@ class CycleAnalyticsEndpoint(BaseAPIView):
 
         if not cycle.start_date or not cycle.end_date:
             return Response(
-                {"error": "Cycle has no start or end date"},
+                {"error": "This sprint has no start or end date"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

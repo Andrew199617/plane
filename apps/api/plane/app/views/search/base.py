@@ -20,13 +20,13 @@ from django.db.models import (
 from django.contrib.postgres.aggregates import ArrayAgg
 from django.contrib.postgres.fields import ArrayField
 from django.db.models.functions import Cast, Coalesce, Concat
-from django.utils import timezone
 
 # Third party imports
 from rest_framework import status
 from rest_framework.response import Response
 
 # Module imports
+from plane.utils.jira_parity.sprints import sprint_status_case
 from plane.app.views.base import BaseAPIView
 from plane.app.permissions import WorkspaceUserPermission
 from plane.db.models import (
@@ -437,23 +437,7 @@ class SearchEndpoint(BaseAPIView):
                             project_id=project_id,
                         )
                         .annotate(
-                            status=Case(
-                                When(
-                                    Q(start_date__lte=timezone.now()) & Q(end_date__gte=timezone.now()),
-                                    then=Value("CURRENT"),
-                                ),
-                                When(
-                                    start_date__gt=timezone.now(),
-                                    then=Value("UPCOMING"),
-                                ),
-                                When(end_date__lt=timezone.now(), then=Value("COMPLETED")),
-                                When(
-                                    Q(start_date__isnull=True) & Q(end_date__isnull=True),
-                                    then=Value("DRAFT"),
-                                ),
-                                default=Value("DRAFT"),
-                                output_field=CharField(),
-                            )
+                            status=sprint_status_case(),  # jira-parity: explicit sprint lifecycle
                         )
                         .order_by("-created_at")
                         .distinct()
@@ -640,23 +624,7 @@ class SearchEndpoint(BaseAPIView):
                             workspace__slug=slug,
                         )
                         .annotate(
-                            status=Case(
-                                When(
-                                    Q(start_date__lte=timezone.now()) & Q(end_date__gte=timezone.now()),
-                                    then=Value("CURRENT"),
-                                ),
-                                When(
-                                    start_date__gt=timezone.now(),
-                                    then=Value("UPCOMING"),
-                                ),
-                                When(end_date__lt=timezone.now(), then=Value("COMPLETED")),
-                                When(
-                                    Q(start_date__isnull=True) & Q(end_date__isnull=True),
-                                    then=Value("DRAFT"),
-                                ),
-                                default=Value("DRAFT"),
-                                output_field=CharField(),
-                            )
+                            status=sprint_status_case(),  # jira-parity: explicit sprint lifecycle
                         )
                         .order_by("-created_at")
                         .distinct()

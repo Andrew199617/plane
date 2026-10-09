@@ -14,6 +14,7 @@ from .workflows import urlpatterns as workflows_urls
 from .teams import urlpatterns as teams_urls
 from .project_categories import urlpatterns as project_categories_urls
 from .project_defaults import urlpatterns as project_defaults_urls
+from .sprints import urlpatterns as sprints_urls
 
 urlpatterns = [
     *work_item_types_urls,
@@ -22,4 +23,5 @@ urlpatterns = [
     *teams_urls,
     *project_categories_urls,
     *project_defaults_urls,
+    *sprints_urls,
 ]

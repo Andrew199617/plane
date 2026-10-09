@@ -14,6 +14,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 # Module imports
+from plane.utils.jira_parity.sprints import closed_sprint_q
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.db.models import Issue, Project, State
 from plane.utils.exception_logger import log_exception
@@ -43,7 +44,7 @@ def archive_old_issues():
                     state__group__in=["completed", "cancelled"],
                 ),
                 Q(issue_cycle__isnull=True)
-                | (Q(issue_cycle__cycle__end_date__lt=timezone.now()) & Q(issue_cycle__isnull=False)),
+                | (closed_sprint_q("issue_cycle__cycle__") & Q(issue_cycle__isnull=False)),  # jira-parity
                 Q(issue_module__isnull=True)
                 | (Q(issue_module__module__target_date__lt=timezone.now()) & Q(issue_module__isnull=False)),
             ).filter(
@@ -104,7 +105,7 @@ def close_old_issues():
                     state__group__in=["backlog", "unstarted", "started"],
                 ),
                 Q(issue_cycle__isnull=True)
-                | (Q(issue_cycle__cycle__end_date__lt=timezone.now()) & Q(issue_cycle__isnull=False)),
+                | (closed_sprint_q("issue_cycle__cycle__") & Q(issue_cycle__isnull=False)),  # jira-parity
                 Q(issue_module__isnull=True)
                 | (Q(issue_module__module__target_date__lt=timezone.now()) & Q(issue_module__isnull=False)),
             ).filter(

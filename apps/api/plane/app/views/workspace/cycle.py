@@ -10,6 +10,7 @@ from rest_framework import status
 from rest_framework.response import Response
 
 # Module imports
+from plane.utils.jira_parity.sprints import sprint_status_case
 from plane.app.views.base import BaseAPIView
 from plane.db.models import Cycle
 from plane.app.permissions import WorkspaceViewerPermission
@@ -102,6 +103,7 @@ class WorkspaceCyclesEndpoint(BaseAPIView):
                     ),
                 )
             )
+            .annotate(status=sprint_status_case())  # jira-parity: explicit sprint lifecycle
             .order_by(self.kwargs.get("order_by", "-created_at"))
             .distinct()
         )

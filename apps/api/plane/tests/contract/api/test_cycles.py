@@ -207,6 +207,7 @@ class TestCycleListCreateAPIEndpoint:
             start_date=now - timedelta(days=1),
             end_date=now + timedelta(days=6),
             owned_by=create_user,
+            started_at=now - timedelta(days=1),  # jira-parity: sprints are started explicitly
         )
 
         # Upcoming cycle
@@ -227,6 +228,8 @@ class TestCycleListCreateAPIEndpoint:
             start_date=now - timedelta(days=10),
             end_date=now - timedelta(days=3),
             owned_by=create_user,
+            started_at=now - timedelta(days=10),  # jira-parity: sprints are completed explicitly
+            completed_at=now - timedelta(days=3),
         )
 
         # Draft cycle

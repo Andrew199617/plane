@@ -20,6 +20,7 @@ from rest_framework.response import Response
 
 # Module imports
 from .. import BaseViewSet
+from plane.utils.jira_parity.sprints import is_sprint_closed
 from plane.app.serializers import CycleIssueSerializer
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.db.models import Cycle, CycleIssue, Issue, FileAsset, IssueLink
@@ -229,9 +230,9 @@ class CycleIssueViewSet(BaseViewSet):
 
         cycle = Cycle.objects.get(workspace__slug=slug, project_id=project_id, pk=cycle_id)
 
-        if cycle.end_date is not None and cycle.end_date < timezone.now():
+        if is_sprint_closed(cycle):  # jira-parity: closed sprints are read-only
             return Response(
-                {"error": "The Cycle has already been completed so no new issues can be added"},
+                {"error": "This sprint is completed, so no work items can be added to it"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

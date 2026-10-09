@@ -24,6 +24,14 @@ from rest_framework.response import Response
 from drf_spectacular.utils import OpenApiRequest, OpenApiResponse
 
 # Module imports
+from plane.utils.jira_parity.sprints import (
+    SprintError,
+    active_sprint_q,
+    closed_sprint_q,
+    future_sprint_q,
+    is_sprint_closed,
+    validate_sprint_update,
+)
 from plane.api.serializers import (
     CycleIssueSerializer,
     CycleSerializer,
@@ -201,7 +209,7 @@ class CycleListCreateAPIEndpoint(BaseAPIView):
 
         # Current Cycle
         if cycle_view == "current":
-            queryset = queryset.filter(start_date__lte=timezone.now(), end_date__gte=timezone.now())
+            queryset = queryset.filter(active_sprint_q())  # jira-parity: the started sprint
             data = CycleSerializer(
                 queryset,
                 many=True,
@@ -213,7 +221,9 @@ class CycleListCreateAPIEndpoint(BaseAPIView):
 
         # Upcoming Cycles
         if cycle_view == "upcoming":
-            queryset = queryset.filter(start_date__gt=timezone.now())
+            queryset = queryset.filter(
+                future_sprint_q(), start_date__isnull=False, end_date__isnull=False
+            )  # jira-parity
             return self.paginate(
                 request=request,
                 queryset=(queryset),
@@ -228,7 +238,7 @@ class CycleListCreateAPIEndpoint(BaseAPIView):
 
         # Completed Cycles
         if cycle_view == "completed":
-            queryset = queryset.filter(end_date__lt=timezone.now())
+            queryset = queryset.filter(closed_sprint_q())  # jira-parity
             return self.paginate(
                 request=request,
                 queryset=(queryset),
@@ -243,7 +253,7 @@ class CycleListCreateAPIEndpoint(BaseAPIView):
 
         # Draft Cycles
         if cycle_view == "draft":
-            queryset = queryset.filter(end_date=None, start_date=None)
+            queryset = queryset.filter(future_sprint_q()).filter(Q(end_date=None) | Q(start_date=None))  # jira-parity
             return self.paginate(
                 request=request,
                 queryset=(queryset),
@@ -258,7 +268,7 @@ class CycleListCreateAPIEndpoint(BaseAPIView):
 
         # Incomplete Cycles
         if cycle_view == "incomplete":
-            queryset = queryset.filter(Q(end_date__gte=timezone.now()) | Q(end_date__isnull=True))
+            queryset = queryset.exclude(closed_sprint_q())  # jira-parity
             return self.paginate(
                 request=request,
                 queryset=(queryset),
@@ -556,20 +566,14 @@ class CycleDetailAPIEndpoint(BaseAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        request_data = request.data
-
-        if cycle.end_date is not None and cycle.end_date < timezone.now():
-            if "sort_order" in request_data:
-                # Can only change sort order
-                request_data = {"sort_order": request_data.get("sort_order", cycle.sort_order)}
-            else:
-                return Response(
-                    {"error": "The Cycle has already been completed so it cannot be edited"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
+        # jira-parity: closed sprints only accept sort_order; active sprints keep their dates
+        try:
+            request_data = validate_sprint_update(cycle, request.data)
+        except SprintError as error:
+            return Response(error.as_response_data(), status=status.HTTP_400_BAD_REQUEST)
 
         serializer = CycleUpdateSerializer(
-            cycle, data=request.data, partial=True, context={"request": request, "project_id": project_id}
+            cycle, data=request_data, partial=True, context={"request": request, "project_id": project_id}
         )
         if serializer.is_valid():
             if (
@@ -813,9 +817,9 @@ class CycleArchiveUnarchiveAPIEndpoint(BaseAPIView):
         Only cycles that have ended can be archived.
         """
         cycle = Cycle.objects.get(pk=cycle_id, project_id=project_id, workspace__slug=slug)
-        if cycle.end_date is None or cycle.end_date >= timezone.now():
+        if not is_sprint_closed(cycle):  # jira-parity: only closed sprints can be archived
             return Response(
-                {"error": "Only completed cycles can be archived"},
+                {"error": "Only completed sprints can be archived"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
         cycle.archived_at = timezone.now()
@@ -979,11 +983,11 @@ class CycleIssueListCreateAPIEndpoint(BaseAPIView):
 
         cycle = Cycle.objects.get(workspace__slug=slug, project_id=project_id, pk=cycle_id)
 
-        if cycle.end_date is not None and cycle.end_date < timezone.now():
+        if is_sprint_closed(cycle):  # jira-parity: closed sprints are read-only
             return Response(
                 {
                     "code": "CYCLE_COMPLETED",
-                    "message": "The Cycle has already been completed so no new issues can be added",
+                    "message": "This sprint is completed, so no work items can be added to it",
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
@@ -1239,10 +1243,10 @@ class TransferCycleIssueAPIEndpoint(BaseAPIView):
             project_id=project_id,
             pk=cycle_id,
         )
-        # transfer work items only when cycle is completed (passed the end data)
-        if old_cycle.end_date is not None and old_cycle.end_date > timezone.now():
+        # transfer work items only when the sprint is completed (jira-parity: explicit completion)
+        if not is_sprint_closed(old_cycle):
             return Response(
-                {"error": "The old cycle is not completed yet"},
+                {"error": "The old sprint is not completed yet"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

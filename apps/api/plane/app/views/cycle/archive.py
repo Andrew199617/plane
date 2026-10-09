@@ -8,7 +8,6 @@ from django.contrib.postgres.fields import ArrayField
 from django.db import models
 from django.db.models import (
     Case,
-    CharField,
     Count,
     Exists,
     F,
@@ -29,6 +28,7 @@ from django.utils import timezone
 # Third party imports
 from rest_framework import status
 from rest_framework.response import Response
+from plane.utils.jira_parity.sprints import SPRINT_FIELDS, is_sprint_closed, sprint_status_case
 from plane.app.permissions import allow_permission, ROLE
 from plane.db.models import Cycle, UserFavorite, Issue, Label, User, Project
 from plane.utils.analytics_plot import burndown_plot
@@ -206,20 +206,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
                 )
             )
             .annotate(
-                status=Case(
-                    When(
-                        Q(start_date__lte=timezone.now()) & Q(end_date__gte=timezone.now()),
-                        then=Value("CURRENT"),
-                    ),
-                    When(start_date__gt=timezone.now(), then=Value("UPCOMING")),
-                    When(end_date__lt=timezone.now(), then=Value("COMPLETED")),
-                    When(
-                        Q(start_date__isnull=True) & Q(end_date__isnull=True),
-                        then=Value("DRAFT"),
-                    ),
-                    default=Value("DRAFT"),
-                    output_field=CharField(),
-                )
+                status=sprint_status_case(),  # jira-parity: explicit sprint lifecycle
             )
             .annotate(
                 assignee_ids=Coalesce(
@@ -298,6 +285,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
                     "backlog_issues",
                     "assignee_ids",
                     "status",
+                    *SPRINT_FIELDS,  # jira-parity
                     "archived_at",
                 )
             ).order_by("-is_favorite", "-created_at")
@@ -348,6 +336,7 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
                     "backlog_issues",
                     "assignee_ids",
                     "status",
+                    *SPRINT_FIELDS,  # jira-parity
                     "created_by",
                     "archived_at",
                 )
@@ -587,9 +576,9 @@ class CycleArchiveUnarchiveEndpoint(BaseAPIView):
     def post(self, request, slug, project_id, cycle_id):
         cycle = Cycle.objects.get(pk=cycle_id, project_id=project_id, workspace__slug=slug)
 
-        if cycle.end_date is None or cycle.end_date >= timezone.now():
+        if not is_sprint_closed(cycle):  # jira-parity: only closed sprints can be archived
             return Response(
-                {"error": "Only completed cycles can be archived"},
+                {"error": "Only completed sprints can be archived"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 

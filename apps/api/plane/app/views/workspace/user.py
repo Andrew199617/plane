@@ -23,12 +23,12 @@ from django.db.models import (
 )
 from django.db.models.fields import DateField
 from django.db.models.functions import Cast, ExtractWeek
-from django.utils import timezone
 
 # Third party modules
 from rest_framework import status
 from rest_framework.response import Response
 
+from plane.utils.jira_parity.sprints import active_sprint_q, future_sprint_q
 from plane.app.permissions import WorkspaceEntityPermission, WorkspaceViewerPermission
 
 # Module imports
@@ -503,16 +503,16 @@ class WorkspaceUserProfileStatsEndpoint(BaseAPIView):
             .count()
         )
 
+        # jira-parity: future (not started) and active (started, not completed) sprints
         upcoming_cycles = CycleIssue.objects.filter(
+            future_sprint_q("cycle__"),
             workspace__slug=slug,
-            cycle__start_date__gt=timezone.now(),
             issue__assignees__in=[user_id],
         ).values("cycle__name", "cycle__id", "cycle__project_id")
 
         present_cycle = CycleIssue.objects.filter(
+            active_sprint_q("cycle__"),
             workspace__slug=slug,
-            cycle__start_date__lt=timezone.now(),
-            cycle__end_date__gt=timezone.now(),
             issue__assignees__in=[user_id],
         ).values("cycle__name", "cycle__id", "cycle__project_id")
 

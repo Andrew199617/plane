@@ -54,14 +54,18 @@ def transfer_cycle_issues(
     Returns:
         dict: Response data with success or error message
     """
-    # Get the new cycle
-    new_cycle = Cycle.objects.filter(workspace__slug=slug, project_id=project_id, pk=new_cycle_id).first()
+    # Get the new cycle (jira-parity: None only snapshots the old sprint; its caller moves the issues to the backlog)
+    new_cycle = None
+    if new_cycle_id is not None:
+        new_cycle = Cycle.objects.filter(workspace__slug=slug, project_id=project_id, pk=new_cycle_id).first()
+        if new_cycle is None:
+            return {"success": False, "error": "The sprint to move the work items to doesn't exist"}
 
-    # Check if new cycle is already completed
-    if new_cycle.end_date is not None and new_cycle.end_date < timezone.now():
+    # Check if new cycle is already completed (jira-parity: sprints are closed explicitly, not by their dates)
+    if new_cycle is not None and new_cycle.completed_at is not None:
         return {
             "success": False,
-            "error": "The cycle where the issues are transferred is already completed",
+            "error": "The sprint where the work items are moved is already completed",
         }
 
     # Get the old cycle with issue counts
@@ -144,7 +148,7 @@ def transfer_cycle_issues(
     if old_cycle is None:
         return {
             "success": False,
-            "error": "Source cycle not found",
+            "error": "Source sprint not found",
         }
 
     # Check if project uses estimates
@@ -430,6 +434,9 @@ def transfer_cycle_issues(
         ),
     }
     current_cycle.save(update_fields=["progress_snapshot"])
+
+    if new_cycle is None:
+        return {"success": True}
 
     # Get issues to transfer (only incomplete issues)
     cycle_issues = CycleIssue.objects.filter(

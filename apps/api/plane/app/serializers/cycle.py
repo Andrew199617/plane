@@ -40,7 +40,8 @@ class CycleWriteSerializer(BaseSerializer):
     class Meta:
         model = Cycle
         fields = "__all__"
-        read_only_fields = ["workspace", "project", "owned_by", "archived_at"]
+        # jira-parity: started_at / completed_at only change through the start / complete sprint actions
+        read_only_fields = ["workspace", "project", "owned_by", "archived_at", "started_at", "completed_at"]
 
 
 class CycleSerializer(BaseSerializer):
@@ -85,6 +86,9 @@ class CycleSerializer(BaseSerializer):
             "unstarted_issues",
             "backlog_issues",
             "status",
+            # jira-parity: sprint lifecycle
+            "started_at",
+            "completed_at",
         ]
         read_only_fields = fields
 
