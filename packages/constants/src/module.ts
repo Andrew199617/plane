@@ -10,12 +10,9 @@ import type { TModuleLayoutOptions, TModuleOrderByOptions, TModuleStatus } from 
 export const MODULE_STATUS_COLORS: {
   [key in TModuleStatus]: string;
 } = {
-  backlog: "#a3a3a2",
-  planned: "#3f76ff",
-  paused: "#525252",
-  completed: "#16a34a",
-  cancelled: "#ef4444",
-  "in-progress": "#f39e1f",
+  // Jira-parity: releases (Jira Fix Versions) are only Unreleased / Released.
+  unreleased: "#5e6c84",
+  released: "#16a34a",
 };
 
 export const MODULE_STATUS: {
@@ -26,46 +23,18 @@ export const MODULE_STATUS: {
   bgColor: string;
 }[] = [
   {
-    i18n_label: "project_modules.status.backlog",
-    value: "backlog",
-    color: MODULE_STATUS_COLORS.backlog,
-    textColor: "text-placeholder",
+    i18n_label: "project_modules.status.unreleased",
+    value: "unreleased",
+    color: MODULE_STATUS_COLORS.unreleased,
+    textColor: "text-secondary",
     bgColor: "bg-layer-1",
   },
   {
-    i18n_label: "project_modules.status.planned",
-    value: "planned",
-    color: MODULE_STATUS_COLORS.planned,
-    textColor: "text-blue-500",
-    bgColor: "bg-indigo-50",
-  },
-  {
-    i18n_label: "project_modules.status.in_progress",
-    value: "in-progress",
-    color: MODULE_STATUS_COLORS["in-progress"],
-    textColor: "text-amber-500",
-    bgColor: "bg-amber-50",
-  },
-  {
-    i18n_label: "project_modules.status.paused",
-    value: "paused",
-    color: MODULE_STATUS_COLORS.paused,
-    textColor: "text-tertiary",
-    bgColor: "bg-surface-2",
-  },
-  {
-    i18n_label: "project_modules.status.completed",
-    value: "completed",
-    color: MODULE_STATUS_COLORS.completed,
+    i18n_label: "project_modules.status.released",
+    value: "released",
+    color: MODULE_STATUS_COLORS.released,
     textColor: "text-success-primary",
     bgColor: "bg-success-subtle",
-  },
-  {
-    i18n_label: "project_modules.status.cancelled",
-    value: "cancelled",
-    color: MODULE_STATUS_COLORS.cancelled,
-    textColor: "text-danger-primary",
-    bgColor: "bg-danger-subtle",
   },
 ];
 

@@ -25,7 +25,7 @@ type Props = {
 };
 
 const MEMBERS_FILTERS = new Set(["lead", "members"]);
-const DATE_FILTERS = ["start_date", "target_date"];
+const DATE_FILTERS = new Set(["start_date", "target_date"]);
 
 /**
  * Container chrome for a group of filter chips plus their remove buttons (the legacy `Tag`
@@ -63,7 +63,9 @@ export function ModuleAppliedFiltersList(props: Props) {
           return (
             <div key={filterKey} className={FILTER_GROUP_CLASSNAME}>
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-11 text-tertiary">{replaceUnderscoreIfSnakeCase(filterKey)}</span>
+                <span className="text-11 text-tertiary">
+                  {filterKey === "target_date" ? "release date" : replaceUnderscoreIfSnakeCase(filterKey)}
+                </span>
                 {filterKey === "status" && (
                   <AppliedStatusFilters
                     editable={isEditingAllowed}
@@ -71,7 +73,7 @@ export function ModuleAppliedFiltersList(props: Props) {
                     values={value}
                   />
                 )}
-                {DATE_FILTERS.includes(filterKey) && (
+                {DATE_FILTERS.has(filterKey) && (
                   <AppliedDateFilters
                     editable={isEditingAllowed}
                     handleRemove={(val) => handleRemoveFilter(filterKey, val)}
@@ -104,7 +106,7 @@ export function ModuleAppliedFiltersList(props: Props) {
             className="flex flex-wrap items-center gap-2 rounded-md border border-subtle px-2 py-1 capitalize"
           >
             <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-11 text-tertiary">Modules</span>
+              <span className="text-11 text-tertiary">Releases</span>
               <div className="flex items-center gap-1 rounded-sm bg-layer-1 p-1 text-11">
                 Favorite
                 {isEditingAllowed && (

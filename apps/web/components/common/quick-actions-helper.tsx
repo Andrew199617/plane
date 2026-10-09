@@ -100,19 +100,14 @@ export const useModuleMenuItems = (props: UseModuleMenuItemsProps): MenuResult =
   const { moduleDetails, isEditingAllowed, ...handlers } = props;
 
   const isArchived = !!moduleDetails?.archived_at;
-  const moduleState = moduleDetails?.status?.toLocaleLowerCase();
-  const isInArchivableGroup = !!moduleState && ["completed", "cancelled"].includes(moduleState);
 
   // Assemble final menu items - order defined here
   const items = [
     factory.createEditMenuItem(handlers.handleEdit, isEditingAllowed && !isArchived),
     factory.createOpenInNewTabMenuItem(handlers.handleOpenInNewTab),
     factory.createCopyLinkMenuItem(handlers.handleCopyLink),
-    factory.createArchiveMenuItem(handlers.handleArchive, {
-      shouldRender: isEditingAllowed && !isArchived,
-      disabled: !isInArchivableGroup,
-      description: isInArchivableGroup ? undefined : "Only completed or cancelled modules can be archived",
-    }),
+    // Jira-parity: a release (module) can be archived whatever its status
+    factory.createArchiveMenuItem(handlers.handleArchive, { shouldRender: isEditingAllowed && !isArchived }),
     factory.createRestoreMenuItem(handlers.handleRestore, isEditingAllowed && isArchived),
     factory.createDeleteMenuItem(handlers.handleDelete, isEditingAllowed && !isArchived),
   ].filter((item) => item.shouldRender !== false);

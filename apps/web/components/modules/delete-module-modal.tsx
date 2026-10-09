@@ -52,7 +52,7 @@ export const DeleteModuleModal = observer(function DeleteModuleModal(props: Prop
       setToast({
         type: "success",
         title: "Success!",
-        message: "Module deleted successfully.",
+        message: "Release deleted successfully.",
       });
     } catch (errors) {
       const isPermissionError =
@@ -77,12 +77,12 @@ export const DeleteModuleModal = observer(function DeleteModuleModal(props: Prop
       handleSubmit={handleDeletion}
       isSubmitting={isDeleteLoading}
       isOpen={isOpen}
-      title="Delete module"
+      title="Delete release"
       content={
         <>
-          Are you sure you want to delete module-{" "}
+          Are you sure you want to delete release-{" "}
           <span className="font-medium break-all text-primary">{data?.name}</span>? All of the data related to the
-          module will be permanently removed. This action cannot be undone.
+          release will be permanently removed. This action cannot be undone.
         </>
       }
     />

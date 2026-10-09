@@ -6,7 +6,15 @@
 
 // types
 import { API_BASE_URL } from "@plane/constants";
-import type { IModule, ILinkDetails, ModuleLink, TIssuesResponse } from "@plane/types";
+import type {
+  IModule,
+  ILinkDetails,
+  ModuleLink,
+  TIssuesResponse,
+  TModuleReleasePayload,
+  TModuleReleaseResponse,
+  TModuleUnreleaseResponse,
+} from "@plane/types";
 // services
 import { APIService } from "@/services/api.service";
 
@@ -62,6 +70,29 @@ export class ModuleService extends APIService {
     data: Partial<IModule>
   ): Promise<IModule> {
     return this.patch(`/api/workspaces/${workspaceSlug}/projects/${projectId}/modules/${moduleId}/`, data)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  /** Jira-parity: release a module (Fix Version), optionally moving its unresolved work items. */
+  async releaseModule(
+    workspaceSlug: string,
+    projectId: string,
+    moduleId: string,
+    data: TModuleReleasePayload
+  ): Promise<TModuleReleaseResponse> {
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/modules/${moduleId}/release/`, data)
+      .then((response) => response?.data)
+      .catch((error) => {
+        throw error?.response?.data;
+      });
+  }
+
+  /** Jira-parity: mark a released module (Fix Version) as unreleased again. */
+  async unreleaseModule(workspaceSlug: string, projectId: string, moduleId: string): Promise<TModuleUnreleaseResponse> {
+    return this.post(`/api/workspaces/${workspaceSlug}/projects/${projectId}/modules/${moduleId}/unrelease/`)
       .then((response) => response?.data)
       .catch((error) => {
         throw error?.response?.data;

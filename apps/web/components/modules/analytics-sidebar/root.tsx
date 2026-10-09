@@ -13,7 +13,6 @@ import {
   ChevronRightOutline,
   InfoOutline,
   MembersOutline,
-  StartDateOutline,
   UserAltOutline,
   WorkItemsOutline,
 } from "@makeplane/propel/icons";
@@ -25,19 +24,18 @@ import { ModuleStatusIcon } from "@plane/blocks/icons";
 import { setToast } from "@plane/blocks/toast";
 import type { ILinkDetails, IModule, ModuleLink } from "@plane/types";
 // plane ui
-import { DateRangeSelect } from "@plane/blocks/property-select";
 import { Select } from "@plane/blocks/select";
 import { Loader } from "@plane/blocks/skeleton";
 import { TextArea } from "@makeplane/propel/components/text-area";
 // components
 // helpers
-import { getDate, renderFormattedPayloadDate } from "@plane/utils";
 import { MemberSelect } from "@/components/dropdowns/member/member-select";
+import { ReleaseOverdueLozenge, ReleaseSidebarDates, ReleaseStatusLozenge } from "@/components/jira-parity/releases";
 import { CreateUpdateModuleLinkModal, ModuleAnalyticsProgress, ModuleLinksList } from "@/components/modules";
 // hooks
 import { useProjectEstimates } from "@/hooks/store/estimates";
 import { useModule } from "@/hooks/store/use-module";
-import { useUserPermissions, useUserProfile } from "@/hooks/store/user";
+import { useUserPermissions } from "@/hooks/store/user";
 // plane web constants
 type ModuleStatusOption = (typeof MODULE_STATUS)[number];
 
@@ -46,7 +44,7 @@ const defaultValues: Partial<IModule> = {
   member_ids: [],
   start_date: null,
   target_date: null,
-  status: "backlog",
+  status: "unreleased",
 };
 
 type TModuleLinksCollapsibleProps = {
@@ -149,7 +147,6 @@ export const ModuleAnalyticsSidebar = observer(function ModuleAnalyticsSidebar(p
   // store hooks
   const { t } = useTranslation();
   const { allowPermissions } = useUserPermissions();
-  const { data: userProfile } = useUserProfile();
 
   const { getModuleById, updateModuleDetails, createModuleLink, updateModuleLink, deleteModuleLink } = useModule();
   const { areEstimateEnabledByProjectId, currentActiveEstimateId, estimateById } = useProjectEstimates();
@@ -158,7 +155,7 @@ export const ModuleAnalyticsSidebar = observer(function ModuleAnalyticsSidebar(p
   const moduleDetails = getModuleById(moduleId);
   const areEstimateEnabled = projectId && areEstimateEnabledByProjectId(projectId.toString());
   const estimateType = areEstimateEnabled && currentActiveEstimateId && estimateById(currentActiveEstimateId);
-  const isEstimatePointValid = estimateType && estimateType?.type == EEstimateSystem.POINTS ? true : false;
+  const isEstimatePointValid = !!estimateType && estimateType?.type == EEstimateSystem.POINTS;
 
   const { reset, control } = useForm({
     defaultValues,
@@ -189,7 +186,7 @@ export const ModuleAnalyticsSidebar = observer(function ModuleAnalyticsSidebar(p
         setToast({
           type: "success",
           title: "Success!",
-          message: "Module link deleted successfully.",
+          message: "Release link deleted successfully.",
         });
       } catch (_error) {
         setToast({
@@ -202,16 +199,21 @@ export const ModuleAnalyticsSidebar = observer(function ModuleAnalyticsSidebar(p
     [workspaceSlug, projectId, moduleId, deleteModuleLink]
   );
 
-  const handleDateChange = async (startDate: Date | undefined, targetDate: Date | undefined) => {
-    submitChanges({
-      start_date: startDate ? renderFormattedPayloadDate(startDate) : null,
-      target_date: targetDate ? renderFormattedPayloadDate(targetDate) : null,
-    });
-    setToast({
-      type: "success",
-      title: "Success!",
-      message: "Module updated successfully.",
-    });
+  const handleDateChange = async (payload: Partial<Pick<IModule, "start_date" | "target_date">>) => {
+    try {
+      await submitChanges(payload);
+      setToast({
+        type: "success",
+        title: "Success!",
+        message: "Release updated successfully.",
+      });
+    } catch {
+      setToast({
+        type: "error",
+        title: "Error!",
+        message: "Release could not be updated. Please try again.",
+      });
+    }
   };
 
   useEffect(() => {
@@ -318,12 +320,15 @@ export const ModuleAnalyticsSidebar = observer(function ModuleAnalyticsSidebar(p
                         backgroundColor: moduleStatus ? `${moduleStatus.color}20` : "#a3a3a220",
                       }}
                     >
-                      {(moduleStatus && t(moduleStatus?.i18n_label)) ?? t("project_modules.status.backlog")}
+                      {(moduleStatus && t(moduleStatus?.i18n_label)) ?? t("project_modules.status.unreleased")}
                     </span>
                   </Select.Trigger>
                 </Select>
               )}
             />
+            {/* Jira-parity: ARCHIVED / OVERDUE lozenges next to the status */}
+            {moduleDetails.archived_at && <ReleaseStatusLozenge release={moduleDetails} />}
+            <ReleaseOverdueLozenge release={moduleDetails} />
           </div>
           <h4 className="w-full text-18 font-semibold wrap-break-word text-primary">{moduleDetails.name}</h4>
           {moduleDetails.description && (
@@ -332,45 +337,12 @@ export const ModuleAnalyticsSidebar = observer(function ModuleAnalyticsSidebar(p
         </div>
 
         <div className="flex flex-col gap-5 pt-2.5 pb-6">
-          <div className="flex items-center justify-start gap-1">
-            <div className="flex w-2/5 items-center justify-start gap-2 text-tertiary">
-              <StartDateOutline className="h-4 w-4" />
-              <span className="text-14">{t("date_range")}</span>
-            </div>
-            <div className="h-7">
-              <Controller
-                control={control}
-                name="start_date"
-                render={({ field: { value: startDateValue, onChange: onChangeStartDate } }) => (
-                  <Controller
-                    control={control}
-                    name="target_date"
-                    render={({ field: { value: endDateValue, onChange: onChangeEndDate } }) => {
-                      const startDate = getDate(startDateValue);
-                      const endDate = getDate(endDateValue);
-                      return (
-                        <DateRangeSelect
-                          variant="select-ghost-md"
-                          value={{
-                            from: startDate ?? null,
-                            to: endDate ?? null,
-                          }}
-                          onChange={(range) => {
-                            onChangeStartDate(range.from ? renderFormattedPayloadDate(range.from) : null);
-                            onChangeEndDate(range.to ? renderFormattedPayloadDate(range.to) : null);
-                            void handleDateChange(range.from ?? undefined, range.to ?? undefined);
-                          }}
-                          placeholder={`${t("start_date")} - ${t("end_date")}`}
-                          weekStartsOn={userProfile?.start_of_the_week}
-                          disabled={!isEditingAllowed || isArchived}
-                        />
-                      );
-                    }}
-                  />
-                )}
-              />
-            </div>
-          </div>
+          {/* Jira-parity: separate "Start date" / "Release date" (= target_date) rows */}
+          <ReleaseSidebarDates
+            release={moduleDetails}
+            disabled={!isEditingAllowed || !!isArchived}
+            onChange={(payload) => void handleDateChange(payload)}
+          />
           <div className="flex items-center justify-start gap-1">
             <div className="flex w-2/5 items-center justify-start gap-2 text-tertiary">
               <UserAltOutline className="h-4 w-4" />

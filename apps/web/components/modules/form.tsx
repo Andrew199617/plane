@@ -20,6 +20,7 @@ import { getDate, renderFormattedPayloadDate, getTabIndex } from "@plane/utils";
 // components
 import { MemberSelect } from "@/components/dropdowns/member/member-select";
 import { ProjectSelect } from "@/components/dropdowns/project/project-select";
+import { formatReleaseDateRangeLabel } from "@/components/jira-parity/releases/helpers";
 import { ModuleStatusSelect } from "@/components/modules";
 // hooks
 import { useUserProfile } from "@/hooks/store/user";
@@ -38,7 +39,7 @@ type Props = {
 const defaultValues: Partial<IModule> = {
   name: "",
   description: "",
-  status: "backlog",
+  status: "unreleased",
   lead_id: null,
   member_ids: [],
 };
@@ -59,7 +60,7 @@ export function ModuleForm(props: Props) {
       project_id: projectId,
       name: data?.name || "",
       description: data?.description || "",
-      status: data?.status || "backlog",
+      status: data?.status || "unreleased",
       lead_id: data?.lead_id || null,
       member_ids: data?.member_ids || [],
     },
@@ -136,6 +137,7 @@ export function ModuleForm(props: Props) {
                       onChange={onChange}
                       placeholder={t("title")}
                       tabIndex={getIndex("name")}
+                      // oxlint-disable-next-line jsx_a11y/no-autofocus -- the name field opens focused in the modal
                       autoFocus
                     />
                   </InputGroup>
@@ -187,7 +189,8 @@ export function ModuleForm(props: Props) {
                         onChangeStartDate(range.from ? renderFormattedPayloadDate(range.from) : null);
                         onChangeEndDate(range.to ? renderFormattedPayloadDate(range.to) : null);
                       }}
-                      placeholder={`${t("start_date")} - ${t("end_date")}`}
+                      placeholder={t("jp_releases.date_range")}
+                      formatLabel={(_range, formatted) => formatReleaseDateRangeLabel(formatted)}
                       icon={<CalendarOutline />}
                       weekStartsOn={userProfile?.start_of_the_week}
                       tabIndex={getIndex("date_range")}

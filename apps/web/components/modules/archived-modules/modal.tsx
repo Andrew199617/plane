@@ -52,7 +52,7 @@ export function ArchiveModuleModal(props: Props) {
       setToast({
         type: "error",
         title: "Error!",
-        message: "Module could not be archived. Please try again.",
+        message: "Release could not be archived. Please try again.",
       });
     } finally {
       setIsArchiving(false);
@@ -66,8 +66,8 @@ export function ArchiveModuleModal(props: Props) {
       handleSubmit={handleArchiveModule}
       isSubmitting={isArchiving}
       variant="primary"
-      title={`Archive module ${moduleName}`}
-      content="Are you sure you want to archive the module? All your archives can be restored later."
+      title={`Archive release ${moduleName}`}
+      content="Are you sure you want to archive the release? All your archives can be restored later."
       primaryButtonText={{ loading: "Archiving", default: "Archive" }}
       secondaryButtonText="Cancel"
     />

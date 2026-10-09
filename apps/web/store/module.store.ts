@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -8,7 +9,13 @@ import { update, concat, set, sortBy } from "lodash-es";
 import { action, computed, observable, makeObservable, runInAction } from "mobx";
 import { computedFn } from "mobx-utils";
 // types
-import type { IModule, ILinkDetails, TModulePlotType } from "@plane/types";
+import type {
+  IModule,
+  ILinkDetails,
+  TModulePlotType,
+  TModuleReleasePayload,
+  TModuleReleaseResponse,
+} from "@plane/types";
 import type { DistributionUpdates } from "@plane/utils";
 import { updateDistribution, orderModules, shouldFilterModule } from "@plane/utils";
 // helpers
@@ -77,6 +84,14 @@ export interface IModuleStore {
   // archive
   archiveModule: (workspaceSlug: string, projectId: string, moduleId: string) => Promise<void>;
   restoreModule: (workspaceSlug: string, projectId: string, moduleId: string) => Promise<void>;
+  // Jira-parity: release / unrelease (modules are Jira Fix Versions)
+  releaseModule: (
+    workspaceSlug: string,
+    projectId: string,
+    moduleId: string,
+    payload: TModuleReleasePayload
+  ) => Promise<TModuleReleaseResponse>;
+  unreleaseModule: (workspaceSlug: string, projectId: string, moduleId: string) => Promise<IModule>;
 }
 
 export class ModulesStore implements IModuleStore {
@@ -120,6 +135,8 @@ export class ModulesStore implements IModuleStore {
       removeModuleFromFavorites: action,
       archiveModule: action,
       restoreModule: action,
+      releaseModule: action,
+      unreleaseModule: action,
     });
 
     this.rootStore = _rootStore;
@@ -476,15 +493,11 @@ export class ModulesStore implements IModuleStore {
     moduleId: string,
     data: Partial<ILinkDetails>
   ) => {
-    try {
-      const moduleLink = await this.moduleService.createModuleLink(workspaceSlug, projectId, moduleId, data);
-      runInAction(() => {
-        update(this.moduleMap, [moduleId, "link_module"], (moduleLinks = []) => concat(moduleLinks, moduleLink));
-      });
-      return moduleLink;
-    } catch (error) {
-      throw error;
-    }
+    const moduleLink = await this.moduleService.createModuleLink(workspaceSlug, projectId, moduleId, data);
+    runInAction(() => {
+      update(this.moduleMap, [moduleId, "link_module"], (moduleLinks = []) => concat(moduleLinks, moduleLink));
+    });
+    return moduleLink;
   };
 
   /**
@@ -530,17 +543,13 @@ export class ModulesStore implements IModuleStore {
    * @param linkId
    */
   deleteModuleLink = async (workspaceSlug: string, projectId: string, moduleId: string, linkId: string) => {
-    try {
-      const moduleLink = await this.moduleService.deleteModuleLink(workspaceSlug, projectId, moduleId, linkId);
-      runInAction(() => {
-        update(this.moduleMap, [moduleId, "link_module"], (moduleLinks = []) =>
-          moduleLinks.filter((link: ILinkDetails) => link.id !== linkId)
-        );
-      });
-      return moduleLink;
-    } catch (error) {
-      throw error;
-    }
+    const moduleLink = await this.moduleService.deleteModuleLink(workspaceSlug, projectId, moduleId, linkId);
+    runInAction(() => {
+      update(this.moduleMap, [moduleId, "link_module"], (moduleLinks = []) =>
+        moduleLinks.filter((link: ILinkDetails) => link.id !== linkId)
+      );
+    });
+    return moduleLink;
   };
 
   /**
@@ -637,5 +646,56 @@ export class ModulesStore implements IModuleStore {
       .catch((error) => {
         console.error("Failed to restore module in module store", error);
       });
+  };
+
+  /**
+   * @description Jira-parity: releases a module (Fix Version). Unresolved work items move to
+   * `payload.move_to` when given; the target's counts and any module work-item list on screen are refreshed.
+   * @param workspaceSlug
+   * @param projectId
+   * @param moduleId
+   * @param payload release date and optional move target
+   * @returns the release response ({ module, moved_issues })
+   */
+  releaseModule = async (
+    workspaceSlug: string,
+    projectId: string,
+    moduleId: string,
+    payload: TModuleReleasePayload
+  ): Promise<TModuleReleaseResponse> => {
+    const response = await this.moduleService.releaseModule(workspaceSlug, projectId, moduleId, payload);
+    runInAction(() => {
+      if (response?.module) set(this.moduleMap, [moduleId], { ...this.moduleMap[moduleId], ...response.module });
+    });
+    const moveTo = payload.move_to;
+    if (moveTo && response?.moved_issues > 0) {
+      // the source's counts come back in the response; the target's (and both distributions) changed too
+      await Promise.allSettled([
+        this.fetchModuleDetails(workspaceSlug, projectId, moveTo),
+        this.fetchModuleDetails(workspaceSlug, projectId, moduleId),
+      ]);
+      const routerModuleId = this.rootStore.router.moduleId;
+      if (routerModuleId && (routerModuleId === moduleId || routerModuleId === moveTo)) {
+        await this.rootStore.issue.moduleIssues
+          .fetchIssuesWithExistingPagination(workspaceSlug, projectId, "mutation", routerModuleId)
+          .catch((error) => console.error("Failed to refresh release work items after release", error));
+      }
+    }
+    return response;
+  };
+
+  /**
+   * @description Jira-parity: marks a released module (Fix Version) as unreleased again.
+   * @param workspaceSlug
+   * @param projectId
+   * @param moduleId
+   * @returns the updated module
+   */
+  unreleaseModule = async (workspaceSlug: string, projectId: string, moduleId: string): Promise<IModule> => {
+    const response = await this.moduleService.unreleaseModule(workspaceSlug, projectId, moduleId);
+    runInAction(() => {
+      if (response?.module) set(this.moduleMap, [moduleId], { ...this.moduleMap[moduleId], ...response.module });
+    });
+    return response?.module;
   };
 }

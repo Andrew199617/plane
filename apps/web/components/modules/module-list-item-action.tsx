@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -9,7 +10,7 @@ import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 import { CalendarOutline, UserAltOutline } from "@makeplane/propel/icons";
 // Plane imports
-import { MODULE_STATUS, EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN } from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
 import { useTranslation } from "@plane/i18n";
 import { setPromiseToast, setToast } from "@plane/blocks/toast";
@@ -19,8 +20,13 @@ import { FavoriteStar } from "@plane/blocks/common";
 import { DateRangeSelect } from "@plane/blocks/property-select";
 import { renderFormattedPayloadDate, getDate } from "@plane/utils";
 // components
+import {
+  formatReleaseDateRangeLabel,
+  ReleaseActionButton,
+  ReleaseLozenges,
+  ReleaseProgressBar,
+} from "@/components/jira-parity/releases";
 import { ModuleQuickActions } from "@/components/modules";
-import { ModuleStatusDropdown } from "@/components/modules/module-status-dropdown";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useModule } from "@/hooks/store/use-module";
@@ -48,8 +54,6 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
   // local storage
   const { setValue: toggleFavoriteMenu, storedValue } = useLocalStorage<boolean>(IS_FAVORITE_MENU_OPEN, false);
   // derived values
-
-  const moduleStatus = MODULE_STATUS.find((status) => status.value === moduleDetails.status);
   const isEditingAllowed = allowPermissions(
     [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
     EUserPermissionsLevel.PROJECT
@@ -71,14 +75,14 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
     );
 
     setPromiseToast(addToFavoritePromise, {
-      loading: "Adding module to favorites...",
+      loading: "Adding release to favorites...",
       success: {
         title: "Success!",
-        message: () => "Module added to favorites.",
+        message: () => "Release added to favorites.",
       },
       error: {
         title: "Error!",
-        message: () => "Couldn't add the module to favorites. Please try again.",
+        message: () => "Couldn't add the release to favorites. Please try again.",
       },
     });
   };
@@ -95,14 +99,14 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
     );
 
     setPromiseToast(removeFromFavoritePromise, {
-      loading: "Removing module from favorites...",
+      loading: "Removing release from favorites...",
       success: {
         title: "Success!",
-        message: () => "Module removed from favorites.",
+        message: () => "Release removed from favorites.",
       },
       error: {
         title: "Error!",
-        message: () => "Couldn't remove the module from favorites. Please try again.",
+        message: () => "Couldn't remove the release from favorites. Please try again.",
       },
     });
   };
@@ -115,14 +119,14 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
         setToast({
           type: "success",
           title: "Success!",
-          message: "Module updated successfully.",
+          message: "Release updated successfully.",
         });
       })
       .catch((err) => {
         setToast({
           type: "error",
           title: "Error!",
-          message: err?.detail ?? "Module could not be updated. Please try again.",
+          message: err?.detail ?? "Release could not be updated. Please try again.",
         });
       });
   };
@@ -147,17 +151,28 @@ export const ModuleListItemAction = observer(function ModuleListItemAction(props
           });
         }}
         mergeDates
-        placeholder={`${t("start_date")} - ${t("end_date")}`}
+        formatLabel={
+          moduleDetails.start_date && moduleDetails.target_date
+            ? undefined
+            : (_range, formatted) => formatReleaseDateRangeLabel(formatted)
+        }
+        showTooltip
+        tooltipHeading={t("jp_releases.date_range")}
+        tooltipEmptyContent={t("common.none")}
+        placeholder={t("jp_releases.date_range")}
         weekStartsOn={userProfile?.start_of_the_week}
         disabled={isDisabled}
         icon={renderIcon ? undefined : <CalendarOutline aria-hidden="true" />}
       />
 
-      {moduleStatus && (
-        <ModuleStatusDropdown
-          isDisabled={isDisabled}
-          moduleDetails={moduleDetails}
-          handleModuleDetailsChange={handleModuleDetailsChange}
+      {/* Jira-parity: status lozenges, segmented progress and the Release button */}
+      <ReleaseLozenges release={moduleDetails} />
+      <ReleaseProgressBar release={moduleDetails} />
+      {workspaceSlug && projectId && (
+        <ReleaseActionButton
+          workspaceSlug={workspaceSlug.toString()}
+          projectId={projectId.toString()}
+          moduleId={moduleId}
         />
       )}
 

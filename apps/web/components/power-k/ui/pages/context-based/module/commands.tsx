@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -48,7 +49,7 @@ export const usePowerKModuleContextBasedActions = (): TPowerKCommandConfig[] => 
           setToast({
             type: "error",
             title: "Error!",
-            message: "Module could not be updated. Please try again.",
+            message: "Release could not be updated. Please try again.",
           });
         }
       );
@@ -121,7 +122,7 @@ export const usePowerKModuleContextBasedActions = (): TPowerKCommandConfig[] => 
     {
       id: "change_module_status",
       i18n_title: "power_k.contextual_actions.module.change_status",
-      iconNode: <ModuleStatusIcon status="backlog" className="size-3.5 shrink-0" />,
+      iconNode: <ModuleStatusIcon status="unreleased" className="size-3.5 shrink-0" />,
       group: "contextual",
       contextType: "module",
       type: "change-page",

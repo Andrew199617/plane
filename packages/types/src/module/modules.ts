@@ -8,7 +8,27 @@ import type { ILinkDetails } from "../issues";
 import type { TIssue } from "../issues/issue";
 import type { IIssueFilterOptions } from "../view-props";
 
-export type TModuleStatus = "backlog" | "planned" | "in-progress" | "paused" | "completed" | "cancelled";
+// Jira-parity: modules are Releases (Jira Fix Versions) — only Unreleased / Released (archived is a separate flag).
+export type TModuleStatus = "unreleased" | "released";
+
+/** Jira-parity: body of `POST .../modules/{moduleId}/release/`. */
+export type TModuleReleasePayload = {
+  /** YYYY-MM-DD; the server defaults to the existing target_date, else today. */
+  release_date?: string | null;
+  /** Unreleased release that receives the unresolved work items (they stay when omitted). */
+  move_to?: string | null;
+};
+
+/** Jira-parity: response of `POST .../modules/{moduleId}/release/`. */
+export type TModuleReleaseResponse = {
+  module: IModule;
+  moved_issues: number;
+};
+
+/** Jira-parity: response of `POST .../modules/{moduleId}/unrelease/`. */
+export type TModuleUnreleaseResponse = {
+  module: IModule;
+};
 
 export type TModuleCompletionChartDistribution = {
   [key: string]: number | null;

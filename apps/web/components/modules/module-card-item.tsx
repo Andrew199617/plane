@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -11,9 +12,9 @@ import Link from "next/link";
 import { useParams, usePathname, useSearchParams } from "next/navigation";
 import { CalendarOutline, InfoOutline, UserAltOutline, WorkItemsOutline } from "@makeplane/propel/icons";
 // plane package imports
-import { MODULE_STATUS, EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN } from "@plane/constants";
+import { EUserPermissions, EUserPermissionsLevel, IS_FAVORITE_MENU_OPEN } from "@plane/constants";
 import { useLocalStorage } from "@plane/hooks";
-import { LinearProgress } from "@makeplane/propel/components/linear-progress";
+import { useTranslation } from "@plane/i18n";
 import { setPromiseToast, setToast } from "@plane/blocks/toast";
 import { Tooltip } from "@makeplane/propel/components/tooltip";
 import type { IModule } from "@plane/types";
@@ -24,8 +25,13 @@ import { getDate, renderFormattedPayloadDate, generateQueryParams } from "@plane
 // components
 import { handleTriggerKeyDown } from "@/components/common/trigger-guard";
 import { ButtonAvatars } from "@/components/dropdowns/member/avatar";
+import {
+  formatReleaseDateRangeLabel,
+  ReleaseActionButton,
+  ReleaseLozenges,
+  ReleaseProgressBar,
+} from "@/components/jira-parity/releases";
 import { ModuleQuickActions } from "@/components/modules";
-import { ModuleStatusDropdown } from "@/components/modules/module-status-dropdown";
 // hooks
 import { useMember } from "@/hooks/store/use-member";
 import { useModule } from "@/hooks/store/use-module";
@@ -37,6 +43,11 @@ type Props = {
   moduleId: string;
 };
 
+const handleEventPropagation = (e: SyntheticEvent<HTMLDivElement>) => {
+  e.stopPropagation();
+  e.preventDefault();
+};
+
 export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
   const { moduleId } = props;
   // refs
@@ -46,6 +57,8 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
   const { workspaceSlug, projectId } = useParams();
   const searchParams = useSearchParams();
   const pathname = usePathname();
+  // plane hooks
+  const { t } = useTranslation();
   // store hooks
   const { allowPermissions } = useUserPermissions();
   const { getModuleById, addModuleToFavorites, removeModuleFromFavorites, updateModuleDetails } = useModule();
@@ -75,14 +88,14 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
     );
 
     setPromiseToast(addToFavoritePromise, {
-      loading: "Adding module to favorites...",
+      loading: "Adding release to favorites...",
       success: {
         title: "Success!",
-        message: () => "Module added to favorites.",
+        message: () => "Release added to favorites.",
       },
       error: {
         title: "Error!",
-        message: () => "Couldn't add the module to favorites. Please try again.",
+        message: () => "Couldn't add the release to favorites. Please try again.",
       },
     });
   };
@@ -99,21 +112,16 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
     );
 
     setPromiseToast(removeFromFavoritePromise, {
-      loading: "Removing module from favorites...",
+      loading: "Removing release from favorites...",
       success: {
         title: "Success!",
-        message: () => "Module removed from favorites.",
+        message: () => "Release removed from favorites.",
       },
       error: {
         title: "Error!",
-        message: () => "Couldn't remove the module from favorites. Please try again.",
+        message: () => "Couldn't remove the release from favorites. Please try again.",
       },
     });
-  };
-
-  const handleEventPropagation = (e: SyntheticEvent<HTMLDivElement>) => {
-    e.stopPropagation();
-    e.preventDefault();
   };
 
   const handleModuleDetailsChange = async (payload: Partial<IModule>) => {
@@ -124,14 +132,14 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
         setToast({
           type: "success",
           title: "Success!",
-          message: "Module updated successfully.",
+          message: "Release updated successfully.",
         });
       })
       .catch((err) => {
         setToast({
           type: "error",
           title: "Error!",
-          message: err?.detail ?? "Module could not be updated. Please try again.",
+          message: err?.detail ?? "Release could not be updated. Please try again.",
         });
       });
   };
@@ -161,8 +169,6 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
 
   // const areYearsEqual = startDate.getFullYear() === endDate.getFullYear();
 
-  const moduleStatus = MODULE_STATUS.find((status) => status.value === moduleDetails.status);
-
   const issueCount = moduleDetails
     ? !moduleTotalIssues || moduleTotalIssues === 0
       ? `0 work items`
@@ -172,7 +178,6 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
     : `0 work items`;
 
   const moduleLeadDetails = moduleDetails.lead_id ? getUserDetails(moduleDetails.lead_id) : undefined;
-  const progressValue = moduleTotalIssues > 0 ? (moduleCompletedIssues / moduleTotalIssues) * 100 : 0;
 
   return (
     <div className="relative" data-prevent-progress>
@@ -190,13 +195,8 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
                 onClick={handleEventPropagation}
                 onKeyDown={handleTriggerKeyDown}
               >
-                {moduleStatus && (
-                  <ModuleStatusDropdown
-                    isDisabled={isDisabled}
-                    moduleDetails={moduleDetails}
-                    handleModuleDetailsChange={handleModuleDetailsChange}
-                  />
-                )}
+                {/* Jira-parity: status lozenges (the Release button sits outside the card link, below) */}
+                <ReleaseLozenges release={moduleDetails} />
                 <button onClick={openModuleOverview}>
                   <InfoOutline className="h-4 w-4 text-placeholder" />
                 </button>
@@ -219,13 +219,7 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
                 </Tooltip>
               )}
             </div>
-            <LinearProgress
-              value={progressValue}
-              size="md"
-              variant="brand"
-              showValue={false}
-              aria-label="Module progress"
-            />
+            <ReleaseProgressBar release={moduleDetails} isMobile={isMobile} className="w-full" />
             {/* Ruling 38: the whole card is a `Link`, so the trigger's click and keyboard
                 activation must not reach it. */}
             <div
@@ -249,7 +243,15 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
                     target_date: range.to ? renderFormattedPayloadDate(range.to) : null,
                   });
                 }}
-                placeholder="Start date - End date"
+                formatLabel={
+                  moduleDetails.start_date && moduleDetails.target_date
+                    ? undefined
+                    : (_range, formatted) => formatReleaseDateRangeLabel(formatted)
+                }
+                showTooltip
+                tooltipHeading={t("jp_releases.date_range")}
+                tooltipEmptyContent={t("common.none")}
+                placeholder={t("jp_releases.date_range")}
                 weekStartsOn={userProfile?.start_of_the_week}
                 disabled={isDisabled}
                 icon={renderIcon ? undefined : <CalendarOutline aria-hidden="true" />}
@@ -259,6 +261,13 @@ export const ModuleCardItem = observer(function ModuleCardItem(props: Props) {
         </Card>
       </Link>
       <div className="absolute right-4 bottom-[18px] flex items-center gap-1.5">
+        {workspaceSlug && (
+          <ReleaseActionButton
+            workspaceSlug={workspaceSlug.toString()}
+            projectId={moduleDetails.project_id}
+            moduleId={moduleId}
+          />
+        )}
         {isEditingAllowed && (
           <FavoriteStar
             onClick={(e) => {

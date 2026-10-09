@@ -28,6 +28,7 @@ import { Header } from "@plane/blocks/layout";
 import { WorkItemsModal } from "@/components/analytics/work-items/modal";
 import { BreadcrumbLink } from "@/components/common/breadcrumb-link";
 import { ModuleSelect } from "@/components/dropdowns/module/module-select";
+import { ReleaseActionButton, ReleaseLozenges } from "@/components/jira-parity/releases";
 import {
   DisplayFiltersSelection,
   FiltersDropdown,
@@ -132,7 +133,7 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
               <Breadcrumbs.Item
                 component={
                   <BreadcrumbLink
-                    label="Modules"
+                    label="Releases"
                     href={`/${workspaceSlug}/projects/${projectId}/modules/`}
                     icon={<ModuleOutline className="h-4 w-4 text-tertiary" />}
                     isLast
@@ -157,7 +158,7 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
             </Breadcrumbs>
             {workItemsCount && workItemsCount > 0 ? (
               <Tooltip
-                label={`There are ${workItemsCount} ${workItemsCount > 1 ? "work items" : "work item"} in this module`}
+                label={`There are ${workItemsCount} ${workItemsCount > 1 ? "work items" : "work item"} in this release`}
                 layout="stacked"
                 side="bottom"
                 disabled={isMobile}
@@ -167,6 +168,8 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
                 </span>
               </Tooltip>
             ) : null}
+            {/* Jira-parity: release status / overdue lozenges */}
+            {moduleDetails && <ReleaseLozenges release={moduleDetails} className="hidden sm:flex" />}
           </div>
         </Header.LeftItem>
         <Header.RightItem className="items-center">
@@ -218,6 +221,15 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
             </FiltersDropdown>
           </div>
 
+          {/* Jira-parity: Release button (unreleased releases, Admin/Member) */}
+          {moduleId && workspaceSlug && projectId && (
+            <ReleaseActionButton
+              workspaceSlug={workspaceSlug.toString()}
+              projectId={projectId.toString()}
+              moduleId={moduleId}
+              size="md"
+            />
+          )}
           {canUserCreateIssue ? (
             <>
               <div className="hidden md:block">

@@ -48,6 +48,7 @@ export const ModuleGanttBlock = observer(function ModuleGanttBlock(props: Props)
       align="start"
       disabled={isMobile}
     >
+      {/* oxlint-disable-next-line jsx_a11y/click-events-have-key-events, jsx_a11y/no-static-element-interactions */}
       <div
         className="relative flex h-full w-full cursor-pointer items-center rounded-sm"
         style={blockStyle}
@@ -83,7 +84,7 @@ export const ModuleGanttSidebarBlock = observer(function ModuleGanttSidebarBlock
       href={`/${workspaceSlug?.toString()}/projects/${moduleDetails?.project_id}/modules/${moduleDetails?.id}`}
       draggable={false}
     >
-      <ModuleStatusIcon status={moduleDetails?.status ?? "backlog"} height="16px" width="16px" />
+      <ModuleStatusIcon status={moduleDetails?.status ?? "unreleased"} height="16px" width="16px" />
       <h6 className="flex-grow truncate text-13 font-medium">{moduleDetails?.name}</h6>
     </Link>
   );

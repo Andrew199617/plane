@@ -1,0 +1,56 @@
+{
+  "jp_releases": {
+    "status": {
+      "unreleased": "Unreleased",
+      "released": "Released",
+      "archived": "Archived",
+      "overdue": "Overdue"
+    },
+    "release_date": "Release date",
+    "date_range": "Start date - Release date",
+    "overdue_tooltip": "The release date has passed and this release is still unreleased.",
+    "progress": {
+      "aria_label": "Release progress",
+      "summary": "{done} done · {in_progress} in progress · {to_do} to do",
+      "empty": "No work items"
+    },
+    "actions": {
+      "release": "Release",
+      "unrelease": "Unrelease"
+    },
+    "release_modal": {
+      "title": "Release {name}",
+      "description": "Mark this release as shipped on the release date.",
+      "release_date": "Release date",
+      "release_date_placeholder": "Pick a release date",
+      "unresolved_summary": "{count, plural, one {This release still has # unresolved work item.} other {This release still has # unresolved work items.}}",
+      "unresolved_label": "Unresolved work items",
+      "move_option": "{count, plural, one {Move # unresolved work item to another release} other {Move # unresolved work items to another release}}",
+      "ignore_option": "Ignore and release anyway",
+      "ignore_description": "Unresolved work items stay in this release.",
+      "move_to": "Move to",
+      "select_target": "Select a release",
+      "no_targets": "There are no other unreleased releases in this project to move work items to.",
+      "target_required": "Select the release to move the work items to.",
+      "all_resolved": "All work items in this release are resolved.",
+      "cancel": "Cancel",
+      "submit": "Release",
+      "submitting": "Releasing"
+    },
+    "toasts": {
+      "released": "{name} was released.",
+      "released_moved": "{count, plural, one {{name} was released and # work item moved to {target}.} other {{name} was released and # work items moved to {target}.}}",
+      "release_error": "{name} could not be released. Please try again.",
+      "unreleasing": "Unreleasing {name}...",
+      "unreleased": "{name} is unreleased again.",
+      "unrelease_error": "{name} could not be unreleased. Please try again."
+    },
+    "errors": {
+      "already_released": "This release has already been released.",
+      "archived": "Archived releases can't be released.",
+      "invalid_target": "Pick another unreleased release of this project to move the work items to.",
+      "invalid_date": "Enter a valid release date.",
+      "not_released": "This release isn't released yet."
+    }
+  }
+}

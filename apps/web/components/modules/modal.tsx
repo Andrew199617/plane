@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -30,7 +31,7 @@ type Props = {
 const defaultValues: Partial<IModule> = {
   name: "",
   description: "",
-  status: "backlog",
+  status: "unreleased",
   lead_id: null,
   member_ids: [],
 };
@@ -65,14 +66,14 @@ export const CreateUpdateModuleModal = observer(function CreateUpdateModuleModal
         setToast({
           type: "success",
           title: "Success!",
-          message: "Module created successfully.",
+          message: "Release created successfully.",
         });
       })
       .catch((err) => {
         setToast({
           type: "error",
           title: "Error!",
-          message: err?.detail ?? err?.error ?? "Module could not be created. Please try again.",
+          message: err?.detail ?? err?.error ?? "Release could not be created. Please try again.",
         });
       });
   };
@@ -88,14 +89,14 @@ export const CreateUpdateModuleModal = observer(function CreateUpdateModuleModal
         setToast({
           type: "success",
           title: "Success!",
-          message: "Module updated successfully.",
+          message: "Release updated successfully.",
         });
       })
       .catch((err) => {
         setToast({
           type: "error",
           title: "Error!",
-          message: err?.detail ?? err?.error ?? "Module could not be updated. Please try again.",
+          message: err?.detail ?? err?.error ?? "Release could not be updated. Please try again.",
         });
       });
   };

@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -19,6 +20,7 @@ import { ContextMenu, getRenderableItems, resolveItemVariant } from "@plane/bloc
 import { copyUrlToClipboard } from "@plane/utils";
 // components
 import { useModuleMenuItems } from "@/components/common/quick-actions-helper";
+import { useReleaseMenuItems } from "@/components/jira-parity/releases";
 import { ArchiveModuleModal, CreateUpdateModuleModal, DeleteModuleModal } from "@/components/modules";
 // hooks
 import { useModule } from "@/hooks/store/use-module";
@@ -64,7 +66,7 @@ export const ModuleQuickActions = observer(function ModuleQuickActions(props: Pr
       setToast({
         type: "success",
         title: "Link Copied!",
-        message: "Module link copied to clipboard.",
+        message: "Release link copied to clipboard.",
       });
     });
   const handleOpenInNewTab = () => window.open(`/${moduleLink}`, "_blank");
@@ -75,14 +77,14 @@ export const ModuleQuickActions = observer(function ModuleQuickActions(props: Pr
       setToast({
         type: "success",
         title: "Restore success",
-        message: "Your module can be found in project modules.",
+        message: "Your release can be found in project releases.",
       });
       router.push(`/${workspaceSlug}/projects/${projectId}/archives/modules`);
     } catch (_error) {
       setToast({
         type: "error",
         title: "Error!",
-        message: "Module could not be restored. Please try again.",
+        message: "Release could not be restored. Please try again.",
       });
     }
   };
@@ -102,8 +104,23 @@ export const ModuleQuickActions = observer(function ModuleQuickActions(props: Pr
     handleOpenInNewTab,
   });
 
+  // Jira-parity: Release / Unrelease items (+ the Release modal), placed right after "Edit"
+  const releaseMenu = useReleaseMenuItems({
+    moduleDetails,
+    workspaceSlug,
+    projectId,
+    moduleId,
+    isEditingAllowed,
+  });
+
   // Handle both CE (array) and EE (object) return types
-  const MENU_ITEMS: TContextMenuItem[] = Array.isArray(menuResult) ? menuResult : menuResult.items;
+  const BASE_MENU_ITEMS: TContextMenuItem[] = Array.isArray(menuResult) ? menuResult : menuResult.items;
+  const editItemIndex = BASE_MENU_ITEMS.findIndex((item) => item.key === "edit");
+  const MENU_ITEMS: TContextMenuItem[] = [
+    ...BASE_MENU_ITEMS.slice(0, editItemIndex + 1),
+    ...releaseMenu.items,
+    ...BASE_MENU_ITEMS.slice(editItemIndex + 1),
+  ];
   const additionalModals = Array.isArray(menuResult) ? null : menuResult.modals;
 
   const CONTEXT_MENU_ITEMS = MENU_ITEMS.map(function CONTEXT_MENU_ITEMS(item) {
@@ -136,6 +153,7 @@ export const ModuleQuickActions = observer(function ModuleQuickActions(props: Pr
           />
           <DeleteModuleModal data={moduleDetails} isOpen={deleteModal} onClose={() => setDeleteModal(false)} />
           {additionalModals}
+          {releaseMenu.modals}
         </div>
       )}
       <ContextMenu parentRef={parentRef} items={CONTEXT_MENU_ITEMS} />
