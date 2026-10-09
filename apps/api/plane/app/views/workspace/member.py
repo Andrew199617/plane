@@ -3,6 +3,7 @@
 # See the LICENSE file for details.
 
 # Django imports
+from django.db import transaction
 from django.db.models import Count, Q, OuterRef, Subquery, IntegerField
 from django.utils import timezone
 from django.db.models.functions import Coalesce
@@ -23,7 +24,7 @@ from plane.app.serializers import (
 from plane.app.views.base import BaseAPIView
 from plane.db.models import Project, ProjectMember, WorkspaceMember, DraftIssue
 from plane.utils.cache import invalidate_cache
-from plane.utils.agent import apply_agent_workspace_role_change
+from plane.utils.agent import agent_role_change_error, apply_agent_workspace_role_change
 
 from .. import BaseViewSet
 
@@ -86,21 +87,26 @@ class WorkSpaceMemberViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # If a user is moved to a guest role he can't have any other role in projects
-        if "role" in request.data and int(request.data.get("role")) == 5:
-            ProjectMember.objects.filter(workspace__slug=slug, member_id=workspace_member.member_id).update(role=5)
-
-        # Jira-parity: becoming an Agent makes the user an agent in every project; leaving the Agent
-        # role caps their agent project rows at the new role (plane.utils.agent)
-        if "role" in request.data:
-            apply_agent_workspace_role_change(workspace_member, request.data.get("role"))
-
+        # Jira-parity: validate before cascading role changes to projects, and apply them atomically
         serializer = WorkSpaceMemberSerializer(workspace_member, data=request.data, partial=True)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        role_error = agent_role_change_error(workspace_member, serializer.validated_data.get("role"))
+        if role_error:
+            return Response({"error": role_error}, status=status.HTTP_400_BAD_REQUEST)
 
-        if serializer.is_valid():
+        with transaction.atomic():
+            # If a user is moved to a guest role he can't have any other role in projects
+            if "role" in request.data and int(request.data.get("role")) == 5:
+                ProjectMember.objects.filter(workspace__slug=slug, member_id=workspace_member.member_id).update(role=5)
+
+            # Jira-parity: leaving the Agent role caps agent project rows at the new role, revokes the
+            # workspace API tokens and leaves the Agents team (plane.utils.agent)
+            if "role" in serializer.validated_data:
+                apply_agent_workspace_role_change(workspace_member, serializer.validated_data["role"])
+
             serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
     @allow_permission(allowed_roles=[ROLE.ADMIN], level="WORKSPACE")
     def destroy(self, request, slug, pk):

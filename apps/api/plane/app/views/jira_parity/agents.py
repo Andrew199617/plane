@@ -4,10 +4,11 @@
 
 """Jira-parity agents views.
 
-Endpoints (session API, served under /api/; workspace admins only):
+Endpoints (session API, served under /api/; workspace admins only). Only agent accounts
+(User.bot_type == AGENT_BOT_TYPE) are agents here; humans holding the Agent role are not.
 - GET    workspaces/<slug>/agents/                          active agents of the workspace
-- POST   workspaces/<slug>/agents/                          {display_name, email?, first_name?,
-         last_name?, generate_token=true, token_label?} -> 201 agent (+ `token`, shown once)
+- POST   workspaces/<slug>/agents/                          {display_name, email? (agents.<slug>.local
+         only), first_name?, last_name?, generate_token=true, token_label?} -> 201 agent (+ `token`)
 - PATCH  workspaces/<slug>/agents/<user_id>/                rename {display_name?, first_name?, last_name?}
 - DELETE workspaces/<slug>/agents/<user_id>/                deactivate (memberships + tokens) -> 204
 - POST   workspaces/<slug>/agents/<user_id>/tokens/         {label?} -> 201 token (+ `token`, shown once)
@@ -36,6 +37,7 @@ from plane.app.views.base import BaseAPIView
 from plane.db.models import APIToken, ProjectMember, Workspace, WorkspaceMember
 from plane.utils.agent import (
     AGENT,
+    AGENT_BOT_TYPE,
     AgentProvisioningError,
     create_agent_token,
     create_agent_user,
@@ -81,7 +83,9 @@ def serialize_agents(workspace_id, workspace_members):
 
 def _agent_member(slug, user_id):
     return (
-        WorkspaceMember.objects.filter(workspace__slug=slug, member_id=user_id, role=AGENT, is_active=True)
+        WorkspaceMember.objects.filter(
+            workspace__slug=slug, member_id=user_id, role=AGENT, is_active=True, member__bot_type=AGENT_BOT_TYPE
+        )
         .select_related("member", "workspace")
         .first()
     )
@@ -101,7 +105,9 @@ class WorkspaceAgentEndpoint(BaseAPIView):
             return Response(serialize_agents(workspace_member.workspace_id, [workspace_member])[0])
         workspace = Workspace.objects.get(slug=slug)
         members = (
-            WorkspaceMember.objects.filter(workspace=workspace, role=AGENT, is_active=True)
+            WorkspaceMember.objects.filter(
+                workspace=workspace, role=AGENT, is_active=True, member__bot_type=AGENT_BOT_TYPE
+            )
             .select_related("member")
             .order_by("created_at")
         )
@@ -183,9 +189,9 @@ class WorkspaceAgentTokenEndpoint(BaseAPIView):
         workspace_member = _agent_member(slug, user_id)
         if workspace_member is None:
             return _not_found()
-        revoked = APIToken.objects.filter(pk=pk, user_id=user_id).update(
-            is_active=False, deleted_at=timezone.now(), updated_at=timezone.now()
-        )
+        revoked = APIToken.objects.filter(
+            Q(workspace_id=workspace_member.workspace_id) | Q(workspace__isnull=True), pk=pk, user_id=user_id
+        ).update(is_active=False, deleted_at=timezone.now(), updated_at=timezone.now())
         if not revoked:
             return Response({"error": "Token not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)

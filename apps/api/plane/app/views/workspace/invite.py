@@ -28,7 +28,7 @@ from plane.app.serializers import (
 from plane.app.views.base import BaseAPIView
 from plane.bgtasks.workspace_invitation_task import workspace_invitation
 from plane.db.models import User, Workspace, WorkspaceMember, WorkspaceMemberInvite
-from plane.utils.agent import onboard_invited_agent
+from plane.utils.agent import invite_role_error, onboard_invited_agent
 from plane.utils.cache import invalidate_cache, invalidate_cache_directly
 from plane.utils.host import base_host
 from .. import BaseViewSet
@@ -58,6 +58,12 @@ class WorkspaceInvitationsViewset(BaseViewSet):
 
         # check for role level of the requesting user
         requesting_user = WorkspaceMember.objects.get(workspace__slug=slug, member=request.user, is_active=True)
+
+        # jira-parity: reject unknown roles; only admins may invite Agents (they join every project)
+        for email in emails:
+            role_error = invite_role_error(requesting_user.role, email.get("role", 5))
+            if role_error:
+                return Response({"error": role_error}, status=status.HTTP_400_BAD_REQUEST)
 
         # Check if any invited user has an higher role
         if len([email for email in emails if int(email.get("role", 5)) > requesting_user.role]):
@@ -127,6 +133,15 @@ class WorkspaceInvitationsViewset(BaseViewSet):
             )
 
         return Response({"message": "Emails sent successfully"}, status=status.HTTP_200_OK)
+
+    def partial_update(self, request, slug, pk):
+        # jira-parity: the role of an invitation follows the same rules as on create
+        if "role" in request.data:
+            requesting_user = WorkspaceMember.objects.get(workspace__slug=slug, member=request.user, is_active=True)
+            role_error = invite_role_error(requesting_user.role, request.data.get("role"))
+            if role_error:
+                return Response({"error": role_error}, status=status.HTTP_400_BAD_REQUEST)
+        return super().partial_update(request, slug=slug, pk=pk)
 
     def destroy(self, request, slug, pk):
         workspace_member_invite = WorkspaceMemberInvite.objects.get(pk=pk, workspace__slug=slug)

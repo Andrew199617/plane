@@ -36,6 +36,7 @@ export type TWorkspaceAgent = {
 /** Body for POST /api/workspaces/<slug>/agents/ */
 export type TWorkspaceAgentCreatePayload = {
   display_name: string;
+  /** Only an address on agents.<workspace slug>.local is accepted; generated from the name when omitted. */
   email?: string;
   first_name?: string;
   last_name?: string;

@@ -29,20 +29,18 @@ import type { TWorkspaceAgentCreateResponse } from "@plane/types";
 // hooks
 import { useAgents } from "@/hooks/store/jira-parity/use-agents";
 // local imports
-import { buildAgentCreatePayload, getAgentApiErrorMessage } from "./helpers";
+import { buildAgentCreatePayload, getAgentApiErrorMessage, getAgentEmailDomain } from "./helpers";
 
 const NAME_MAX_LENGTH = 255;
 
 type TCreateAgentFormValues = {
   displayName: string;
-  email: string;
   generateToken: boolean;
   tokenLabel: string;
 };
 
 const DEFAULT_VALUES: TCreateAgentFormValues = {
   displayName: "",
-  email: "",
   generateToken: true,
   tokenLabel: "",
 };
@@ -138,24 +136,7 @@ export const CreateAgentModal = observer(function CreateAgentModal(props: TCreat
                       placeholder={t("jp_agents.create.display_name_placeholder")}
                       required
                       error={errors.displayName?.message}
-                      autoComplete="off"
-                    />
-                  )}
-                />
-                <Controller
-                  control={control}
-                  name="email"
-                  render={({ field: { value, onChange } }) => (
-                    <InputField
-                      id="agent-email"
-                      name="email"
-                      type="email"
-                      value={value}
-                      onChange={onChange}
-                      size="lg"
-                      orientation="vertical"
-                      label={t("jp_agents.create.email")}
-                      placeholder={t("jp_agents.create.email_placeholder")}
+                      hint={t("jp_agents.create.email_hint", { domain: getAgentEmailDomain(workspaceSlug) })}
                       autoComplete="off"
                     />
                   )}

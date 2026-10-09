@@ -9,6 +9,10 @@ WorkspaceMember.role is ROLE.AGENT (10). They auto-join every project as Project
 (via plane.utils.project_membership.ensure_project_member) and authenticate to /api/v1 with
 APIToken rows (X-Api-Key). What they may do is enforced by plane.app.permissions.agent.
 
+Agent ACCOUNTS (created by create_agent_user) are marked with User.bot_type == AGENT_BOT_TYPE: only
+they can be managed (and get API tokens) through the agents API, and their tokens only work in their
+workspace. Humans can hold the Agent role only through an admin's invitation.
+
 Env AGENT_AUTO_JOIN_PROJECTS=0 disables the automatic project membership sync.
 """
 
@@ -34,9 +38,10 @@ from plane.db.models import (
 from plane.db.models.project import ROLE
 from plane.db.models.team import TeamMember
 from plane.utils.project_membership import ensure_project_member
-from plane.utils.teams import add_member_to_default_teams
+from plane.utils.teams import DEFAULT_TEAMS, add_member_to_default_teams
 
 AGENT = ROLE.AGENT.value
+AGENT_BOT_TYPE = "AGENT"
 VALID_ROLES = {role.value for role in ROLE}
 
 
@@ -52,6 +57,44 @@ def agent_role_mismatch(workspace_role, project_role):
     except (TypeError, ValueError):
         project_role = None
     return (workspace_role == AGENT) != (project_role == AGENT)
+
+
+def is_agent_account(user):
+    return getattr(user, "bot_type", None) == AGENT_BOT_TYPE
+
+
+def invite_role_error(requesting_role, role):
+    """Why a workspace member with `requesting_role` may not invite (or re-role an invitation) at
+    `role`, or None. Only admins may invite Agents: they join every project, private ones included."""
+    try:
+        role = int(role)
+    except (TypeError, ValueError):
+        return "Invalid role"
+    if role not in VALID_ROLES:
+        return "Invalid role"
+    if role > requesting_role:
+        return "You cannot invite a user with higher role"
+    if role == AGENT and requesting_role != ROLE.ADMIN.value:
+        return "Only workspace admins can invite agents"
+    return None
+
+
+def agent_role_change_error(workspace_member, new_role):
+    """Why a workspace member's role may not be changed to `new_role`, or None. The Agent role is
+    reserved to agent accounts and admin invitations: humans are never moved into it, agent accounts
+    never out of it (deactivate the agent instead)."""
+    try:
+        new_role = int(new_role)
+    except (TypeError, ValueError):
+        return None
+    if new_role == workspace_member.role:
+        return None
+    agent_account = is_agent_account(workspace_member.member)
+    if new_role == AGENT and not agent_account:
+        return "Only agent accounts and users invited as agents can have the Agent role"
+    if agent_account and new_role != AGENT:
+        return "Agent accounts cannot change role; deactivate the agent instead"
+    return None
 
 
 def _user_ids(users):
@@ -106,7 +149,8 @@ def apply_agent_workspace_role_change(workspace_member, new_role):
 
     Called BEFORE the new role is saved (workspace_member.role is still the old one).
     - new role Agent: every project membership becomes Agent, and the user joins every project
-    - old role Agent, new role something else: agent project rows become min(new role, Member)
+    - old role Agent, new role something else: agent project rows become min(new role, Member), the
+      user's API tokens for the workspace are revoked and they leave the default Agents team
     """
     try:
         new_role = int(new_role)
@@ -124,11 +168,35 @@ def apply_agent_workspace_role_change(workspace_member, new_role):
             _sync_memberships(workspace_member.workspace, [workspace_member.member_id])
     elif old_role == AGENT:
         memberships.filter(role=AGENT).update(role=min(new_role, ROLE.MEMBER.value))
+        _revoke_workspace_tokens(workspace_member)
+        for spec in DEFAULT_TEAMS:
+            if AGENT in spec["workspace_roles"]:
+                TeamMember.objects.filter(
+                    workspace_id=workspace_member.workspace_id,
+                    member_id=workspace_member.member_id,
+                    team__name__iexact=spec["name"],
+                ).delete(soft=False)
+
+
+def _revoke_workspace_tokens(workspace_member):
+    APIToken.objects.filter(
+        user_id=workspace_member.member_id, workspace_id=workspace_member.workspace_id, is_active=True
+    ).update(is_active=False, updated_at=timezone.now())
+
+
+def agent_email_domain(workspace):
+    return f"agents.{workspace.slug}.local".lower()
+
+
+def is_agent_placeholder_email(email, workspace):
+    """True for the generated agent email domain: nobody receives mail there, so the account cannot
+    be claimed by a real person."""
+    return (email or "").strip().lower().endswith(f"@{agent_email_domain(workspace)}")
 
 
 def _unique_agent_email(display_name, workspace):
     local = slugify(display_name)[:48] or "agent"
-    domain = f"agents.{workspace.slug}.local"
+    domain = agent_email_domain(workspace)
     email = f"{local}@{domain}"
     suffix = 2
     while User.objects.filter(email=email).exists():
@@ -141,12 +209,13 @@ class AgentProvisioningError(ValueError):
     """Invalid input for agent provisioning (rendered as HTTP 400 by the views)."""
 
 
-def create_agent_user(workspace, display_name, email=None, first_name="", last_name=""):
+def create_agent_user(workspace, display_name, email=None, first_name="", last_name="", allow_custom_email=False):
     """Create an agent account in `workspace` and return its WorkspaceMember (role 10).
 
-    The agent is an ordinary user (random password, email verified, onboarding done, all email
-    notifications off) - agent emails are placeholders by default (<name>@agents.<slug>.local).
-    Joins every project when auto-join is on.
+    The agent is a user marked bot_type=AGENT_BOT_TYPE (random password, onboarding done, all email
+    notifications off). Its email is a placeholder on agents.<slug>.local (generated from the name
+    when not given); only operators (allow_custom_email) may use another address, which is then left
+    unverified. Joins every project when auto-join is on.
     """
     display_name = (display_name or "").strip()
     if not display_name:
@@ -155,6 +224,8 @@ def create_agent_user(workspace, display_name, email=None, first_name="", last_n
         raise AgentProvisioningError("display_name is too long")
     if email:
         email = email.strip().lower()
+        if not allow_custom_email and not is_agent_placeholder_email(email, workspace):
+            raise AgentProvisioningError(f"Agent emails must use the {agent_email_domain(workspace)} domain")
         if User.objects.filter(email=email).exists():
             raise AgentProvisioningError("A user with this email already exists")
     else:
@@ -168,7 +239,8 @@ def create_agent_user(workspace, display_name, email=None, first_name="", last_n
             first_name=(first_name or display_name)[:255],
             last_name=(last_name or "")[:255],
             is_password_autoset=True,
-            is_email_verified=True,
+            is_email_verified=is_agent_placeholder_email(email, workspace),
+            bot_type=AGENT_BOT_TYPE,
             user_timezone=getattr(workspace, "timezone", None) or "UTC",
         )
         user.set_password(uuid.uuid4().hex + uuid.uuid4().hex)
@@ -210,8 +282,8 @@ def create_agent_token(user, workspace, label=None):
 
 
 def deactivate_agent(workspace_member):
-    """Deactivate an agent in its workspace: membership, project memberships, API tokens and team
-    memberships (so deactivated agents do not linger in the workspace's teams)."""
+    """Deactivate an agent in its workspace: membership, project memberships, API tokens of that
+    workspace and team memberships (so deactivated agents do not linger in the workspace's teams)."""
     with transaction.atomic():
         TeamMember.objects.filter(
             workspace_id=workspace_member.workspace_id, member_id=workspace_member.member_id
@@ -219,8 +291,6 @@ def deactivate_agent(workspace_member):
         ProjectMember.objects.filter(
             workspace_id=workspace_member.workspace_id, member_id=workspace_member.member_id, is_active=True
         ).update(is_active=False, updated_at=timezone.now())
-        APIToken.objects.filter(user_id=workspace_member.member_id, is_active=True).update(
-            is_active=False, updated_at=timezone.now()
-        )
+        _revoke_workspace_tokens(workspace_member)
         workspace_member.is_active = False
         workspace_member.save(update_fields=["is_active", "updated_at"])

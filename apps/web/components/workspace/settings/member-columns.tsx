@@ -22,6 +22,7 @@ import { Select } from "@plane/blocks/select";
 // helpers
 import { getFileURL } from "@plane/utils";
 // hooks
+import { getAgentEmailDomain } from "@/components/jira-parity/agents/helpers";
 import { useMember } from "@/hooks/store/use-member";
 import { useUser, useUserPermissions } from "@/hooks/store/user";
 
@@ -134,7 +135,13 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
   // derived values
   const isCurrentUser = currentUser?.id === rowData.member.id;
   const isAdminRole = allowPermissions([EUserPermissions.ADMIN], EUserPermissionsLevel.WORKSPACE);
-  const isRoleNonEditable = isCurrentUser || !isAdminRole;
+  // jira-parity: agent accounts keep the Agent role and only they (or users invited as agents) can hold it
+  const isAgentAccount = !!rowData.member.email?.toLowerCase().endsWith(`@${getAgentEmailDomain(workspaceSlug)}`);
+  const roleOptions =
+    rowData.role === EUserPermissions.AGENT
+      ? ROLE_OPTIONS
+      : ROLE_OPTIONS.filter((role) => role.key !== EUserPermissions.AGENT);
+  const isRoleNonEditable = isCurrentUser || !isAdminRole || isAgentAccount;
   const isSuspended = rowData.is_active === false;
 
   return (
@@ -171,7 +178,7 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
                     });
                   });
                 }}
-                getValues={() => ROLE_OPTIONS}
+                getValues={() => roleOptions}
                 getOptionValue={(role) => String(role.key)}
                 getOptionLabel={(role) => role.label}
                 showSearch={false}

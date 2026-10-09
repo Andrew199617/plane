@@ -55,24 +55,19 @@ export const getAgentInitial = (agent: Pick<TWorkspaceAgent, "member">): string 
   (agent.member.display_name || agent.member.first_name || agent.member.email || "?").trim().charAt(0).toUpperCase() ||
   "?";
 
-/** Builds the POST body of the create form (empty optional fields are omitted). */
-export const buildAgentCreatePayload = (form: {
-  displayName: string;
-  email: string;
-  generateToken: boolean;
-  tokenLabel: string;
-}) => {
+/** Domain of the placeholder emails the API generates for agent accounts (mirrors plane.utils.agent). */
+export const getAgentEmailDomain = (workspaceSlug: string): string => `agents.${workspaceSlug}.local`.toLowerCase();
+
+/** Builds the POST body of the create form (empty optional fields are omitted; the API generates the email). */
+export const buildAgentCreatePayload = (form: { displayName: string; generateToken: boolean; tokenLabel: string }) => {
   const payload: {
     display_name: string;
     generate_token: boolean;
-    email?: string;
     token_label?: string;
   } = {
     display_name: form.displayName.trim(),
     generate_token: form.generateToken,
   };
-  const email = form.email.trim();
-  if (email) payload.email = email;
   const tokenLabel = form.tokenLabel.trim();
   if (form.generateToken && tokenLabel) payload.token_label = tokenLabel;
   return payload;

@@ -102,8 +102,13 @@ class TestAgentsApi:
         assert response.json()["tokens"] == []
         assert session_client.post(AGENTS, {"display_name": ""}, format="json").status_code == 400
         assert session_client.post(AGENTS, {}, format="json").status_code == 400
-        dup = session_client.post(AGENTS, {"display_name": "Dup", "email": create_user.email}, format="json")
-        assert dup.status_code == 400
+        dup = session_client.post(
+            AGENTS, {"display_name": "Dup", "email": response.json()["member"]["email"]}, format="json"
+        )
+        assert dup.status_code == 400 and "already exists" in dup.json()["error"]
+        # agents only get placeholder addresses: an existing (or any real) email is refused
+        real = session_client.post(AGENTS, {"display_name": "Real", "email": create_user.email}, format="json")
+        assert real.status_code == 400 and "domain" in real.json()["error"]
         bad_email = session_client.post(AGENTS, {"display_name": "Bad", "email": "not-an-email"}, format="json")
         assert bad_email.status_code == 400
 
@@ -137,6 +142,11 @@ class TestAgentsApi:
         assert session_client.delete(f"{AGENTS}{human.id}/").status_code == 404
         assert session_client.post(f"{AGENTS}{human.id}/tokens/", {}, format="json").status_code == 404
         assert WorkspaceMember.objects.get(member=human).is_active
+        # holding the Agent role does not make a human an agent account
+        human_agent = _user(workspace, AGENT)
+        assert session_client.get(f"{AGENTS}{human_agent.id}/").status_code == 404
+        assert session_client.post(f"{AGENTS}{human_agent.id}/tokens/", {}, format="json").status_code == 404
+        assert session_client.get(AGENTS).json() == []
 
     def test_admin_only(self, workspace):
         member_client = _client(_user(workspace, MEMBER))

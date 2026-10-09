@@ -13,6 +13,7 @@ import {
   buildAgentCreatePayload,
   getActiveAgentTokens,
   getAgentApiErrorMessage,
+  getAgentEmailDomain,
   getAgentInitial,
   isAgentTokenUsable,
   sortAgentTokens,
@@ -118,29 +119,31 @@ test("agent initial uses the display name, then first name, then email", () => {
 
 // --- create payload -------------------------------------------------------------------------
 test("create payload trims and omits empty optional fields", () => {
-  assertEqual(
-    buildAgentCreatePayload({ displayName: "  Claude Dev ", email: " ", generateToken: true, tokenLabel: "" }),
-    {
-      display_name: "Claude Dev",
-      generate_token: true,
-    }
-  );
-  assertEqual(
-    buildAgentCreatePayload({
-      displayName: "Claude Dev",
-      email: "claude@agents.local",
-      generateToken: true,
-      tokenLabel: " CI ",
-    }),
-    { display_name: "Claude Dev", generate_token: true, email: "claude@agents.local", token_label: "CI" }
-  );
+  assertEqual(buildAgentCreatePayload({ displayName: "  Claude Dev ", generateToken: true, tokenLabel: "" }), {
+    display_name: "Claude Dev",
+    generate_token: true,
+  });
+  assertEqual(buildAgentCreatePayload({ displayName: "Claude Dev", generateToken: true, tokenLabel: " CI " }), {
+    display_name: "Claude Dev",
+    generate_token: true,
+    token_label: "CI",
+  });
+});
+
+test("create payload never carries an email (the API generates a placeholder)", () => {
+  const form = { displayName: "A", generateToken: true, tokenLabel: "", email: "someone@example.com" };
+  assertEqual("email" in buildAgentCreatePayload(form), false);
 });
 
 test("create payload drops the token label when no token is generated", () => {
-  assertEqual(buildAgentCreatePayload({ displayName: "A", email: "", generateToken: false, tokenLabel: "CI" }), {
+  assertEqual(buildAgentCreatePayload({ displayName: "A", generateToken: false, tokenLabel: "CI" }), {
     display_name: "A",
     generate_token: false,
   });
+});
+
+test("agent email domain mirrors the API placeholder domain", () => {
+  assertEqual(getAgentEmailDomain("My-Workspace"), "agents.my-workspace.local");
 });
 
 // --- runner ---------------------------------------------------------------------------------
