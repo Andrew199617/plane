@@ -1835,6 +1835,20 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
           )
         );
 
+      // jira-parity work item types: by type name, like the API
+      case "type__name":
+      case "-type__name":
+        return getIssueIds(
+          orderBy(
+            array,
+            (issue) =>
+              this.rootIssueStore.rootStore.jiraParity.workItemTypes
+                .getWorkItemTypeById(issue?.type_id)
+                ?.name.toLocaleLowerCase(),
+            [key === "-type__name" ? "desc" : "asc"]
+          )
+        );
+
       // jira-parity time tracking (minutes); empty estimates always stay below
       case "original_estimate":
       case "remaining_estimate":
