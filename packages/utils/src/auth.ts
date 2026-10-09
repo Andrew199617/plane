@@ -20,6 +20,13 @@ export enum PasswordStrength {
   STRONG = "strong",
 }
 
+// Policy (same character classes as the API's plane/utils/password_policy.py, which also requires a
+// zxcvbn score >= 3): 8+ code points, an uppercase letter (Lu), a number (Nd) and a symbol (P* or S*).
+const PASSWORD_UPPERCASE_REGEX = /\p{Lu}/u;
+const PASSWORD_NUMBER_REGEX = /\p{Nd}/u;
+const PASSWORD_SYMBOL_REGEX = /[\p{P}\p{S}]/u;
+const getPasswordLength = (password: string): number => [...password].length;
+
 /**
  * Calculate password strength based on various criteria
  */
@@ -28,16 +35,14 @@ export const getPasswordStrength = (password: string): E_PASSWORD_STRENGTH => {
     return E_PASSWORD_STRENGTH.EMPTY;
   }
 
-  if (password.length < 8) {
+  if (getPasswordLength(password) < 8) {
     return E_PASSWORD_STRENGTH.LENGTH_NOT_VALID;
   }
 
   // Check all criteria
-  // Policy (matches the API's plane/utils/password_policy.py): 8+ chars, an
-  // uppercase letter, a number and a symbol.
-  const hasUpperCase = /[A-Z]/.test(password);
-  const hasDigit = /[0-9]/.test(password);
-  const hasSpecialChar = /[^A-Za-z0-9\s]/.test(password);
+  const hasUpperCase = PASSWORD_UPPERCASE_REGEX.test(password);
+  const hasDigit = PASSWORD_NUMBER_REGEX.test(password);
+  const hasSpecialChar = PASSWORD_SYMBOL_REGEX.test(password);
 
   if (hasUpperCase && hasDigit && hasSpecialChar) {
     return E_PASSWORD_STRENGTH.STRENGTH_VALID;
@@ -59,22 +64,22 @@ export const getPasswordCriteria = (password: string): PasswordCriteria[] => [
   {
     key: "length",
     label: "Min 8 characters",
-    isValid: password.length >= 8,
+    isValid: getPasswordLength(password) >= 8,
   },
   {
     key: "uppercase",
     label: "Min 1 upper-case letter",
-    isValid: /[A-Z]/.test(password),
+    isValid: PASSWORD_UPPERCASE_REGEX.test(password),
   },
   {
     key: "number",
     label: "Min 1 number",
-    isValid: /[0-9]/.test(password),
+    isValid: PASSWORD_NUMBER_REGEX.test(password),
   },
   {
     key: "special",
     label: "Min 1 special character",
-    isValid: /[^A-Za-z0-9\s]/.test(password),
+    isValid: PASSWORD_SYMBOL_REGEX.test(password),
   },
 ];
 
