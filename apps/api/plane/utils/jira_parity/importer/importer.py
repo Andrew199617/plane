@@ -7,7 +7,8 @@
 Pure ORM, no celery. `JiraCsvImporter.plan()` validates everything without writing; `run()` writes
 and must be called inside a transaction with crum impersonating the acting admin (the command does
 both). Identity of an imported work item = (project, external_source="jira", external_id=Jira
-"Issue id"); re-running skips existing items, and a project holding non-Jira work items is refused.
+"Issue id"); re-running skips existing items, items deleted in Plane since an earlier import are not
+recreated (nor are their sub-work-items), and a project holding non-Jira work items is refused.
 
 Passes:
   0. workspace work item types, categories, projects (API create semantics + project-created
@@ -30,8 +31,8 @@ from datetime import datetime, time
 import pytz
 
 # Django imports
-from django.db import transaction
-from django.db.models import Max, Q
+from django.db import connection, transaction
+from django.db.models import F, Max, Q
 from django.utils import timezone
 
 # Module imports
@@ -56,6 +57,7 @@ from plane.db.models import (
 from plane.db.models.issue import PRIORITY_CHOICES
 from plane.db.models.project import ROLE
 from plane.utils.project_membership import ensure_project_member
+from plane.utils.uuid import convert_uuid_to_integer
 
 from ..wiki_markup import description_fields, jira_wiki_to_html
 from .config import JiraParityConfig
@@ -116,6 +118,7 @@ class ProjectPlan:
     project: object = None
     created: bool = False
     existing_issues: dict = field(default_factory=dict)  # Jira key -> Issue (already imported)
+    deleted_issues: dict = field(default_factory=dict)  # Jira key -> Issue (imported, then deleted in Plane)
     rows_to_create: list = field(default_factory=list)
     sprints: set = field(default_factory=set)
     stats: Counter = field(default_factory=Counter)
@@ -289,6 +292,7 @@ class JiraCsvImporter:
         if errors:
             raise JiraImportError(errors)
 
+        self._select_rows_to_create()
         self._validate_values()
         self._planned = True
         return self.plans
@@ -309,34 +313,97 @@ class JiraCsvImporter:
         if project is not None:
             if project.archived_at is not None:
                 errors.append(f"{key}: project is archived; unarchive it before importing")
-            foreign = Issue.objects.filter(project_id=project.id).exclude(external_source=JIRA_EXTERNAL_SOURCE)
-            foreign_count = foreign.count()
-            if foreign_count:
-                sample = ", ".join(
-                    f"{key}-{seq}" for seq in foreign.order_by("sequence_id").values_list("sequence_id", flat=True)[:5]
-                )
-                errors.append(
-                    f"{key}: project already has {foreign_count} work item(s) not imported from Jira ({sample}); "
-                    "refusing to import into it"
-                )
+            foreign_error = self._foreign_issues_error(key, project)
+            if foreign_error:
+                errors.append(foreign_error)
             plan.project = project
-            existing = Issue.objects.filter(project_id=project.id, external_source=JIRA_EXTERNAL_SOURCE)
-            by_external = {issue.external_id: issue for issue in existing}
-            by_sequence = {issue.sequence_id: issue for issue in by_external.values()}
+            # soft-deleted items too (their number stays taken); live ones win over deleted duplicates
+            existing = Issue.all_objects.filter(project_id=project.id, external_source=JIRA_EXTERNAL_SOURCE).order_by(
+                F("deleted_at").desc(nulls_last=True)
+            )
+            by_external, by_sequence = {}, {}
+            for issue in existing:
+                by_external[issue.external_id] = issue
+                by_sequence[issue.sequence_id] = issue
             for row in rows:
                 issue = by_external.get(row.issue_id) or by_sequence.get(row.number)
-                if issue is not None:
+                if issue is None:
+                    continue
+                if issue.deleted_at is not None:
+                    plan.deleted_issues[row.key] = issue
+                else:
                     plan.existing_issues[row.key] = issue
                     self.issues_by_key[row.key] = issue
         elif Project.objects.filter(workspace_id=self.workspace.id, name=plan.name).exists():
             errors.append(f"{key}: a project named {plan.name!r} already exists with another identifier")
-
-        plan.rows_to_create = [row for row in rows if row.key not in plan.existing_issues]
-        for row in plan.rows_to_create:
-            sprints = row.get_all("Sprint")
-            if sprints:
-                plan.sprints.add(sprints[-1])
         return plan
+
+    def _foreign_issues_error(self, key, project):
+        foreign = Issue.objects.filter(project_id=project.id).exclude(external_source=JIRA_EXTERNAL_SOURCE)
+        foreign_count = foreign.count()
+        if not foreign_count:
+            return None
+        sample = ", ".join(
+            f"{key}-{seq}" for seq in foreign.order_by("sequence_id").values_list("sequence_id", flat=True)[:5]
+        )
+        return (
+            f"{key}: project already has {foreign_count} work item(s) not imported from Jira ({sample}); "
+            "refusing to import into it"
+        )
+
+    def _select_rows_to_create(self):
+        """Rows not imported yet. Items deleted in Plane after an earlier import are not recreated, and
+        neither are their sub-work-items (deleting a work item in Plane deletes its sub-work-items)."""
+        for plan in self.plans.values():
+            plan.rows_to_create = []
+            for row in plan.rows:
+                if row.key in plan.existing_issues:
+                    continue
+                if row.key in plan.deleted_issues:
+                    self._warn(f"{row.key}: deleted in Plane after an earlier import; not recreated")
+                    continue
+                deleted_ancestor = self._deleted_ancestor(row)
+                if deleted_ancestor:
+                    self._warn(
+                        f"{row.key}: not imported, {deleted_ancestor} (its parent or an ancestor) was deleted in Plane"
+                    )
+                    continue
+                plan.rows_to_create.append(row)
+            for row in plan.rows_to_create:
+                sprints = row.get_all("Sprint")
+                if sprints:
+                    plan.sprints.add(sprints[-1])
+
+    def _deleted_ancestor(self, row):
+        """Key of the nearest ancestor of `row` deleted in Plane after an earlier import (looking past
+        ancestors that are still to be imported), or ""."""
+        trail = {row.key}
+        parent_key = self._parent_key(row)
+        while parent_key and parent_key not in trail:
+            if self._is_deleted_in_plane(parent_key):
+                return parent_key
+            parent_row = self.rows_by_key.get(parent_key)
+            if parent_row is None or parent_key in self.issues_by_key:
+                return ""
+            trail.add(parent_key)
+            parent_key = self._parent_key(parent_row)
+        return ""
+
+    def _is_deleted_in_plane(self, key):
+        row = self.rows_by_key.get(key)
+        if row is not None:
+            plan = self.plans.get(row.project_key)
+            return plan is not None and key in plan.deleted_issues
+        match = ISSUE_KEY_RE.match(key or "")
+        if not match or self._find_existing_issue(key) is not None:
+            return False
+        return Issue.all_objects.filter(
+            workspace_id=self.workspace.id,
+            project__identifier=match.group(1),
+            sequence_id=int(match.group(2)),
+            external_source=JIRA_EXTERNAL_SOURCE,
+            deleted_at__isnull=False,
+        ).exists()
 
     def _validate_values(self):
         errors = []
@@ -605,7 +672,24 @@ class JiraCsvImporter:
 
     # ================================================================ pass 1: work items
 
+    def _lock_sequences(self):
+        """Take each existing project's work item sequence lock (the advisory lock Issue.save takes,
+        held until the import transaction ends) and re-check for non-Jira work items created since
+        plan(): the forced Jira numbers must not collide with them."""
+        errors = []
+        for plan in self.plans.values():
+            if not plan.rows_to_create or plan.created:
+                continue
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(%s)", [convert_uuid_to_integer(plan.project.id)])
+            foreign_error = self._foreign_issues_error(plan.key, plan.project)
+            if foreign_error:
+                errors.append(foreign_error)
+        if errors:
+            raise JiraImportError(errors)
+
     def _create_issues(self):
+        self._lock_sequences()
         depths = self._hierarchy_depths()
         pending = [
             (depths.get(row.key, 0), plan.key, row.number, plan, row)
@@ -941,7 +1025,7 @@ class JiraCsvImporter:
                         ("Project", "created" if plan.created else ("exists" if plan.project else "new")),
                         ("Rows", len(plan.rows)),
                         ("Created", stats.get("created", 0) if self._ran else len(plan.rows_to_create)),
-                        ("Skipped", len(plan.existing_issues)),
+                        ("Skipped", len(plan.rows) - len(plan.rows_to_create)),
                         ("Parents", stats.get("parents", 0)),
                         ("X-proj", stats.get("cross-project parents", 0)),
                         ("Relations", stats.get("relations", 0)),

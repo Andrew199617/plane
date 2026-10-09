@@ -18,8 +18,9 @@
   project-created hooks: work item types, workflow, agents, teams, lead defaults).
 - Work items keep their Jira keys (sequence ids, gaps included); the next new item continues
   after the highest key.
-- Idempotent: work items already imported (same Jira issue id) are skipped. A target project that
-  holds work items NOT imported from Jira is refused.
+- Idempotent: work items already imported (same Jira issue id) are skipped; ones deleted in Plane
+  since (and their sub-work-items) are reported, not recreated. A target project that holds work
+  items NOT imported from Jira is refused.
 - --dry-run validates and prints the plan without writing; --rollback runs the full import in one
   transaction and rolls it back at the end (safe test against a live database).
 See plane.utils.jira_parity.importer.importer for the mapping details.

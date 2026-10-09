@@ -12,7 +12,9 @@ from uuid import uuid4
 
 import pytest
 import pytz
+from crum import impersonate
 from django.core.management import CommandError, call_command
+from django.db import transaction
 
 from plane.db.models import (
     Cycle,
@@ -33,8 +35,11 @@ from plane.db.models import (
     Workspace,
     WorkspaceMember,
 )
+from plane.celery import app as celery_app
 from plane.license.models import InstanceConfiguration
 from plane.utils.jira_parity.importer.config import CONFIG_ENV_VAR, TIMEZONE_ENV_VAR
+from plane.utils.jira_parity.importer.csv_reader import read_jira_csv
+from plane.utils.jira_parity.importer.importer import JiraCsvImporter, JiraImportError
 
 # Synthetic workspace config (a real workspace keeps its own in a private --config file).
 CONFIG = {
@@ -428,6 +433,71 @@ class TestImportJiraCsv:
         output = _import(_write_csv(tmp_path / "orphan.csv", [orphan]))
         assert "TES-4: Sub-task without a parent" in output
         assert _issue("TES-4").type.is_sub_task
+
+
+def _delete_in_plane(key):
+    """Delete a work item like the app does (soft delete + related cleanup, run in-process)."""
+    original = celery_app.conf.task_always_eager
+    celery_app.conf.task_always_eager = True
+    try:
+        _issue(key).delete()
+    finally:
+        celery_app.conf.task_always_eager = original
+
+
+def _numbers(identifier, number):
+    """(work items incl. soft-deleted, sequence rows) holding `number` in the project."""
+    return (
+        Issue.all_objects.filter(project__identifier=identifier, sequence_id=number).count(),
+        IssueSequence.objects.filter(project__identifier=identifier, sequence=number).count(),
+    )
+
+
+GRANDCHILD = {**ROWS[2], "Summary": "Grandchild", "Issue key": "TES-6", "Issue id": "1006", "Parent key": "TES-4"}
+
+
+@pytest.mark.unit
+@pytest.mark.django_db
+class TestImportAfterDeletionsInPlane:
+    def test_deleted_item_is_not_recreated(self, workspace, create_user, second_user, csv_path):
+        _import(csv_path)
+        _delete_in_plane("TES-5")
+        output = _import(csv_path)
+        assert "TES-5: deleted in Plane after an earlier import; not recreated" in output
+        assert not Issue.objects.filter(project__identifier="TES", sequence_id=5).exists()
+        assert _numbers("TES", 5) == (1, 1)
+
+    def test_sub_work_items_of_a_deleted_parent_are_skipped(self, workspace, create_user, second_user, tmp_path):
+        _import(_write_csv(tmp_path / "first.csv", [row for row in ROWS if row["Issue key"] != "TES-4"]))
+        _delete_in_plane("TES-2")
+        output = _import(_write_csv(tmp_path / "second.csv", [*ROWS, GRANDCHILD]))
+        assert "TES-2: deleted in Plane after an earlier import; not recreated" in output
+        assert "TES-4: not imported, TES-2 (its parent or an ancestor) was deleted in Plane" in output
+        assert "TES-6: not imported, TES-2 (its parent or an ancestor) was deleted in Plane" in output
+        assert sorted(Issue.objects.filter(project__identifier="TES").values_list("sequence_id", flat=True)) == [1, 5]
+        assert _numbers("TES", 2) == (1, 1)
+        assert not Issue.all_objects.filter(project__identifier="TES", sequence_id__in=[4, 6]).exists()
+
+    def test_deleted_parent_outside_the_import(self, workspace, create_user, second_user, csv_path, tmp_path):
+        _import(csv_path)
+        _delete_in_plane("TES-1")  # also deletes its sub-work-items, OTH-1 included
+        new_child = {**ROWS[4], "Summary": "New child", "Issue key": "OTH-2", "Issue id": "2002"}
+        output = _import(_write_csv(tmp_path / "oth.csv", [ROWS[4], new_child]), projects="OTH")
+        assert "OTH-1: deleted in Plane after an earlier import; not recreated" in output
+        assert "OTH-2: not imported, TES-1 (its parent or an ancestor) was deleted in Plane" in output
+        assert not Issue.objects.filter(project__identifier="OTH").exists()
+
+    def test_non_jira_item_created_after_planning_is_refused(self, workspace, create_user, second_user, tmp_path):
+        _import(_write_csv(tmp_path / "first.csv", [row for row in ROWS if row["Issue key"] != "TES-5"]))
+        rows = read_jira_csv(_write_csv(tmp_path / "second.csv")).rows
+        importer = JiraCsvImporter(workspace, create_user, rows, today=date.fromisoformat(TODAY), only_projects=["TES"])
+        importer.plan()
+        native = Issue.objects.create(project=Project.objects.get(identifier="TES"), name="native")
+        assert native.sequence_id == 5
+        with pytest.raises(JiraImportError, match="not imported from Jira"):
+            with transaction.atomic(), impersonate(create_user):
+                importer.run()
+        assert list(Issue.objects.filter(project__identifier="TES", sequence_id=5)) == [native]
 
 
 @pytest.mark.unit
