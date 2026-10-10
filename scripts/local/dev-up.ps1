@@ -232,7 +232,32 @@ if (-not $BackendOnly) {
 
   Write-Step 'Starting host dev servers'
   if (Test-Tracked 'packages') { Write-Host '    packages watcher already running' }
-  else { Start-Detached 'packages' $Root 'pnpm turbo run dev --filter=./packages/* --concurrency=20 --ui=stream'; Start-Sleep -Seconds 8 }
+  else {
+    Start-Detached 'packages' $Root 'pnpm turbo run dev --filter=./packages/* --concurrency=20 --ui=stream'
+    # The watcher's first pass rebuilds every package's dist/ from scratch (tsdown cleans it first). Apps started
+    # before that finishes cache "Cannot find module '@plane/...'" (Vite) or exit (live), so wait until every
+    # watched package's exported .js entry exists again and nothing changed for a few seconds.
+    $entries = @()
+    foreach ($pj in Get-ChildItem (Join-Path $Root 'packages\*\package.json')) {
+      $pkg = Get-Content $pj.FullName -Raw | ConvertFrom-Json
+      if (-not $pkg.scripts -or -not $pkg.scripts.dev) { continue }
+      $targets = @()
+      if ($pkg.exports) { $pkg.exports.PSObject.Properties | ForEach-Object { if ($_.Value -is [string]) { $targets += $_.Value } elseif ($_.Value.import) { $targets += [string]$_.Value.import } } }
+      if ($pkg.main) { $targets += [string]$pkg.main }
+      $entries += $targets | Where-Object { $_ -match '^\./dist/.*\.(m?js)$' } | ForEach-Object { Join-Path $pj.DirectoryName ($_ -replace '^\./', '') }
+    }
+    $deadline = (Get-Date).AddSeconds(240); $stableSince = $null
+    while ((Get-Date) -lt $deadline) {
+      $missing = @($entries | Where-Object { -not (Test-Path $_) })
+      if ($missing.Count -eq 0) {
+        if (-not $stableSince) { $stableSince = Get-Date }
+        elseif (((Get-Date) - $stableSince).TotalSeconds -ge 5) { break }
+      } else { $stableSince = $null }
+      Start-Sleep -Seconds 2
+    }
+    if ($missing.Count -gt 0) { Write-Warning ("packages watcher: {0} dist entries still missing after 240s (see .devlogs\packages.log)" -f $missing.Count) }
+    else { Write-Host ("    packages built ({0} dist entries present)" -f $entries.Count) }
+  }
 
   $apps = @(
     # Port 3300 belongs to RELEASE (plane-release-proxy, scripts\local\release.ps1); the dev server lives on 3310.
