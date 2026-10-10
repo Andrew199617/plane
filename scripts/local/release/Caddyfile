@@ -1,0 +1,60 @@
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	encode zstd gzip
+
+	# Same-origin uploads: presigned URLs are signed for <browser origin>/uploads. Keep Host, never strip /uploads.
+	@uploads path /uploads /uploads/*
+	@not_uploads not path /uploads /uploads/*
+	request_body @not_uploads {
+		max_size 5MB
+	}
+	request_body @uploads {
+		max_size 12MB
+	}
+	handle @uploads {
+		reverse_proxy plane-minio:9000
+	}
+
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+	handle /auth/* {
+		reverse_proxy api:8000
+	}
+	handle /static/* {
+		reverse_proxy api:8000
+	}
+	handle /live/* {
+		reverse_proxy live:3000
+	}
+
+	redir /spaces /spaces/ 308
+	handle /spaces/* {
+		reverse_proxy space:3000
+	}
+
+	redir /god-mode /god-mode/ 308
+	handle /god-mode/* {
+		root * /srv
+		@gm_assets path /god-mode/assets/*
+		header @gm_assets Cache-Control "public, max-age=31536000, immutable"
+		@gm_html not path /god-mode/assets/*
+		header @gm_html Cache-Control "no-cache"
+		try_files {path} /god-mode/index.html
+		file_server
+	}
+
+	handle {
+		root * /srv/web
+		@assets path /assets/*
+		header @assets Cache-Control "public, max-age=31536000, immutable"
+		@html not path /assets/*
+		header @html Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}

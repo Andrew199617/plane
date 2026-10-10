@@ -1,25 +1,32 @@
 <#
 .SYNOPSIS
-  Start the local Plane dev stack (backend in Docker, frontends on the Windows host), detached.
+  Start the DEBUG Plane stack (backend in Docker, frontends on the Windows host), detached.
 
 .DESCRIPTION
+  DEBUG stack only: a disposable copy that runs this working tree. See AGENTS.md "Local environment" before
+  touching Docker, ports or env files. RELEASE (compose project "plane", plane-release-* containers, the owner's
+  real data on http://localhost:3300 and the phone link) is NEVER started, stopped or changed by this script;
+  it is driven only by scripts\local\release.ps1.
+
   Idempotent: anything already running is left alone.
-    - Docker compose project "plane" (docker-compose-local.yml): api :8300, postgres :55432,
-      redis :56379, minio :9300 (console :9390), rabbitmq (no host port), worker, beat-worker, migrator.
+    - Docker compose project "plane-dev" (docker-compose-local.yml, volumes plane-dev_*), all bound to 127.0.0.1:
+        api       http://127.0.0.1:8310   (runserver, plane.settings.local, source bind-mounted)
+        postgres  127.0.0.1:55433
+        redis     127.0.0.1:56380
+        minio     127.0.0.1:9310 (console 9391)
+        rabbitmq  no host port;  worker (concurrency 2), beat-worker, migrator
     - Host dev servers, each started fully detached (survives the calling shell) via Win32_Process.Create:
         packages  turbo "dev" for ./packages/* (tsdown --watch, rebuilds dist/ on edit)
-        web-dev   http://localhost:3310 (Vite dev server with HMR; NEVER on 3300)
-        admin     http://localhost:3301/god-mode/
-        space     http://localhost:3302/spaces/
-        live      http://localhost:3400/live/
+        web-dev   http://127.0.0.1:3310 (Vite dev server with HMR; NEVER on 3300, which is RELEASE)
+        admin     http://127.0.0.1:3301/god-mode/
+        space     http://127.0.0.1:3302/spaces/
+        live      http://127.0.0.1:3400/live/
   Logs: .devlogs\<name>.log   PIDs: .devlogs\pids\<name>.pid
-    - Production web build on http://localhost:3300: Caddy container "plane-web-prod" (scripts\local\web-prod.ps1),
-      optionally exposed to other devices via Tailscale serve or any reverse proxy (see -PublicHost). If the
-      container is missing or stopped it is (re)started from the LAST build (web-prod.ps1 -NoBuild; a first build
-      if none exists). It is a snapshot: rebuild with  powershell -ExecutionPolicy Bypass -File scripts\local\web-prod.ps1
+  Open debug on 127.0.0.1 (release on localhost) so the two stacks' browser cookies do not clash.
+  Empty debug database? Seed it from release with scripts\local\dev-refresh.ps1.
 
-  Only touches the compose project "plane", the plane-web-prod container and Plane's own dev servers; the
-  host ports are chosen to avoid the common defaults (3000, 4200, 5432, 6379, 8000, 9000).
+  Preflight refuses to start while the debug env files still carry release values (CORS/WEB_URL on :3300,
+  API URLs on the retired :8300, or no SESSION_COOKIE_NAME in apps\api\.env); see AGENTS.md.
 
 .PARAMETER Build
   Rebuild the backend images (docker compose up --build).
@@ -30,9 +37,11 @@
 .PARAMETER RecoverDocker
   If Docker Desktop is not responding, apply the Docker Desktop stale-socket recovery (stop Docker processes,
   rename %LOCALAPPDATA%\Docker\run and %LOCALAPPDATA%\docker-secrets-engine to *.stale-<timestamp>, relaunch).
+  Runs before the debug env preflight, so it also works while the debug env files would be refused.
 .PARAMETER PublicHost
-  Host name under which other devices reach the production web build on port 3300 (e.g. a Tailscale or LAN
-  name); only used for the summary. Defaults to $env:PLANE_PUBLIC_HOST (no default otherwise).
+  Host name under which other devices (the phone) reach RELEASE on port 3300 (e.g. a Tailscale name); only
+  printed in the summary as the release phone URL - this script never touches release. Defaults to
+  $env:PLANE_PUBLIC_HOST (no default otherwise).
 
 .EXAMPLE
   powershell -ExecutionPolicy Bypass -File scripts\local\dev-up.ps1
@@ -128,9 +137,59 @@ function Wait-Http([string]$Url, [int]$TimeoutSec) {
   return 0
 }
 
+# KEY=VALUE lines of a dotenv file as a hashtable (surrounding quotes stripped). Values are never printed.
+function Read-DotEnv([string]$Path) {
+  $h = @{}
+  if (-not (Test-Path $Path)) { return $h }
+  foreach ($line in Get-Content -Path $Path) {
+    $t = $line.Trim()
+    if (-not $t -or $t.StartsWith('#')) { continue }
+    if ($t.StartsWith('export ')) { $t = $t.Substring(7).TrimStart() }
+    $i = $t.IndexOf('=')
+    if ($i -lt 1) { continue }
+    $v = $t.Substring($i + 1).Trim()
+    if ($v.Length -ge 2 -and (($v.StartsWith('"') -and $v.EndsWith('"')) -or ($v.StartsWith("'") -and $v.EndsWith("'")))) { $v = $v.Substring(1, $v.Length - 2) }
+    $h[$t.Substring(0, $i).Trim()] = $v
+  }
+  return $h
+}
+
+# ---------------------------------------------------------------- docker recovery (before the env preflight)
+# Recovering Docker Desktop does not depend on the debug env files, and release recovery (AGENTS.md, release.ps1)
+# points here: never let a debug env problem block it.
+if ($RecoverDocker -and -not (Test-DockerUp)) { Repair-DockerDesktop }
+
 # ---------------------------------------------------------------- preflight
 foreach ($f in @('.env', 'apps\api\.env', 'apps\web\.env', 'apps\admin\.env', 'apps\space\.env', 'apps\live\.env')) {
   if (-not (Test-Path (Join-Path $Root $f))) { throw "Missing $f - create it from the matching .env.example first (see setup.sh)." }
+}
+# The debug env files must not carry RELEASE values (:3300) or the retired pre-split ports, otherwise debug
+# would authenticate/redirect against release or talk to the wrong services. Only key names are reported.
+$retiredPorts = ':(3300|8300|55432|56379|9300|9390)(?!\d)'
+$envProblems = @()
+$apiEnv = Read-DotEnv (Join-Path $Root 'apps\api\.env')
+if ([string]$apiEnv['CORS_ALLOWED_ORIGINS'] -match ':3300(?!\d)') { $envProblems += 'apps\api\.env: CORS_ALLOWED_ORIGINS lists :3300 (release) origins' }
+foreach ($k in 'WEB_URL', 'APP_BASE_URL') {
+  if ([string]$apiEnv[$k] -match ':3300/?$') { $envProblems += "apps\api\.env: $k points at :3300 (release)" }
+}
+if (-not $apiEnv.ContainsKey('SESSION_COOKIE_NAME') -or -not $apiEnv['SESSION_COOKIE_NAME']) {
+  $envProblems += 'apps\api\.env: SESSION_COOKIE_NAME is missing (debug must not share the release session-id cookie)'
+}
+foreach ($app in 'web', 'admin', 'space', 'live') {
+  $appEnv = Read-DotEnv (Join-Path $Root "apps\$app\.env")
+  # The keys each app really reads in dev: VITE_*_URL for the Vite apps; live ignores its WEB_/LIVE_BASE_URL.
+  if ($app -eq 'live') { $keys = @('API_BASE_URL', 'REDIS_URL') }
+  else { $keys = @($appEnv.Keys | Where-Object { $_ -match '^VITE_\w*_URL$' } | Sort-Object) }
+  foreach ($k in $keys) {
+    if ([string]$appEnv[$k] -match $retiredPorts) { $envProblems += "apps\$app\.env: $k points at release (:3300) or a retired port (:8300/:55432/:56379/:9300/:9390)" }
+  }
+  if ($app -eq 'live' -and [string]$appEnv['REDIS_PORT'] -eq '56379') { $envProblems += 'apps\live\.env: REDIS_PORT is the retired 56379 (debug redis is 56380)' }
+}
+if ($envProblems.Count -gt 0) {
+  Write-Host 'Refusing to start the DEBUG stack - its env files still hold release / pre-split values:' -ForegroundColor Red
+  $envProblems | ForEach-Object { Write-Host "  - $_" }
+  throw ('Point the debug env files at the debug ports (API 127.0.0.1:8310, web 3310, admin 3301, space 3302, live 3400, ' +
+    'redis 56380) and set SESSION_COOKIE_NAME=plane-dev-session-id in apps\api\.env. See AGENTS.md "Local environment".')
 }
 
 # ---------------------------------------------------------------- backend
@@ -139,14 +198,19 @@ if (-not $FrontendOnly) {
   if (-not (Test-DockerUp)) {
     if ($RecoverDocker) { Repair-DockerDesktop } else { throw 'Docker is not responding. Start Docker Desktop, or re-run with -RecoverDocker.' }
   }
-  Write-Step 'Starting backend (docker compose project "plane")'
-  $composeArgs = @('compose', '-p', 'plane', '-f', $Compose, 'up', '-d')
+  Write-Step 'Starting backend (docker compose project "plane-dev")'
+  $composeArgs = @('compose', '-p', 'plane-dev', '-f', $Compose, 'up', '-d')
   if ($Build) { $composeArgs += '--build' }
   & docker @composeArgs
   if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
-  Write-Step 'Waiting for api on http://localhost:8300 ...'
-  $code = Wait-Http 'http://localhost:8300/api/instances/' 180
-  if ($code -eq 0) { Write-Warning 'api did not answer within 180s - check: docker logs plane-api-1' } else { Write-Host "    api answered HTTP $code" }
+  Write-Step 'Waiting for api on http://127.0.0.1:8310 ...'
+  $code = Wait-Http 'http://127.0.0.1:8310/api/instances/' 180
+  if ($code -eq 0) { Write-Warning 'api did not answer within 180s - check: docker logs plane-dev-api-1' } else { Write-Host "    api answered HTTP $code" }
+  # An empty debug database is almost always unintended: seed it from release.
+  $wsCount = ('select count(*) from workspaces;' | & docker exec -i plane-dev-plane-db-1 sh -c 'psql -U $POSTGRES_USER -d $POSTGRES_DB -At' 2>$null)
+  if ("$wsCount".Trim() -eq '0') {
+    Write-Host '    the debug database has no workspaces - run: powershell -ExecutionPolicy Bypass -File scripts\local\dev-refresh.ps1' -ForegroundColor Yellow
+  }
 }
 
 # ---------------------------------------------------------------- frontends
@@ -157,10 +221,10 @@ if (-not $BackendOnly) {
   }
   $env:TURBO_TELEMETRY_DISABLED = '1'
   $env:DO_NOT_TRACK = '1'
-  # web-dev serves the app same-origin: it proxies /api, /auth, /static, /live and /uploads (MinIO :9300) and the
-  # client uses relative URLs (apps/web/vite.config.ts; only read by the web dev server, never by builds).
+  # web-dev serves the app same-origin: it proxies /api, /auth, /static, /live and /uploads (debug MinIO :9310) and
+  # the client uses relative URLs (apps/web/vite.config.ts; only read by the web dev server, never by builds).
   $env:PLANE_WEB_DEV_PROXY = '1'
-  $env:PLANE_WEB_UPLOADS_PROXY_TARGET = 'http://127.0.0.1:9300'
+  $env:PLANE_WEB_UPLOADS_PROXY_TARGET = 'http://127.0.0.1:9310'
   if (-not (Test-Path (Join-Path $Root 'packages\utils\dist'))) {
     Write-Step 'Building workspace packages (first run)'
     Push-Location $Root; try { & pnpm turbo run build --filter=./packages/*; if ($LASTEXITCODE -ne 0) { throw 'package build failed' } } finally { Pop-Location }
@@ -171,7 +235,7 @@ if (-not $BackendOnly) {
   else { Start-Detached 'packages' $Root 'pnpm turbo run dev --filter=./packages/* --concurrency=20 --ui=stream'; Start-Sleep -Seconds 8 }
 
   $apps = @(
-    # Port 3300 belongs to the production build (plane-web-prod); the dev server lives on 3310.
+    # Port 3300 belongs to RELEASE (plane-release-proxy, scripts\local\release.ps1); the dev server lives on 3310.
     @{ Name = 'web-dev'; Port = 3310; Dir = 'apps\web'; Cmd = 'pnpm exec react-router dev --port 3310 --strictPort' },
     @{ Name = 'admin'; Port = 3301; Dir = 'apps\admin'; Cmd = 'pnpm exec react-router dev --port 3301 --strictPort' },
     @{ Name = 'space'; Port = 3302; Dir = 'apps\space'; Cmd = 'pnpm exec react-router dev --port 3302 --strictPort' },
@@ -183,32 +247,22 @@ if (-not $BackendOnly) {
     Start-Detached $a.Name (Join-Path $Root $a.Dir) $a.Cmd
   }
 
-  Write-Step 'Production web (plane-web-prod on :3300)'
-  $webProd = Join-Path $PSScriptRoot 'web-prod.ps1'
-  $running = (& docker inspect -f '{{.State.Running}}' plane-web-prod 2>$null)
-  if ($running -eq 'true') { Write-Host '    plane-web-prod already running (:3300)' }
-  elseif (Test-Path (Join-Path $Root 'apps\web\build\client\index.html')) {
-    Write-Host '    starting plane-web-prod from the last build (web-prod.ps1 -NoBuild)'
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $webProd -NoBuild
-  } else {
-    Write-Host '    no production build yet - building it (web-prod.ps1, ~1 min)'
-    & powershell -NoProfile -ExecutionPolicy Bypass -File $webProd
-  }
-
   Write-Step 'Waiting for web servers'
-  foreach ($u in @('http://localhost:3300/', 'http://localhost:3310/', 'http://localhost:3301/god-mode/', 'http://localhost:3302/spaces/', 'http://localhost:3400/live/health')) {
+  foreach ($u in @('http://127.0.0.1:3310/', 'http://127.0.0.1:3301/god-mode/', 'http://127.0.0.1:3302/spaces/', 'http://127.0.0.1:3400/live/health')) {
     $c = Wait-Http $u 180
     Write-Host ("    {0} -> {1}" -f $u, $(if ($c -eq 0) { 'no answer yet (see .devlogs)' } else { "HTTP $c" }))
   }
 }
 
 Write-Host ''
-Write-Host 'Plane local dev:' -ForegroundColor Green
-Write-Host '  web    http://localhost:3300  (production snapshot)'
-if ($PublicHost) { Write-Host "         http://${PublicHost}:3300  (remote)" }
-Write-Host '  dev    http://localhost:3310  (Vite dev server, HMR)'
-Write-Host '  admin  http://localhost:3301/god-mode/'
-Write-Host '  space  http://localhost:3302/spaces/'
-Write-Host '  live   http://localhost:3400/live/'
-Write-Host '  api    http://localhost:8300'
+Write-Host 'Plane DEBUG stack (compose project plane-dev; open it on 127.0.0.1):' -ForegroundColor Green
+Write-Host '  web    http://127.0.0.1:3310  (Vite dev server, HMR)'
+Write-Host '  admin  http://127.0.0.1:3301/god-mode/'
+Write-Host '  space  http://127.0.0.1:3302/spaces/'
+Write-Host '  live   http://127.0.0.1:3400/live/'
+Write-Host '  api    http://127.0.0.1:8310'
+Write-Host '  infra  postgres 127.0.0.1:55433, redis 127.0.0.1:56380, minio 127.0.0.1:9310 (console 9391)'
 Write-Host "  logs   $LogDir"
+Write-Host 'RELEASE (not managed by this script; scripts\local\release.ps1, see AGENTS.md):'
+Write-Host '  web    http://localhost:3300'
+if ($PublicHost) { Write-Host "  phone  http://${PublicHost}:3300" }

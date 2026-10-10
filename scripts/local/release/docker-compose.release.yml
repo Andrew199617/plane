@@ -1,0 +1,151 @@
+# RELEASE stack: the owner's real data. Run ONLY through scripts/local/release.ps1, which sets
+# RELEASE_TAG, PLANE_RELEASE_ENV_FILE and PLANE_RELEASE_WORKTREE. See AGENTS.md "Local environment".
+name: plane
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "3" }
+
+x-backend: &backend
+  image: plane-release/backend:${RELEASE_TAG:?run via scripts/local/release.ps1}
+  pull_policy: never
+  restart: always
+  logging: *logging
+  env_file:
+    - ${PLANE_RELEASE_ENV_FILE:?run via scripts/local/release.ps1}
+
+services:
+  plane-db:
+    image: postgres:15.7-alpine            # must stay 15.x for plane_pgdata
+    container_name: plane-release-db
+    restart: always
+    logging: *logging
+    command: postgres -c max_connections=1000
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: ${POSTGRES_DB:?}
+      PGDATA: /var/lib/postgresql/data
+    volumes: [ "pgdata:/var/lib/postgresql/data" ]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  plane-redis:
+    image: valkey/valkey:7.2.11-alpine
+    container_name: plane-release-redis
+    restart: always
+    logging: *logging
+    volumes: [ "redisdata:/data" ]
+
+  plane-mq:
+    image: rabbitmq:3.13.6-management-alpine
+    container_name: plane-release-mq
+    hostname: plane-mq                     # stable mnesia node across recreates
+    restart: always
+    logging: *logging
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:?}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:?}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:?}
+    volumes: [ "rabbitmq_data:/var/lib/rabbitmq" ]
+
+  plane-minio:
+    image: docker.io/pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    container_name: plane-release-minio
+    restart: always
+    logging: *logging
+    # Adapted from docker-compose-local.yml. $$MINIO_ROOT_* are expanded by sh at runtime, so the long-lived argv
+    # of PID 1 (visible in docker top / ps --no-trunc) holds variable names, never the root secret.
+    entrypoint: >
+      /bin/sh -c "mkdir -p /export/${AWS_S3_BUCKET_NAME:-uploads} &&
+      minio server /export --console-address ':9090' & sleep 5 &&
+      mc alias set myminio http://localhost:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
+      mc mb myminio/${AWS_S3_BUCKET_NAME:-uploads} -p || true && tail -f /dev/null"
+    environment:
+      MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID:?}
+      MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY:?}
+    volumes: [ "uploads:/export" ]
+
+  migrator:                                # never started by `up`; release.ps1 uses `run --rm`
+    <<: *backend
+    restart: "no"
+    profiles: [ migrate ]
+    command: ./bin/docker-entrypoint-migrator.sh      # no --settings => production
+    depends_on: { plane-db: { condition: service_healthy } }
+
+  api:
+    <<: *backend
+    container_name: plane-release-api
+    build:
+      context: ${PLANE_RELEASE_WORKTREE:?run via scripts/local/release.ps1}/apps/api
+      dockerfile: Dockerfile.api                      # upstream file, unchanged
+    command: ./bin/docker-entrypoint-api.sh            # collectstatic + gunicorn -w $GUNICORN_WORKERS
+    depends_on:
+      plane-db: { condition: service_healthy }
+      plane-redis: { condition: service_started }
+      plane-mq: { condition: service_started }
+      plane-minio: { condition: service_started }
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://127.0.0.1:8000/api/instances/ || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 180s
+
+  worker:
+    <<: *backend
+    container_name: plane-release-worker
+    command: ./bin/docker-entrypoint-worker.sh
+    environment: { CELERY_WORKER_CONCURRENCY: "2" }   # celery click auto-envvar -> --concurrency 2
+    stop_grace_period: 60s
+    depends_on: [ api ]
+
+  beat-worker:
+    <<: *backend
+    container_name: plane-release-beat
+    command: ./bin/docker-entrypoint-beat.sh
+    depends_on: [ api ]
+
+  live:
+    image: plane-release/live:${RELEASE_TAG:?}
+    pull_policy: never
+    container_name: plane-release-live
+    build: { context: "${PLANE_RELEASE_WORKTREE:?}", dockerfile: scripts/local/release/Dockerfile.frontend, target: live }
+    restart: always
+    logging: *logging
+    environment:
+      PORT: "3000"
+      LIVE_BASE_PATH: /live
+      API_BASE_URL: http://api:8000
+      REDIS_URL: redis://plane-redis:6379/
+      LIVE_SERVER_SECRET_KEY: ${LIVE_SERVER_SECRET_KEY:?}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:?}
+    depends_on: [ api, plane-redis ]
+
+  space:
+    image: plane-release/space:${RELEASE_TAG:?}
+    pull_policy: never
+    container_name: plane-release-space
+    build: { context: "${PLANE_RELEASE_WORKTREE:?}", dockerfile: scripts/local/release/Dockerfile.frontend, target: space }
+    restart: always
+    logging: *logging
+    environment: { PORT: "3000" }
+
+  proxy:
+    image: plane-release/proxy:${RELEASE_TAG:?}
+    pull_policy: never
+    container_name: plane-release-proxy
+    build: { context: "${PLANE_RELEASE_WORKTREE:?}", dockerfile: scripts/local/release/Dockerfile.frontend, target: proxy }
+    restart: always
+    logging: *logging
+    ports: [ "127.0.0.1:3300:80" ]         # exactly this; Tailscale Serve TCP-forwards to it
+    depends_on: [ api, live, space, plane-minio ]
+
+volumes:
+  pgdata:        { external: true, name: plane_pgdata }
+  uploads:       { external: true, name: plane_uploads }
+  redisdata:     { external: true, name: plane_redisdata }
+  rabbitmq_data: { external: true, name: plane_rabbitmq_data }

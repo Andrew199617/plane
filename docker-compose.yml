@@ -1,3 +1,5 @@
+# Fork guard: without a pinned name a bare `-f docker-compose.yml` run resolves to project `plane` and mounts the release data volumes (see AGENTS.md).
+name: plane-upstream-unused
 services:
   web:
     container_name: web

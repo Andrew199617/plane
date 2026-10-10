@@ -67,3 +67,8 @@ temp/
 build/
 node_modules/
 README.md
+
+# Fork: local-only dirs (dev logs, gitignored secrets/state, agent config) must never enter a build context
+.devlogs/
+.local/
+.claude/

@@ -1,0 +1,157 @@
+# RELEASE frontend images for the Jira-parity fork. Build context = the release worktree root (../plane-release).
+# Built only by scripts/local/release.ps1 (docker-compose.release.yml targets: proxy, space, live).
+#
+# One turbo prune + one pnpm install shared by all four apps, then one build stage per app that carries exactly
+# the build env of the upstream apps/web/Dockerfile.web, apps/admin/Dockerfile.admin, apps/space/Dockerfile.space
+# and apps/live/Dockerfile.live. The runtime layouts and commands of space and live match those files too.
+# Web and admin are not served by their own Caddy images: their static builds are baked into the proxy target.
+#
+# Keep in sync with upstream by hand: FROM node:22-alpine, TURBO_VERSION and APK_SECURITY_PATCH (release.ps1 build
+# warns when these differ from apps/web/Dockerfile.web), plus the per-app ENV blocks and the space/live runtime
+# COPY lists and CMDs (not checked automatically; compare with the upstream Dockerfiles after each upstream merge).
+
+FROM node:22-alpine AS base
+ENV PNPM_HOME="/pnpm"
+ENV PATH="$PNPM_HOME:$PNPM_HOME/bin:$PATH"
+ENV TURBO_TELEMETRY_DISABLED=1
+RUN corepack enable pnpm
+WORKDIR /app
+
+# ---------------------------------------------------------------------------------------------------------------
+# Prune the monorepo to the four apps
+# ---------------------------------------------------------------------------------------------------------------
+FROM base AS pruner
+RUN apk add --no-cache libc6-compat
+ARG TURBO_VERSION=2.10.11
+RUN pnpm add -g turbo@${TURBO_VERSION}
+COPY . .
+# Gitignored env files (apps/*/.env, .env.production.local, ...) must never reach a release bundle: they would
+# bake debug URLs or other per-machine values into it. Only the tracked *.example files are kept.
+RUN find . -name node_modules -prune -o -type f \( -name '.env' -o -name '.env.*' \) ! -name '.env.example' \
+      -print -exec rm -f {} +
+RUN turbo prune web admin space live --docker
+
+# ---------------------------------------------------------------------------------------------------------------
+# One install for all apps (dev deps included, as in every upstream Dockerfile)
+# ---------------------------------------------------------------------------------------------------------------
+FROM base AS installer
+RUN apk add --no-cache libc6-compat
+COPY .gitignore .gitignore
+COPY --from=pruner /app/out/json/ .
+COPY --from=pruner /app/out/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=pruner /app/out/full/ .
+COPY turbo.json turbo.json
+# packages/i18n/locales is a git symlink (-> src/locales). A Windows checkout with core.symlinks=false turns it into
+# a text file, and the bundles would then ship raw i18n keys. Re-create it unconditionally.
+RUN rm -rf packages/i18n/locales \
+ && ln -s src/locales packages/i18n/locales \
+ && test -f packages/i18n/locales/en/auth.json
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store CI=true pnpm fetch --store-dir=/pnpm/store
+RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store CI=true pnpm install --offline --frozen-lockfile --prod=false --store-dir=/pnpm/store
+
+# Build-time URLs shared by web, admin and space (the ARG defaults of their upstream Dockerfiles). Blank base URLs
+# give a same-origin bundle; everything sits behind the release proxy on one origin.
+FROM installer AS vite-env
+ENV VITE_API_BASE_URL="" \
+    VITE_ADMIN_BASE_URL="" \
+    VITE_ADMIN_BASE_PATH="/god-mode" \
+    VITE_LIVE_BASE_URL="" \
+    VITE_LIVE_BASE_PATH="/live" \
+    VITE_SPACE_BASE_URL="" \
+    VITE_SPACE_BASE_PATH="/spaces" \
+    VITE_WEB_BASE_URL=""
+
+# ---------------------------------------------------------------------------------------------------------------
+# Per-app builds
+# ---------------------------------------------------------------------------------------------------------------
+# web: Dockerfile.web sets no NODE_ENV, CI, VITE_API_BASE_PATH or VITE_WEB_BASE_PATH.
+FROM vite-env AS build-web
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN pnpm turbo run build --filter=web
+RUN test -f apps/web/build/client/index.html
+RUN grep -rqF "New to Plane?" apps/web/build/client/assets \
+ || { echo "web bundle lacks English locale strings (packages/i18n/locales link)" >&2; exit 1; }
+
+# admin and space: Dockerfile.admin / Dockerfile.space add CI=1 (from their base), NODE_ENV=production and these.
+FROM vite-env AS build-admin
+ENV CI=1 \
+    NODE_ENV=production \
+    VITE_API_BASE_PATH="/api" \
+    VITE_WEB_BASE_PATH="" \
+    VITE_WEBSITE_URL="https://plane.so" \
+    VITE_SUPPORT_EMAIL="support@plane.so"
+RUN pnpm turbo run build --filter=admin
+RUN test -f apps/admin/build/client/index.html
+
+FROM vite-env AS build-space
+ENV CI=1 \
+    NODE_ENV=production \
+    VITE_API_BASE_PATH="/api" \
+    VITE_WEB_BASE_PATH="" \
+    VITE_WEBSITE_URL="https://plane.so" \
+    VITE_SUPPORT_EMAIL="support@plane.so"
+RUN pnpm turbo run build --filter=space
+RUN test -f apps/space/build/server/index.js
+RUN grep -rqF "New to Plane?" apps/space/build/client \
+ || { echo "space bundle lacks English locale strings (packages/i18n/locales link)" >&2; exit 1; }
+
+# live: Dockerfile.live sets no VITE_* vars, NODE_ENV or CI for its build, so it builds from the installer stage.
+FROM installer AS build-live
+RUN pnpm turbo run build --filter=live
+RUN test -f apps/live/dist/start.mjs
+
+# ---------------------------------------------------------------------------------------------------------------
+# proxy: stock Caddy (no rate-limit plugin) with the web and admin static builds baked in
+# ---------------------------------------------------------------------------------------------------------------
+FROM caddy:2.11.4-alpine AS proxy
+# OS security updates, as in the upstream web/admin production stages (bump to bust the cached layer).
+ARG APK_SECURITY_PATCH=2026-09-07
+RUN echo "apk-security-patch ${APK_SECURITY_PATCH}" && apk update && apk upgrade --no-cache --available && rm -rf /var/cache/apk/*
+COPY scripts/local/release/Caddyfile /etc/caddy/Caddyfile
+RUN caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+COPY --from=build-web   /app/apps/web/build/client   /srv/web
+COPY --from=build-admin /app/apps/admin/build/client /srv/god-mode
+EXPOSE 80
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1/ || exit 1
+# CMD is the caddy image default: caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+
+# ---------------------------------------------------------------------------------------------------------------
+# Node runtime shared by space and live (the upstream "runner" stages)
+# ---------------------------------------------------------------------------------------------------------------
+FROM base AS node-runtime
+ARG APK_SECURITY_PATCH=2026-09-07
+RUN echo "apk-security-patch ${APK_SECURITY_PATCH}" && apk update && apk upgrade --no-cache --available
+# go carries stdlib CVEs; npm and its bundled deps are unused at runtime (both CMDs exec node or a bin shim).
+RUN apk del go 2>/dev/null || true
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+# The root node_modules (pnpm virtual store) is identical for space and live, so it is copied from the installer
+# as the first layer: both images, and consecutive tags with an unchanged lockfile, share it on disk.
+COPY --from=installer /app/node_modules ./node_modules
+# esbuild and tsgolint are build-only Go binaries.
+RUN find /app/node_modules \( -name 'esbuild' -o -name 'tsgolint' \) -type f -delete 2>/dev/null || true
+
+# space: server-rendered under /spaces/ by react-router-serve (Dockerfile.space runner). It needs no packages/ at
+# runtime: Vite bundles the linked @plane/* workspace packages into build/server.
+FROM node-runtime AS space
+ENV CI=1 \
+    NODE_ENV=production
+COPY --from=build-space /app/apps/space/build        ./apps/space/build
+COPY --from=build-space /app/apps/space/node_modules ./apps/space/node_modules
+WORKDIR /app/apps/space
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/spaces/ || exit 1
+CMD ["./node_modules/.bin/react-router-serve", "./build/server/index.js"]
+
+# live: `node apps/live` resolves apps/live/package.json "main" (dist/start.mjs). tsdown leaves the @plane/*
+# imports external, so packages/ (with built dist/) is needed at runtime, as in Dockerfile.live.
+FROM node-runtime AS live
+COPY --from=build-live /app/packages               ./packages
+COPY --from=build-live /app/apps/live/dist         ./apps/live/dist
+COPY --from=build-live /app/apps/live/node_modules ./apps/live/node_modules
+COPY --from=build-live /app/apps/live/package.json ./apps/live/package.json
+EXPOSE 3000
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD wget -q -O /dev/null http://127.0.0.1:3000/live/health || exit 1
+CMD ["node", "apps/live"]

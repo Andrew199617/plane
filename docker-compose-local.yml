@@ -1,5 +1,8 @@
-# Project name pinned so this stack never collides with other compose projects on the host.
-name: plane
+# DEBUG stack only (disposable copy for this working tree); see AGENTS.md "Local environment". Run it as
+# `docker compose -p plane-dev -f docker-compose-local.yml ...` or via scripts/local/dev-*.ps1. RELEASE is project
+# `plane`, driven only by scripts/local/release.ps1. Volumes have explicit plane-dev_* names, so even `-p plane`
+# with this file can never mount the release data. Host ports bind 127.0.0.1 and use PLANE_DEV_* variables.
+name: plane-dev
 
 services:
   plane-redis:
@@ -10,10 +13,11 @@ services:
     volumes:
       - redisdata:/data
     ports:
-      - "${PLANE_REDIS_PORT:-56379}:6379"
+      - "127.0.0.1:${PLANE_DEV_REDIS_PORT:-56380}:6379"
 
   plane-mq:
     image: rabbitmq:3.13.6-management-alpine
+    hostname: plane-mq # stable RabbitMQ node name (mnesia dir) across container re-creates
     restart: unless-stopped
     networks:
       - dev_env
@@ -31,12 +35,13 @@ services:
     restart: unless-stopped
     networks:
       - dev_env
+    # $$MINIO_ROOT_* are expanded by sh at runtime: PID 1's long-lived argv (docker top) never holds the secret.
     entrypoint: >
       /bin/sh -c "
       mkdir -p /export/${AWS_S3_BUCKET_NAME} &&
       minio server /export --console-address ':9090' &
       sleep 5 &&
-      mc alias set myminio http://localhost:9000 ${AWS_ACCESS_KEY_ID} ${AWS_SECRET_ACCESS_KEY} &&
+      mc alias set myminio http://localhost:9000 $$MINIO_ROOT_USER $$MINIO_ROOT_PASSWORD &&
       mc mb myminio/${AWS_S3_BUCKET_NAME} -p || true
       && tail -f /dev/null
       "
@@ -48,8 +53,8 @@ services:
       MINIO_ROOT_USER: ${AWS_ACCESS_KEY_ID}
       MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
     ports:
-      - "${PLANE_MINIO_PORT:-9300}:9000"
-      - "${PLANE_MINIO_CONSOLE_PORT:-9390}:9090"
+      - "127.0.0.1:${PLANE_DEV_MINIO_PORT:-9310}:9000"
+      - "127.0.0.1:${PLANE_DEV_MINIO_CONSOLE_PORT:-9391}:9090"
 
   plane-db:
     image: postgres:15.7-alpine
@@ -64,7 +69,7 @@ services:
     environment:
       PGDATA: /var/lib/postgresql/data
     ports:
-      - "${PLANE_DB_PORT:-55432}:5432"
+      - "127.0.0.1:${PLANE_DEV_DB_PORT:-55433}:5432"
 
   api:
     build:
@@ -85,7 +90,7 @@ services:
       - plane-redis
       - plane-mq
     ports:
-      - "${PLANE_API_PORT:-8300}:8000"
+      - "127.0.0.1:${PLANE_DEV_API_PORT:-8310}:8000"
 
   worker:
     build:
@@ -101,6 +106,11 @@ services:
     command: ./bin/docker-entrypoint-worker.sh
     env_file:
       - ./apps/api/.env
+    environment:
+      # celery's click auto-envvar maps this to `worker --concurrency` (default would be nproc = 32 children)
+      CELERY_WORKER_CONCURRENCY: "${PLANE_DEV_WORKER_CONCURRENCY:-2}"
+      # debug Celery uses local settings (console email backend), never production SMTP
+      DJANGO_SETTINGS_MODULE: plane.settings.local
     depends_on:
       - api
       - plane-db
@@ -120,6 +130,8 @@ services:
     command: ./bin/docker-entrypoint-beat.sh
     env_file:
       - ./apps/api/.env
+    environment:
+      DJANGO_SETTINGS_MODULE: plane.settings.local
     depends_on:
       - api
       - plane-db
@@ -143,11 +155,16 @@ services:
       - plane-db
       - plane-redis
 
+# Explicit names: these never resolve to the release volumes (plane_*), whatever project name is used.
 volumes:
   redisdata:
+    name: plane-dev_redisdata
   uploads:
+    name: plane-dev_uploads
   pgdata:
+    name: plane-dev_pgdata
   rabbitmq_data:
+    name: plane-dev_rabbitmq_data
 
 networks:
   dev_env:
