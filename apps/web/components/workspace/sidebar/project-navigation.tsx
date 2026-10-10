@@ -52,7 +52,7 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
   const { t } = useTranslation();
   const { isExtendedProjectSidebarOpened, toggleExtendedProjectSidebar, toggleSidebar } = useAppTheme();
   const { getPartialProjectById } = useProject();
-  const { allowPermissions } = useUserPermissions();
+  const { allowReadPermissions } = useUserPermissions();
   const {
     issue: { getIssueIdByIdentifier, getIssueById },
   } = useIssueDetail();
@@ -185,7 +185,7 @@ export const ProjectNavigation = observer(function ProjectNavigation(props: TPro
       {navigationItemsMemo.map((item) => {
         if (!item.shouldRender) return;
 
-        const hasAccess = allowPermissions(item.access, EUserPermissionsLevel.PROJECT, workspaceSlug, project.id);
+        const hasAccess = allowReadPermissions(item.access, EUserPermissionsLevel.PROJECT, workspaceSlug, project.id);
         if (!hasAccess) return null;
 
         const shouldShowCount = item.key === "intake" && (project.intake_count ?? 0) > 0;

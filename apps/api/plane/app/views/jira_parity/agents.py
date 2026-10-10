@@ -17,7 +17,7 @@ Endpoints (session API, served under /api/; workspace admins only). Only agent a
 
 # Django imports
 from django.db import IntegrityError
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.utils import timezone
 
 # Third party imports
@@ -49,9 +49,7 @@ __all__ = ["WorkspaceAgentEndpoint", "WorkspaceAgentTokenEndpoint"]
 
 def _agent_tokens(workspace_id, user_ids):
     tokens = {}
-    for token in APIToken.objects.filter(user_id__in=user_ids, is_active=True).filter(
-        Q(workspace_id=workspace_id) | Q(workspace__isnull=True)
-    ):
+    for token in APIToken.objects.filter(user_id__in=user_ids, workspace_id=workspace_id, is_active=True):
         tokens.setdefault(token.user_id, []).append(token)
     return tokens
 
@@ -179,9 +177,12 @@ class WorkspaceAgentTokenEndpoint(BaseAPIView):
         serializer = AgentTokenCreateSerializer(data=request.data)
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        token = create_agent_token(
-            workspace_member.member, workspace_member.workspace, label=serializer.validated_data.get("label")
-        )
+        try:
+            token = create_agent_token(
+                workspace_member.member, workspace_member.workspace, label=serializer.validated_data.get("label")
+            )
+        except AgentProvisioningError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(serialize_agent_token(token, include_secret=True), status=status.HTTP_201_CREATED)
 
     @allow_permission([ROLE.ADMIN], level="WORKSPACE")
@@ -189,9 +190,9 @@ class WorkspaceAgentTokenEndpoint(BaseAPIView):
         workspace_member = _agent_member(slug, user_id)
         if workspace_member is None:
             return _not_found()
-        revoked = APIToken.objects.filter(
-            Q(workspace_id=workspace_member.workspace_id) | Q(workspace__isnull=True), pk=pk, user_id=user_id
-        ).update(is_active=False, deleted_at=timezone.now(), updated_at=timezone.now())
+        revoked = APIToken.objects.filter(workspace_id=workspace_member.workspace_id, pk=pk, user_id=user_id).update(
+            is_active=False, deleted_at=timezone.now(), updated_at=timezone.now()
+        )
         if not revoked:
             return Response({"error": "Token not found"}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)

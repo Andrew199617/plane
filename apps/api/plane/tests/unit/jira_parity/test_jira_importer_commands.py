@@ -453,6 +453,13 @@ def _numbers(identifier, number):
     )
 
 
+def _hard_delete():
+    """Purge soft-deleted items like the daily cleanup, leaving their sequence reservations."""
+    deleted = Issue.all_objects.filter(deleted_at__isnull=False)
+    IssueActivity.all_objects.filter(issue__in=deleted).update(issue=None)
+    deleted.delete()
+
+
 GRANDCHILD = {**ROWS[2], "Summary": "Grandchild", "Issue key": "TES-6", "Issue id": "1006", "Parent key": "TES-4"}
 
 
@@ -466,6 +473,80 @@ class TestImportAfterDeletionsInPlane:
         assert "TES-5: deleted in Plane after an earlier import; not recreated" in output
         assert not Issue.objects.filter(project__identifier="TES", sequence_id=5).exists()
         assert _numbers("TES", 5) == (1, 1)
+        assert output.count("TES-5: deleted in Plane after an earlier import; not recreated") == 1
+
+    def _planned_import(self, workspace, create_user, second_user, tmp_path):
+        _import(_write_csv(tmp_path / "first.csv", [row for row in ROWS if row["Issue key"] != "TES-5"]))
+        csv_path = _write_csv(tmp_path / "second.csv")
+        rows = read_jira_csv(csv_path).rows
+        importer = JiraCsvImporter(workspace, create_user, rows, today=date.fromisoformat(TODAY), only_projects=["TES"])
+        importer.plan()
+        assert [row.key for row in importer.plans["TES"].rows_to_create] == ["TES-5"]
+        return importer, csv_path
+
+    def test_item_imported_after_planning_is_not_duplicated(self, workspace, create_user, second_user, tmp_path):
+        importer, csv_path = self._planned_import(workspace, create_user, second_user, tmp_path)
+        # A second import finishes while the first is waiting to acquire the sequence lock.
+        _import(csv_path)
+        with transaction.atomic(), impersonate(create_user):
+            importer.run()
+        assert importer.created_keys == set()
+        assert _numbers("TES", 5) == (1, 1)
+
+    def test_item_imported_and_deleted_after_planning_is_not_recreated(
+        self, workspace, create_user, second_user, tmp_path
+    ):
+        importer, csv_path = self._planned_import(workspace, create_user, second_user, tmp_path)
+        _import(csv_path)
+        _delete_in_plane("TES-5")
+        with transaction.atomic(), impersonate(create_user):
+            importer.run()
+        assert "TES-5: deleted in Plane after an earlier import; not recreated" in importer.warnings
+        assert not Issue.objects.filter(project__identifier="TES", sequence_id=5).exists()
+        assert _numbers("TES", 5) == (1, 1)
+
+    def test_parent_deleted_after_planning_prevents_new_children(self, workspace, create_user, second_user, tmp_path):
+        _import(_write_csv(tmp_path / "first.csv", [row for row in ROWS if row["Issue key"] != "TES-4"]))
+        rows = read_jira_csv(_write_csv(tmp_path / "second.csv")).rows
+        importer = JiraCsvImporter(workspace, create_user, rows, today=date.fromisoformat(TODAY), only_projects=["TES"])
+        importer.plan()
+        _delete_in_plane("TES-2")
+        with transaction.atomic(), impersonate(create_user):
+            importer.run()
+        assert "TES-4: not imported, TES-2 (its parent or an ancestor) was deleted in Plane" in importer.warnings
+        assert not Issue.all_objects.filter(project__identifier="TES", sequence_id=4).exists()
+        assert _numbers("TES", 2) == (1, 1)
+
+    def test_deleted_native_item_still_reserves_its_number(self, workspace, create_user, second_user, tmp_path):
+        importer, _ = self._planned_import(workspace, create_user, second_user, tmp_path)
+        native = Issue.objects.create(project=Project.objects.get(identifier="TES"), name="native")
+        assert native.sequence_id == 5
+        _delete_in_plane("TES-5")
+        with transaction.atomic(), impersonate(create_user):
+            importer.run()
+        assert "TES-5: number already used in Plane by a deleted work item; not recreated" in importer.warnings
+        assert _numbers("TES", 5) == (1, 1)
+
+    def test_hard_deleted_item_is_not_recreated(self, workspace, create_user, second_user, csv_path):
+        _import(csv_path)
+        _delete_in_plane("TES-5")
+        _hard_delete()
+        assert _numbers("TES", 5) == (0, 1)
+        output = _import(csv_path)
+        assert "TES-5: number already used in Plane by a deleted work item; not recreated" in output
+        assert _numbers("TES", 5) == (0, 1)
+
+    def test_hard_deleted_parent_outside_the_import(self, workspace, create_user, second_user, csv_path, tmp_path):
+        _import(csv_path)
+        _delete_in_plane("TES-1")
+        _hard_delete()
+        assert _numbers("TES", 1) == (0, 1) and _numbers("OTH", 1) == (0, 1)
+        new_child = {**ROWS[4], "Summary": "New child", "Issue key": "OTH-2", "Issue id": "2002"}
+        output = _import(_write_csv(tmp_path / "oth.csv", [ROWS[4], new_child]), projects="OTH")
+        assert "OTH-1: number already used in Plane by a deleted work item; not recreated" in output
+        assert "OTH-2: not imported, TES-1 (its parent or an ancestor) was deleted in Plane" in output
+        assert not Issue.all_objects.filter(project__identifier="OTH").exists()
+        assert _numbers("OTH", 1) == (0, 1)
 
     def test_sub_work_items_of_a_deleted_parent_are_skipped(self, workspace, create_user, second_user, tmp_path):
         _import(_write_csv(tmp_path / "first.csv", [row for row in ROWS if row["Issue key"] != "TES-4"]))
@@ -520,6 +601,8 @@ class TestSetupJiraParity:
         item = Issue.objects.create(
             project=legacy, name="in backlog", state=State.objects.get(project=legacy, name="Backlog")
         )
+        backlog_id = item.state_id
+        todo_id = State.objects.get(project=legacy, name="Todo").id
 
         output = self._setup()
         assert "Setup committed." in output
@@ -545,6 +628,7 @@ class TestSetupJiraParity:
         assert legacy.default_assignee_id == create_user.id
         assert ProjectMember.objects.get(project=legacy, member=create_user).role == 20
         assert set(State.objects.filter(project=legacy).values_list("name", flat=True)) == {
+            "Backlog",
             "To Do",
             "In Progress",
             "In Review",
@@ -552,7 +636,13 @@ class TestSetupJiraParity:
             "Won't Fix",
         }
         item.refresh_from_db()
-        assert item.state.name == "To Do"
+        # Setup adopts aliases in place, but only the explicit workflow merge command moves items.
+        assert item.state_id == backlog_id
+        assert item.state.name == "Backlog" and item.state.group == "backlog"
+        assert item.state.deleted_at is None
+        assert not IssueActivity.objects.filter(issue=item, field="state").exists()
+        todo = State.objects.get(project=legacy, name="To Do")
+        assert todo.id == todo_id and todo.default is True
 
     def test_idempotent(self, workspace, create_user):
         Project.objects.create(workspace=workspace, name="Legacy", identifier="XYZ")

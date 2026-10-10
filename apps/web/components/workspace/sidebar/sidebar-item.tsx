@@ -36,7 +36,7 @@ export const SidebarItemBase = observer(function SidebarItemBase({
   const { t } = useTranslation();
   const pathname = usePathname();
   const { workspaceSlug } = useParams();
-  const { allowPermissions } = useUserPermissions();
+  const { allowReadPermissions } = useUserPermissions();
   const { isWorkspaceItemPinned } = useWorkspaceNavigationPreferences();
   const { data } = useUser();
 
@@ -58,7 +58,7 @@ export const SidebarItemBase = observer(function SidebarItemBase({
   ];
   const slug = workspaceSlug?.toString() || "";
 
-  if (!allowPermissions(item.access, EUserPermissionsLevel.WORKSPACE, slug)) return null;
+  if (!allowReadPermissions(item.access, EUserPermissionsLevel.WORKSPACE, slug)) return null;
 
   const isPinned = isWorkspaceItemPinned(item.key);
   if (!isPinned && !staticItems.includes(item.key)) return null;

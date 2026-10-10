@@ -17,7 +17,7 @@ from plane.utils.url_security import pinned_fetch_following_redirects
 from django.utils import timezone
 
 # Third party imports
-from plane.utils.password_policy import password_score
+from plane.utils.password_policy import password_error_payload, password_score
 
 from plane.bgtasks.user_activation_email_task import user_activation_email
 
@@ -103,7 +103,7 @@ class Adapter:
             raise AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["PASSWORD_TOO_WEAK"],
                 error_message="PASSWORD_TOO_WEAK",
-                payload={"email": email},
+                payload={"email": email, **password_error_payload(results)},
             )
         return
 
@@ -111,9 +111,9 @@ class Adapter:
         """Check if sign up is enabled or not and raise exception if not enabled"""
 
         # Get configuration value
-        (ENABLE_SIGNUP,) = get_configuration_value([
-            {"key": "ENABLE_SIGNUP", "default": os.environ.get("ENABLE_SIGNUP", "1")}
-        ])
+        (ENABLE_SIGNUP,) = get_configuration_value(
+            [{"key": "ENABLE_SIGNUP", "default": os.environ.get("ENABLE_SIGNUP", "1")}]
+        )
 
         # Check if sign up is disabled and invite is present or not
         if ENABLE_SIGNUP == "0" and not WorkspaceMemberInvite.objects.filter(email=email).exists():

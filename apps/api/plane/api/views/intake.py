@@ -393,7 +393,7 @@ class IntakeIssueDetailAPIEndpoint(BaseAPIView):
 
             if not issue_serializer.is_valid():
                 return Response(issue_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            # Jira-parity: role-based state transitions (Triage -> default state is always allowed)
+            # Jira-parity: direct edits follow workflow rules, including pending Triage items.
             assert_state_change_allowed(issue=issue, validated_data=issue_serializer.validated_data, user=request.user)
 
         # Only project admins and members can edit intake issue attributes

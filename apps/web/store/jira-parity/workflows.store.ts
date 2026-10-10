@@ -46,8 +46,8 @@ export interface IWorkflowsStore {
   fetchTransitionRules: (workspaceSlug: string, projectId: string) => Promise<TStateTransitionRule[]>;
   fetchMyTransitions: (workspaceSlug: string, projectId: string) => Promise<TMyStateTransitions>;
   /**
-   * Loads the current user's transitions once per project (concurrent callers share one request). Refetches once
-   * when `fromStateId` is missing from the loaded map (a state created after the load).
+   * Reuses transitions for up to one minute (concurrent callers share one request), and refreshes
+   * immediately when `fromStateId` is missing from the loaded map (a state created after the load).
    */
   ensureMyTransitions: (
     workspaceSlug: string,
@@ -71,6 +71,8 @@ export class WorkflowsStore implements IWorkflowsStore {
   rootStore: CoreRootStore;
   // services
   service: WorkflowsService;
+  private myTransitionsFetchIds = new Map<string, number>();
+  private myTransitionsFetchedAt = new Map<string, number>();
 
   constructor(rootStore: CoreRootStore) {
     makeObservable(this, {
@@ -136,10 +138,17 @@ export class WorkflowsStore implements IWorkflowsStore {
   };
 
   fetchMyTransitions = async (workspaceSlug: string, projectId: string) => {
+    const fetchId = (this.myTransitionsFetchIds.get(projectId) ?? 0) + 1;
+    this.myTransitionsFetchIds.set(projectId, fetchId);
     const myTransitions = await this.service.getMyTransitions(workspaceSlug, projectId);
+    if (this.myTransitionsFetchIds.get(projectId) !== fetchId) return myTransitions;
     runInAction(() => {
       this.myTransitionsMap[projectId] = myTransitions;
     });
+    this.myTransitionsFetchedAt.set(projectId, Date.now());
+    // A new snapshot can include states that did not exist during an earlier refresh.
+    for (const key of this.unknownFromStateRefetches)
+      if (key.startsWith(`${projectId}:`)) this.unknownFromStateRefetches.delete(key);
     return myTransitions;
   };
 
@@ -152,16 +161,22 @@ export class WorkflowsStore implements IWorkflowsStore {
     projectId: string,
     fromStateId?: string | null
   ): Promise<TMyStateTransitions | undefined> => {
-    const loaded = this.myTransitionsMap[projectId];
-    if (loaded) {
-      const refetchKey = `${projectId}:${fromStateId}`;
-      if (!fromStateId || hasTransitionsForState(loaded, fromStateId) || this.unknownFromStateRefetches.has(refetchKey))
-        return Promise.resolve(loaded);
-      this.unknownFromStateRefetches.add(refetchKey);
-    }
     const pending = this.myTransitionsRequests.get(projectId);
     if (pending) return pending;
+    const loaded = this.myTransitionsMap[projectId];
+    const refetchKey = `${projectId}:${fromStateId}`;
+    const isFresh = Date.now() - (this.myTransitionsFetchedAt.get(projectId) ?? 0) < 60_000;
+    if (loaded && isFresh) {
+      if (!fromStateId || hasTransitionsForState(loaded, fromStateId) || this.unknownFromStateRefetches.has(refetchKey))
+        return Promise.resolve(loaded);
+    }
     const request = this.fetchMyTransitions(workspaceSlug, projectId)
+      .then((transitions) => {
+        // Suppress repeated refreshes only after a successful response still omits this state.
+        if (fromStateId && !hasTransitionsForState(transitions, fromStateId))
+          this.unknownFromStateRefetches.add(refetchKey);
+        return transitions;
+      })
       .catch(() => undefined)
       .finally(() => this.myTransitionsRequests.delete(projectId));
     this.myTransitionsRequests.set(projectId, request);

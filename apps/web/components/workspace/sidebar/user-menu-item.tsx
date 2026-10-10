@@ -38,7 +38,7 @@ export const SidebarUserMenuItem = observer(function SidebarUserMenuItem(props: 
   // package hooks
   const { t } = useTranslation();
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { allowReadPermissions } = useUserPermissions();
   const { toggleSidebar } = useAppTheme();
 
   const isActive = pathname === item.href;
@@ -46,7 +46,7 @@ export const SidebarUserMenuItem = observer(function SidebarUserMenuItem(props: 
   if (item.key === "drafts" && draftIssueCount === 0) return null;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  if (!allowPermissions(item.access as any, EUserPermissionsLevel.WORKSPACE, workspaceSlug.toString())) return null;
+  if (!allowReadPermissions(item.access as any, EUserPermissionsLevel.WORKSPACE, workspaceSlug.toString())) return null;
 
   const handleLinkClick = () => {
     if (window.innerWidth < 768) {

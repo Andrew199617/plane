@@ -17,6 +17,7 @@ import {
   getWorkItemTypeIconKey,
   isWorkItemTypeSelectable,
   sortWorkItemTypes,
+  sortWorkItemsByTypeName,
 } from "./rules.ts";
 
 const makeType = (overrides) => ({
@@ -38,6 +39,38 @@ const BUG = makeType({ name: "Bug" });
 const SUB_TASK = makeType({ name: "Sub-task", is_sub_task: true, level: -1 });
 const EPIC = makeType({ name: "Epic", is_epic: true, level: 1 });
 const ALL_TYPES = [EPIC, SUB_TASK, BUG, STORY, TASK];
+
+describe("sortWorkItemsByTypeName", () => {
+  const items = [
+    { id: "task", type_id: TASK.id },
+    { id: "none", type_id: null },
+    { id: "story", type_id: STORY.id },
+    { id: "bug", type_id: BUG.id },
+    { id: "bug-again", type_id: BUG.id },
+  ];
+  const getName = (id) => ALL_TYPES.find((type) => type.id === id)?.name;
+  test("ascending and descending sorts keep untyped items last and ties stable", () => {
+    assert.deepEqual(
+      sortWorkItemsByTypeName(items, getName)?.map((item) => item.id),
+      ["bug", "bug-again", "story", "task", "none"]
+    );
+    assert.deepEqual(
+      sortWorkItemsByTypeName(items, getName, true)?.map((item) => item.id),
+      ["task", "story", "bug", "bug-again", "none"]
+    );
+    assert.equal(items[0].id, "task");
+  });
+  test("an unloaded type leaves the incoming API order intact", () => {
+    assert.equal(
+      sortWorkItemsByTypeName(items, () => undefined),
+      undefined
+    );
+    assert.equal(
+      sortWorkItemsByTypeName(items, (id) => (id === BUG.id ? undefined : getName(id))),
+      undefined
+    );
+  });
+});
 
 describe("getWorkItemTypeIconKey", () => {
   test("uses the logo icon name first (material ligatures and plain keys)", () => {

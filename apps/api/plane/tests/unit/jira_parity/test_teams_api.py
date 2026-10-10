@@ -8,10 +8,20 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
+from django.core.management import call_command
 from rest_framework import status
 from rest_framework.test import APIClient
 
-from plane.db.models import Project, ProjectMember, Team, User, Workspace, WorkspaceMember
+from plane.db.models import (
+    APIToken,
+    Project,
+    ProjectMember,
+    ProjectMemberInvite,
+    Team,
+    User,
+    Workspace,
+    WorkspaceMember,
+)
 from plane.db.models.team import TeamMember, TeamProject, TeamProvisionedMember
 
 BASE = "/api/workspaces/test-workspace/teams/"
@@ -277,6 +287,7 @@ class TestProjectMembersManagedByHand:
         user, team_member_url = self._provisioned(session_client, workspace, project)
         leave = _client(user).post(f"{self._members_url(project)}leave/")
         assert leave.status_code == status.HTTP_204_NO_CONTENT
+        assert not TeamProvisionedMember.objects.filter(project=project, member=user).exists()
 
         self._add(session_client, project, user)
         session_client.delete(team_member_url)
@@ -291,3 +302,88 @@ class TestProjectMembersManagedByHand:
 
         session_client.delete(team_member_url)
         assert _pm(project, user).is_active and _pm(project, user).role == 20
+
+    def test_active_membership_re_added_by_hand_is_manual(self, session_client, workspace, project):
+        user, team_member_url = self._provisioned(session_client, workspace, project)
+        self._add(session_client, project, user)
+        assert not TeamProvisionedMember.objects.filter(project=project, member=user).exists()
+
+        response = session_client.delete(team_member_url)
+        assert response.status_code == status.HTTP_200_OK, response.data
+        assert response.data["member_ids"] == []
+        assert _pm(project, user).is_active
+
+    def test_status_changed_by_hand_is_manual(self, session_client, workspace, project):
+        user, team_member_url = self._provisioned(session_client, workspace, project)
+        member_url = f"{self._members_url(project)}{_pm(project, user).id}/"
+        response = session_client.patch(member_url, {"is_active": False}, format="json")
+        assert response.status_code == status.HTTP_200_OK, response.data
+        assert not TeamProvisionedMember.objects.filter(project=project, member=user).exists()
+
+        self._add(session_client, project, user)
+        response = session_client.delete(team_member_url)
+        assert response.status_code == status.HTTP_200_OK, response.data
+        assert response.data["member_ids"] == []
+        assert _pm(project, user).is_active
+
+    def _v1_member(self, workspace, project, user, create_user):
+        client = APIClient()
+        client.credentials(HTTP_X_API_KEY=APIToken.objects.create(user=create_user, workspace=workspace).token)
+        url = f"/api/v1/workspaces/{workspace.slug}/projects/{project.id}/members/{_pm(project, user).id}/"
+        return client, url
+
+    def test_role_changed_through_v1_is_manual(self, session_client, workspace, project, create_user):
+        user, team_member_url = self._provisioned(session_client, workspace, project)
+        client, url = self._v1_member(workspace, project, user, create_user)
+        response = client.patch(url, {"role": 15}, format="json")
+        assert response.status_code == status.HTTP_200_OK, response.data
+        assert not TeamProvisionedMember.objects.filter(project=project, member=user).exists()
+        session_client.delete(team_member_url)
+        assert _pm(project, user).is_active
+
+    def test_removed_through_v1_clears_marker(self, session_client, workspace, project, create_user):
+        user, _ = self._provisioned(session_client, workspace, project)
+        client, url = self._v1_member(workspace, project, user, create_user)
+        response = client.delete(url)
+        assert response.status_code == status.HTTP_204_NO_CONTENT, response.data
+        assert not TeamProvisionedMember.objects.filter(project=project, member=user).exists()
+
+    @pytest.mark.parametrize("stale_role", [15, 10])
+    def test_manual_join_after_leaving_is_manual(self, session_client, workspace, project, stale_role):
+        user, team_member_url = self._provisioned(session_client, workspace, project)
+        # Workspace removal can deactivate a project member without cleaning its provenance marker.
+        ProjectMember.objects.filter(project=project, member=user).update(is_active=False, role=stale_role)
+        response = _client(user).post(
+            f"/api/users/me/workspaces/{workspace.slug}/projects/invitations/",
+            {"project_ids": [str(project.id)]},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_201_CREATED, response.data
+        assert not TeamProvisionedMember.objects.filter(project=project, member=user).exists()
+        assert _pm(project, user).role == 15
+        session_client.delete(team_member_url)
+        assert _pm(project, user).is_active
+
+    def test_invitation_rejoin_is_manual(self, session_client, workspace, project):
+        user, team_member_url = self._provisioned(session_client, workspace, project)
+        ProjectMember.objects.filter(project=project, member=user).update(is_active=False)
+        invitation = ProjectMemberInvite.objects.create(
+            project=project, workspace=workspace, email=user.email, role=15, token="invitation-token"
+        )
+        response = _client(user).post(
+            f"/api/workspaces/{workspace.slug}/projects/{project.id}/join/{invitation.id}/",
+            {"token": invitation.token, "accepted": True},
+            format="json",
+        )
+        assert response.status_code == status.HTTP_200_OK, response.data
+        assert not TeamProvisionedMember.objects.filter(project=project, member=user).exists()
+        session_client.delete(team_member_url)
+        assert _pm(project, user).is_active
+
+    def test_management_command_rejoin_is_manual(self, session_client, workspace, project):
+        user, team_member_url = self._provisioned(session_client, workspace, project)
+        ProjectMember.objects.filter(project=project, member=user).update(is_active=False)
+        call_command("create_project_member", project_id=str(project.id), user_email=user.email, role=15)
+        assert not TeamProvisionedMember.objects.filter(project=project, member=user).exists()
+        session_client.delete(team_member_url)
+        assert _pm(project, user).is_active

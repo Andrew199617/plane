@@ -57,7 +57,7 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
 
   // Store hooks
   const { getPartialProjectById } = useProject();
-  const { allowPermissions } = useUserPermissions();
+  const { allowPermissions, allowReadPermissions } = useUserPermissions();
   const {
     issue: { getIssueIdByIdentifier, getIssueById },
   } = useIssueDetail();
@@ -80,7 +80,7 @@ export const TabNavigationRoot = observer(function TabNavigationRoot(props: TTab
     workspaceSlug,
     projectId,
     project,
-    allowPermissions,
+    allowReadPermissions,
   });
 
   // Active tab hook

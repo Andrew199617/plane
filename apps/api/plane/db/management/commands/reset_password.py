@@ -56,7 +56,8 @@ class Command(BaseCommand):
         results = password_score(password)
 
         if results["score"] < 3:
-            raise CommandError("Password is too common please set a complex password")
+            feedback = results["feedback"]
+            raise CommandError(" ".join([feedback["warning"], *feedback["suggestions"]]).strip())
 
         # Set user password
         user.set_password(password)

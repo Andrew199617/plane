@@ -20,8 +20,8 @@ Semantics
   effective role and marked as team-provisioned; an active membership is only ever upgraded
   (or, when the team role itself changes and the membership is team-provisioned, set to the new
   effective role). The project lead's row is never modified.
-- An admin adding, editing or removing a member by hand (ProjectMemberViewSet) makes the
-  membership a manual one: the provenance marker is dropped (clear_team_provisioning).
+- Explicit membership changes through the app/API, invitations, project joins and the management
+  command make the membership manual: the provenance marker is dropped (clear_team_provisioning).
 - Deprovisioning (member leaves a team, team unlinked from a project, team deleted) deactivates
   (soft, is_active=False) only memberships that are team-provisioned AND no longer covered by
   any team. Never deactivated: workspace admins, workspace agents (agent auto-join owns them),

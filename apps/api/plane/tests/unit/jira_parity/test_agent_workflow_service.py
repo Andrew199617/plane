@@ -263,7 +263,7 @@ class TestTransitions:
         # inactive rule only -> fallback applies
         assert workflow.allowed_target_state_ids(project.id, states["To Do"].id, AGENT) == _ids(states["In Progress"])
 
-    def test_leaving_triage_counts_as_leaving_the_default_state(self, project, states):
+    def test_direct_triage_edits_use_the_persisted_state(self, project, states):
         Project.objects.filter(pk=project.pk).update(is_workflow_enabled=True)
         StateTransition.objects.create(
             project=project,
@@ -273,20 +273,14 @@ class TestTransitions:
             roles=[MEMBER],
         )
         issue = _issue(project, states["Triage"])
-        # Triage -> default state (what accepting does) is always allowed
-        assert workflow.is_transition_allowed(
-            project_id=project.id, issue=issue, to_state_id=states["To Do"].id, role=MEMBER
-        )[0]
-        # any other target follows the rules of the default state
-        assert workflow.is_transition_allowed(
-            project_id=project.id, issue=issue, to_state_id=states["In Progress"].id, role=MEMBER
-        )[0]
-        assert workflow.is_transition_allowed(
-            project_id=project.id, issue=issue, to_state_id=states["Done"].id, role=MEMBER
-        ) == (False, workflow.STATE_TRANSITION_NOT_ALLOWED)
+        # A To Do rule does not authorize moving a pending Triage item, even to the default state.
+        for target in ("To Do", "In Progress", "Done"):
+            assert workflow.is_transition_allowed(
+                project_id=project.id, issue=issue, to_state_id=states[target].id, role=MEMBER
+            ) == (False, workflow.STATE_TRANSITION_NOT_ALLOWED)
         with pytest.raises(workflow.StateTransitionNotAllowed) as exc:
             workflow.assert_state_transition_allowed(issue=issue, to_state_id=states["Done"], role=MEMBER)
-        assert exc.value.detail["allowed_state_ids"] == _ids(states["In Progress"])
+        assert exc.value.detail["allowed_state_ids"] == []
         assert not workflow.is_transition_allowed(
             project_id=project.id, issue=issue, to_state_id=states["Done"].id, role=AGENT
         )[0]
@@ -353,7 +347,7 @@ class TestSeedProjectWorkflow:
         Project.objects.filter(pk=project.pk).update(default_state=old["Backlog"])
         project.refresh_from_db()
 
-        summary = workflow.seed_project_workflow(project)
+        summary = workflow.seed_project_workflow(project, merge_existing_states=True)
 
         names = list(State.objects.filter(project=project).order_by("sequence").values_list("name", flat=True))
         assert names == ["To Do", "In Progress", "In Review", "Done", "Won't Fix"]
@@ -449,8 +443,12 @@ class TestSeedProjectWorkflow:
         call_command("apply_jira_workflow", workspace=workspace.slug, dry_run=True)
         assert State.objects.filter(project=project, name="Backlog").exists()
         call_command("apply_jira_workflow", workspace=workspace.slug, project=["awf"])
-        assert not State.objects.filter(project=project, name="Backlog").exists()
+        assert State.objects.filter(project=project, name="Backlog").exists()
         assert State.objects.filter(project=project, name="In Review").exists()
+        call_command("apply_jira_workflow", workspace=workspace.slug, merge_existing_states=True, dry_run=True)
+        assert State.objects.filter(project=project, name="Backlog").exists()
+        call_command("apply_jira_workflow", workspace=workspace.slug, merge_existing_states=True)
+        assert not State.objects.filter(project=project, name="Backlog").exists()
         call_command("apply_jira_workflow", workspace=workspace.slug)
         assert StateTransition.objects.filter(project=project).count() == 2
 

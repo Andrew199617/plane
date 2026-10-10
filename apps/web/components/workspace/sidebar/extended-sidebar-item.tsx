@@ -57,7 +57,7 @@ export const ExtendedSidebarItem = observer(function ExtendedSidebarItem(props: 
   // store hooks
   const { toggleExtendedSidebar } = useAppTheme();
   const { data } = useUser();
-  const { allowPermissions } = useUserPermissions();
+  const { allowReadPermissions } = useUserPermissions();
   const { preferences: workspacePreferences, toggleWorkspaceItem } = useWorkspaceNavigationPreferences();
 
   // derived values
@@ -152,7 +152,7 @@ export const ExtendedSidebarItem = observer(function ExtendedSidebarItem(props: 
 
   const icon = getSidebarNavigationItemIcon(item.key);
 
-  if (!allowPermissions(item.access as any, EUserPermissionsLevel.WORKSPACE, workspaceSlug.toString())) {
+  if (!allowReadPermissions(item.access as any, EUserPermissionsLevel.WORKSPACE, workspaceSlug.toString())) {
     return null;
   }
 

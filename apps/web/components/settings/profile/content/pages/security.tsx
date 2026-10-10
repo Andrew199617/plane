@@ -95,9 +95,11 @@ export const SecurityProfileSettings = observer(function SecurityProfileSettings
         message: t("auth.common.password.toast.change_password.success.message"),
       });
     } catch (error: unknown) {
-      const err = error as Error & { error_code?: string };
-      const code = err.error_code?.toString();
-      const errorInfo = code ? authErrorHandler(code as EAuthenticationErrorCodes) : undefined;
+      const err = error as { error_code?: string; password_rules?: unknown } | undefined;
+      const code = err?.error_code?.toString();
+      const errorInfo = code
+        ? authErrorHandler(code as EAuthenticationErrorCodes, undefined, err?.password_rules)
+        : undefined;
 
       setToast({
         type: "error",

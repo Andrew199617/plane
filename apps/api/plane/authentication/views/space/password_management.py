@@ -11,7 +11,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from plane.utils.password_policy import password_score
+from plane.utils.password_policy import password_error_payload, password_score
 
 # Django imports
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -145,6 +145,7 @@ class ResetPasswordSpaceEndpoint(View):
                 exc = AuthenticationException(
                     error_code=AUTHENTICATION_ERROR_CODES["PASSWORD_TOO_WEAK"],
                     error_message="PASSWORD_TOO_WEAK",
+                    payload={"uidb64": uidb64, "token": token, **password_error_payload(results)},
                 )
                 url = f"{redirect_host(request=request, is_space=True)}/accounts/reset-password/?{urlencode(exc.get_error_dict())}"  # noqa: E501
                 return HttpResponseRedirect(url)

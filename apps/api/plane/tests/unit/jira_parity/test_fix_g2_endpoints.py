@@ -210,17 +210,51 @@ class TestIntake:
         IntakeIssue.objects.create(intake=intake, issue=issue, project=project, workspace=project.workspace)
         return issue
 
-    def test_v1_leaving_triage_follows_default_state_rules(
+    @pytest.mark.parametrize("alias,state_name", [("state", "Done"), ("state", None), ("state_id", "Done")])
+    def test_app_create_always_starts_in_triage(
+        self, project, states, member, intake_issue, restricted, alias, state_name
+    ):
+        state_id = str(states[state_name].id) if state_name else None
+        payload = {"issue": {"name": "New intake", alias: state_id}}
+        response = _session(member).post(f"{_app(project)}/intake-issues/", payload, format="json")
+        assert response.status_code == 200
+        created = Issue.objects.get(project=project, name="New intake")
+        assert created.state_id == states["Triage"].id
+        assert IntakeIssue.objects.get(issue=created).status == -2
+
+    def test_v1_create_always_starts_in_triage(self, project, states, member, workspace, intake_issue, restricted):
+        payload = {"issue": {"name": "New intake", "state": str(states["Done"].id)}}
+        response = _token(member, workspace).post(f"{_v1(project)}/intake-issues/", payload, format="json")
+        assert response.status_code == 201
+        created = Issue.objects.get(project=project, name="New intake")
+        assert created.state_id == states["Triage"].id
+        assert IntakeIssue.objects.get(issue=created).status == -2
+
+    def test_v1_leaving_triage_uses_the_persisted_state(
         self, project, states, member, workspace, intake_issue, restricted
     ):
         client = _token(member, workspace)
         url = f"{_v1(project)}/intake-issues/{intake_issue.id}/"
-        response = client.patch(url, {"issue": {"state": str(states["Done"].id)}}, format="json")
+        for target in ("Done", "In Progress", "To Do"):
+            response = client.patch(url, {"issue": {"state": str(states[target].id)}}, format="json")
+            assert response.status_code == 403 and response.json()["code"] == "STATE_TRANSITION_NOT_ALLOWED"
+            assert _state_id(intake_issue) == states["Triage"].id
+        # The regular v1 issue endpoint also exposes intake items, so it must enforce the same rules.
+        response = client.patch(
+            f"{_v1(project)}/work-items/{intake_issue.id}/", {"state": str(states["In Progress"].id)}, format="json"
+        )
         assert response.status_code == 403 and response.json()["code"] == "STATE_TRANSITION_NOT_ALLOWED"
-        assert _state_id(intake_issue) == states["Triage"].id
+        assert IntakeIssue.objects.get(issue=intake_issue).status == -2
+        # An explicit any-source rule permits the direct edit.
+        StateTransition.objects.create(
+            project=project,
+            workspace=workspace,
+            from_state=None,
+            to_state=states["In Progress"],
+            roles=[MEMBER],
+        )
         response = client.patch(url, {"issue": {"state": str(states["In Progress"].id)}}, format="json")
-        assert response.status_code == 200
-        assert _state_id(intake_issue) == states["In Progress"].id
+        assert response.status_code == 200 and _state_id(intake_issue) == states["In Progress"].id
         # back in a regular state: a null state is a move to the default state
         response = client.patch(url, {"issue": {"state": None}}, format="json")
         assert response.status_code == 403
@@ -229,9 +263,9 @@ class TestIntake:
     def test_app_null_state(self, project, states, member, intake_issue, restricted):
         client = _session(member)
         url = f"{_app(project)}/intake-issues/{intake_issue.id}/"
-        # Triage -> default state is always allowed
-        assert client.patch(url, {"issue": {"state_id": None}}, format="json").status_code == 200
-        assert _state_id(intake_issue) == states["To Do"].id
+        response = client.patch(url, {"issue": {"state_id": None}}, format="json")
+        assert response.status_code == 403 and response.json()["code"] == "STATE_TRANSITION_NOT_ALLOWED"
+        assert _state_id(intake_issue) == states["Triage"].id
         Issue.objects.filter(pk=intake_issue.pk).update(state=states["Done"])
         response = client.patch(url, {"issue": {"state_id": None}}, format="json")
         assert response.status_code == 403 and response.json()["code"] == "STATE_TRANSITION_NOT_ALLOWED"
@@ -241,6 +275,13 @@ class TestIntake:
         url = f"{_app(project)}/intake-issues/{intake_issue.id}/"
         assert session_client.patch(url, {"status": 1}, format="json").status_code == 200
         assert _state_id(intake_issue) == states["To Do"].id
+        assert IntakeIssue.objects.get(issue=intake_issue).status == 1
+
+    def test_v1_accept_moves_to_default_state(self, project, states, intake_issue, workspace, create_user, restricted):
+        url = f"{_v1(project)}/intake-issues/{intake_issue.id}/"
+        assert _token(create_user, workspace).patch(url, {"status": 1}, format="json").status_code == 200
+        assert _state_id(intake_issue) == states["To Do"].id
+        assert IntakeIssue.objects.get(issue=intake_issue).status == 1
 
 
 @pytest.mark.contract

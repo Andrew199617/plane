@@ -30,6 +30,7 @@ import { EIssueServiceType, EIssueLayoutTypes } from "@plane/types";
 // helpers
 import { convertToISODateString } from "@plane/utils";
 // plane web imports
+import { sortWorkItemsByTypeName } from "@/components/jira-parity/work-item-types/rules";
 // services
 import { CycleService } from "@/services/cycle.service";
 import { IssueArchiveService, IssueService } from "@/services/issue";
@@ -1837,17 +1838,15 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
 
       // jira-parity work item types: by type name, like the API
       case "type__name":
-      case "-type__name":
-        return getIssueIds(
-          orderBy(
-            array,
-            (issue) =>
-              this.rootIssueStore.rootStore.jiraParity.workItemTypes
-                .getWorkItemTypeById(issue?.type_id)
-                ?.name.toLocaleLowerCase(),
-            [key === "-type__name" ? "desc" : "asc"]
-          )
+      case "-type__name": {
+        const { getWorkItemTypeById } = this.rootIssueStore.rootStore.jiraParity.workItemTypes;
+        const sorted = sortWorkItemsByTypeName(
+          array,
+          (typeId) => getWorkItemTypeById(typeId)?.name,
+          key === "-type__name"
         );
+        return getIssueIds(sorted ?? issues);
+      }
 
       // jira-parity time tracking (minutes); empty estimates always stay below
       case "original_estimate":

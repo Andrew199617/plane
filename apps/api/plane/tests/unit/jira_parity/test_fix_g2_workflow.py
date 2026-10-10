@@ -293,7 +293,7 @@ class TestStateMerge:
             view_props={"filters": {"state": [backlog]}}
         )
 
-        summary = workflow.seed_project_workflow(project)
+        summary = workflow.seed_project_workflow(project, merge_existing_states=True)
 
         assert summary["merged"] == {"Backlog": 1}
         moved.refresh_from_db()
@@ -315,3 +315,33 @@ class TestStateMerge:
         assert prop.rich_filters == {"state_id": todo}
         member_row = ProjectMember.objects.get(project=project, member=create_user)
         assert member_row.view_props == {"filters": {"state": [todo]}}
+
+    def test_seeding_preserves_backlog_and_duplicate_states_by_default(self, project, workspace, create_user):
+        old = self._legacy(project)
+        backlog = old["Backlog"]
+        duplicate = State.objects.create(
+            name="To Do", group="unstarted", color="#000000", project=project, workspace=workspace
+        )
+        backlog_issue = _issue(project, backlog)
+        duplicate_issue = _issue(project, old["Todo"])
+        view = IssueView.objects.create(
+            name="Backlog group",
+            workspace=workspace,
+            project=project,
+            owned_by=create_user,
+            filters={"state": [str(backlog.id)], "state_group": ["backlog"]},
+        )
+
+        summary = workflow.seed_project_workflow(project)
+
+        assert summary["merged"] == {}
+        assert State.objects.filter(pk__in=[backlog.id, old["Todo"].id, duplicate.id]).count() == 3
+        backlog.refresh_from_db()
+        assert backlog.name == "Backlog" and backlog.group == "backlog"
+        backlog_issue.refresh_from_db()
+        duplicate_issue.refresh_from_db()
+        assert backlog_issue.state_id == backlog.id
+        assert duplicate_issue.state_id == old["Todo"].id
+        assert not IssueActivity.objects.filter(issue_id__in=[backlog_issue.id, duplicate_issue.id]).exists()
+        view.refresh_from_db()
+        assert view.filters == {"state": [str(backlog.id)], "state_group": ["backlog"]}

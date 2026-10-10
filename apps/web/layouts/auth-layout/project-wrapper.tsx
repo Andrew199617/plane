@@ -51,7 +51,8 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
   // states
   const [isJoiningProject, setIsJoiningProject] = useState(false);
   // store hooks
-  const { fetchUserProjectInfo, allowPermissions, getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
+  const { fetchUserProjectInfo, allowPermissions, allowReadPermissions, getProjectRoleByWorkspaceSlugAndProjectId } =
+    useUserPermissions();
   const { fetchProjectDetails } = useProject();
   const { joinProject } = useUserPermissions();
   const { fetchAllCycles } = useCycle();
@@ -66,7 +67,7 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
   const { fetchProjectLabels } = useLabel();
   const { getProjectEstimates } = useProjectEstimates();
   // derived values
-  const hasPermissionToCurrentProject = allowPermissions(
+  const hasPermissionToCurrentProject = allowReadPermissions(
     [EUserPermissions.ADMIN, EUserPermissions.MEMBER, EUserPermissions.GUEST],
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,

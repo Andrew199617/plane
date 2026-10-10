@@ -4,12 +4,11 @@
  * See the LICENSE file for details.
  */
 
-// Jira-parity: the password criteria must classify characters exactly like the API's
-// plane/utils/password_policy.py (same cases as test_character_classes_match_the_ui there).
-// packages/utils has no test runner, so this file is self-contained. Run it with:
+// Same Unicode cases as plane/tests/unit/test_password_policy.py. Explicit escapes keep these
+// fixtures intact across operating-system encodings. Run with:
 //   pnpm --filter @plane/i18n exec tsx --test <abs path to this file>
-import { E_PASSWORD_STRENGTH } from "@plane/constants";
-import { getPasswordCriteria, getPasswordStrength } from "./auth";
+import { E_PASSWORD_STRENGTH, EAuthErrorCodes } from "@plane/constants";
+import { authErrorHandler, getPasswordCriteria, getPasswordPolicyFeedback, getPasswordStrength } from "./auth";
 
 type TCase = { name: string; run: () => void };
 const cases: TCase[] = [];
@@ -18,7 +17,7 @@ const test = (name: string, run: () => void) => cases.push({ name, run });
 const assertEqual = <T>(actual: T, expected: T, message = "") => {
   const a = JSON.stringify(actual);
   const e = JSON.stringify(expected);
-  if (a !== e) throw new Error(`${message} expected ${e} but got ${a}`);
+  if (a !== e) throw new Error(message + " expected " + e + " but got " + a);
 };
 const failedCriteria = (password: string) =>
   getPasswordCriteria(password)
@@ -26,37 +25,55 @@ const failedCriteria = (password: string) =>
     .map((criterion) => criterion.key);
 
 const CLASS_CASES: [string, string[]][] = [
-  ["Abcdefg1é", ["special"]],
-  ["ÀÉÎ12345!", []],
-  ["Ab1!😀😀", ["length"]],
-  ["Abcdefg1😀", []],
-  ["Abcdefg٣!", []], // Arabic-Indic digit (Nd)
-  ["Abcdefg½!", ["number"]], // vulgar fraction (No) is not a number
-  ["abcdefgⅠ1!", ["uppercase"]], // Roman numeral (Nl) is not an uppercase letter
-  ["Abcdefg1  ", ["special"]], // whitespace is not a symbol
+  ["Abcdefg1\u00e9", ["special"]],
+  ["\u00c0\u00c9\u00ce12345!", []],
+  ["Ab1!\u{1f600}\u{1f600}", ["length"]],
+  ["Abcdefg1\u{1f600}", []],
+  ["Abcdefg\u0661!", []], // Arabic-Indic digit (Nd)
+  ["Abcdefg\u00bd!", ["number"]], // vulgar fraction (No)
+  ["abcdefg\u21671!", ["uppercase"]], // Roman numeral (Nl)
+  ["Abcdefg1 \u00a0", ["special"]], // whitespace
 ];
 
 for (const [password, failed] of CLASS_CASES) {
-  test(`criteria for ${JSON.stringify(password)}`, () => assertEqual(failedCriteria(password), failed, password));
+  test("criteria for " + JSON.stringify(password), () => assertEqual(failedCriteria(password), failed, password));
 }
 
 test("strength follows the criteria", () => {
   assertEqual(getPasswordStrength(""), E_PASSWORD_STRENGTH.EMPTY);
-  assertEqual(getPasswordStrength("Ab1!😀😀"), E_PASSWORD_STRENGTH.LENGTH_NOT_VALID);
-  assertEqual(getPasswordStrength("Abcdefg1é"), E_PASSWORD_STRENGTH.STRENGTH_NOT_VALID);
-  assertEqual(getPasswordStrength("ÀÉÎ12345!"), E_PASSWORD_STRENGTH.STRENGTH_VALID);
+  assertEqual(getPasswordStrength("Ab1!\u{1f600}\u{1f600}"), E_PASSWORD_STRENGTH.LENGTH_NOT_VALID);
+  assertEqual(getPasswordStrength("Abcdefg1\u00e9"), E_PASSWORD_STRENGTH.STRENGTH_NOT_VALID);
+  assertEqual(getPasswordStrength("\u00c0\u00c9\u00ce12345!"), E_PASSWORD_STRENGTH.STRENGTH_VALID);
 });
 
-// --- runner ---------------------------------------------------------------------------------
+test("failed rules produce specific feedback", () => {
+  assertEqual(
+    getPasswordPolicyFeedback("length,uppercase,number,special"),
+    "Use at least 8 characters. Use an uppercase letter. Use a number. Use a symbol."
+  );
+  assertEqual(
+    getPasswordPolicyFeedback("strength"),
+    "Choose a less predictable password. Avoid common words and patterns."
+  );
+  assertEqual(authErrorHandler(EAuthErrorCodes.PASSWORD_TOO_WEAK, undefined, "special")?.message, "Use a symbol.");
+});
+
+test("feedback ignores unknown keys and malformed data", () => {
+  assertEqual(getPasswordPolicyFeedback("special,special,unknown"), "Use a symbol.");
+  for (const rules of [undefined, null, {}, [], "", "__proto__", "constructor", "<script>alert(1)</script>"]) {
+    assertEqual(getPasswordPolicyFeedback(rules), undefined);
+  }
+});
+
 let failed = 0;
 for (const testCase of cases) {
   try {
     testCase.run();
-    console.log(`ok - ${testCase.name}`);
+    console.log("ok - " + testCase.name);
   } catch (error) {
     failed += 1;
-    console.error(`not ok - ${testCase.name}\n  ${(error as Error).message}`);
+    console.error("not ok - " + testCase.name + "\n  " + (error as Error).message);
   }
 }
-console.log(`${cases.length - failed}/${cases.length} password criteria tests passed`);
-if (failed > 0) throw new Error(`${failed} password criteria test(s) failed`);
+console.log(cases.length - failed + "/" + cases.length + " password criteria tests passed");
+if (failed > 0) throw new Error(failed + " password criteria test(s) failed");

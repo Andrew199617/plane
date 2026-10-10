@@ -48,6 +48,7 @@ export const ResetPasswordForm = observer(function ResetPasswordForm() {
   const token = searchParams.get("token");
   const email = searchParams.get("email");
   const error_code = searchParams.get("error_code");
+  const passwordRules = searchParams.get("password_rules");
   // states
   const [showPassword, setShowPassword] = useState({
     password: false,
@@ -87,12 +88,16 @@ export const ResetPasswordForm = observer(function ResetPasswordForm() {
 
   useEffect(() => {
     if (error_code) {
-      const errorhandler = authErrorHandler(error_code?.toString() as EAuthenticationErrorCodes);
+      const errorhandler = authErrorHandler(
+        error_code?.toString() as EAuthenticationErrorCodes,
+        undefined,
+        passwordRules
+      );
       if (errorhandler) {
         setErrorInfo(errorhandler);
       }
     }
-  }, [error_code]);
+  }, [error_code, passwordRules]);
 
   const password = resetFormData?.password ?? "";
   const confirmPassword = resetFormData?.confirm_password ?? "";

@@ -53,6 +53,8 @@ export interface IBaseUserPermissionStore {
     projectId?: string,
     onPermissionAllowed?: () => boolean
   ) => boolean;
+  /** Agents inherit Guest access only for navigation and other read checks. */
+  allowReadPermissions: IBaseUserPermissionStore["allowPermissions"];
   // actions
   fetchUserWorkspaceInfo: (workspaceSlug: string) => Promise<IWorkspaceMemberMe>;
   leaveWorkspace: (workspaceSlug: string) => Promise<void>;
@@ -194,7 +196,7 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
     if (!workspaceSlug || !key) return false;
     const settings = WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS.find((item) => item.key === key);
     if (settings) {
-      return this.allowPermissions(settings.access, EUserPermissionsLevel.WORKSPACE, workspaceSlug);
+      return this.allowReadPermissions(settings.access, EUserPermissionsLevel.WORKSPACE, workspaceSlug);
     }
     return false;
   });
@@ -238,12 +240,7 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
       currentUserRole = parseInt(currentUserRole);
     }
 
-    // Jira-parity: agents inherit guest-level (read-only) access unless a list names AGENT explicitly
-    // (navigation and page gates list GUEST). Write affordances that list GUEST must exclude agents themselves.
-    const isAllowedRole =
-      typeof currentUserRole === "number" &&
-      (allowPermissions.includes(currentUserRole) ||
-        (currentUserRole === EUserPermissions.AGENT && allowPermissions.includes(EUserPermissions.GUEST)));
+    const isAllowedRole = typeof currentUserRole === "number" && allowPermissions.includes(currentUserRole);
 
     if (currentUserRole && isAllowedRole) {
       if (onPermissionAllowed) {
@@ -255,6 +252,21 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
 
     return false;
   };
+
+  allowReadPermissions: IBaseUserPermissionStore["allowPermissions"] = (
+    roles,
+    level,
+    workspaceSlug,
+    projectId,
+    onPermissionAllowed
+  ) =>
+    this.allowPermissions(
+      roles.includes(EUserPermissions.GUEST) ? [...roles, EUserPermissions.AGENT] : roles,
+      level,
+      workspaceSlug,
+      projectId,
+      onPermissionAllowed
+    );
 
   // actions
   /**

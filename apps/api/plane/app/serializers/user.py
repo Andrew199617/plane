@@ -49,6 +49,7 @@ class UserSerializer(BaseSerializer):
             "last_login_medium",
             "created_location",
             "is_bot",
+            "bot_type",
             "is_password_autoset",
             "is_email_verified",
             "is_active",

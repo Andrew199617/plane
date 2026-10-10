@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 // plane imports
 import { SUPPORT_EMAIL } from "@plane/constants";
+import { getPasswordPolicyFeedback } from "@plane/utils";
 
 export enum EPageTypes {
   PUBLIC = "PUBLIC",
@@ -377,7 +378,11 @@ const errorCodeMessages: {
   },
 };
 
-export const authErrorHandler = (errorCode: EAuthenticationErrorCodes, email?: string): TAuthErrorInfo | undefined => {
+export const authErrorHandler = (
+  errorCode: EAuthenticationErrorCodes,
+  email?: string,
+  passwordRules?: unknown
+): TAuthErrorInfo | undefined => {
   const bannerAlertErrorCodes = [
     EAuthenticationErrorCodes.INSTANCE_NOT_CONFIGURED,
     EAuthenticationErrorCodes.INVALID_EMAIL,
@@ -438,7 +443,10 @@ export const authErrorHandler = (errorCode: EAuthenticationErrorCodes, email?: s
       type: EErrorAlertType.BANNER_ALERT,
       code: errorCode,
       title: errorCodeMessages[errorCode]?.title || "Error",
-      message: errorCodeMessages[errorCode]?.message(email) || "Something went wrong. Please try again.",
+      message:
+        (errorCode === EAuthenticationErrorCodes.PASSWORD_TOO_WEAK && getPasswordPolicyFeedback(passwordRules)) ||
+        errorCodeMessages[errorCode]?.message(email) ||
+        "Something went wrong. Please try again.",
     };
 
   return undefined;

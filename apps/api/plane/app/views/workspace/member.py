@@ -87,6 +87,11 @@ class WorkSpaceMemberViewSet(BaseViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        # This endpoint changes a role, not the membership's workspace or account. In particular,
+        # a valid workspace id must not move the row after cascading changes in the URL workspace.
+        if set(request.data) - {"role"}:
+            return Response({"error": "Only the member role can be updated"}, status=status.HTTP_400_BAD_REQUEST)
+
         # Jira-parity: validate before cascading role changes to projects, and apply them atomically
         serializer = WorkSpaceMemberSerializer(workspace_member, data=request.data, partial=True)
         if not serializer.is_valid():
@@ -97,7 +102,7 @@ class WorkSpaceMemberViewSet(BaseViewSet):
 
         with transaction.atomic():
             # If a user is moved to a guest role he can't have any other role in projects
-            if "role" in request.data and int(request.data.get("role")) == 5:
+            if serializer.validated_data.get("role") == ROLE.GUEST.value:
                 ProjectMember.objects.filter(workspace__slug=slug, member_id=workspace_member.member_id).update(role=5)
 
             # Jira-parity: leaving the Agent role caps agent project rows at the new role, revokes the

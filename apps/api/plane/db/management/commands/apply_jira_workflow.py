@@ -4,11 +4,14 @@
 
 """Jira-parity: convert projects to the standard workflow.
 
-    python manage.py apply_jira_workflow --workspace <slug> [--project IDENT ...] [--no-enable] [--dry-run]
+    python manage.py apply_jira_workflow --workspace <slug> [--project IDENT ...] [--no-enable]
+        [--merge-existing-states] [--dry-run]
 
 Per project (plane.utils.workflow.seed_project_workflow, idempotent):
 - standard states To Do (default) / In Progress / In Review / Done / Won't Fix: "Todo" is renamed to
-  "To Do", "Cancelled" to "Won't Fix"; Backlog work items move to To Do and the empty state is removed
+  "To Do", "Cancelled" to "Won't Fix"; Backlog and duplicate states are preserved by default
+- --merge-existing-states moves Backlog/duplicate-state items into the standard states and removes
+  those states; state-id filters are updated, but filters for the removed Backlog group become empty
 - the Agent transition rules To Do -> In Progress and In Progress -> In Review
 - Project.is_workflow_enabled = True (unless --no-enable)
 """
@@ -35,6 +38,11 @@ class Command(BaseCommand):
             "--project", action="append", default=None, help="Project identifier (repeatable; default: all)"
         )
         parser.add_argument("--no-enable", action="store_true", help="Do not set is_workflow_enabled")
+        parser.add_argument(
+            "--merge-existing-states",
+            action="store_true",
+            help="Merge Backlog and duplicate states (saved Backlog group filters may become empty)",
+        )
         parser.add_argument("--dry-run", action="store_true", help="Report the changes and roll them back")
 
     def handle(self, *args, **options):
@@ -54,7 +62,11 @@ class Command(BaseCommand):
         try:
             with transaction.atomic():
                 for project in projects:
-                    summaries[project.identifier] = seed_project_workflow(project, enable=not options["no_enable"])
+                    summaries[project.identifier] = seed_project_workflow(
+                        project,
+                        enable=not options["no_enable"],
+                        merge_existing_states=options["merge_existing_states"],
+                    )
                 if options["dry_run"]:
                     raise _DryRun()
         except _DryRun:

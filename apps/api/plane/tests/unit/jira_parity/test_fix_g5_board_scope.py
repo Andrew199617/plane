@@ -8,6 +8,7 @@ import json
 from uuid import uuid4
 
 import pytest
+from django.utils import timezone
 from rest_framework import status
 
 from plane.db.models import Cycle, CycleIssue, Issue, IssueType, Project, ProjectMember, State
@@ -121,6 +122,12 @@ class TestWorkItemTypeCountsAreScoped:
     @pytest.mark.django_db
     def test_inactive_membership_counts_nothing(self, workspace, typed_issues, member):
         ProjectMember.objects.filter(project=typed_issues["shared"], member=member).update(is_active=False)
+        assert _count(_client(member).get(_types_url(workspace.slug)), typed_issues["bug"].id) == 0
+
+    @pytest.mark.django_db
+    def test_deleted_project_counts_nothing_before_membership_cleanup(self, workspace, typed_issues, member):
+        # Project deletion is asynchronous: project members and work items can survive briefly.
+        Project.objects.filter(pk=typed_issues["shared"].pk).update(deleted_at=timezone.now())
         assert _count(_client(member).get(_types_url(workspace.slug)), typed_issues["bug"].id) == 0
 
     @pytest.mark.django_db

@@ -371,6 +371,7 @@ class ProjectMemberViewSet(BaseViewSet):
         # Deactivate the user
         project_member.is_active = False
         project_member.save()
+        clear_team_provisioning(project_id, [project_member.member_id])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

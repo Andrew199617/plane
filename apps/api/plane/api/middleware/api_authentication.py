@@ -28,7 +28,7 @@ class APIKeyAuthentication(authentication.BaseAuthentication):
 
     def validate_api_token(self, token, request=None):
         try:
-            api_token = APIToken.objects.get(
+            api_token = APIToken.objects.select_related("user", "workspace").get(
                 Q(Q(expired_at__gt=timezone.now()) | Q(expired_at__isnull=True)),
                 token=token,
                 is_active=True,
@@ -57,14 +57,30 @@ class APIKeyAuthentication(authentication.BaseAuthentication):
 
     @staticmethod
     def agent_token_allowed(api_token, request):
-        """Jira-parity: workspace-bound tokens of agent accounts are rejected on another workspace's
-        URLs (user-level URLs without a workspace slug, e.g. users/me/, stay allowed)."""
-        from plane.utils.agent import AGENT_BOT_TYPE
+        """Scope agent and bot tokens, including tokens minted for humans before the account marker
+        was introduced. Personal tokens retain their existing instance-wide scope."""
+        from plane.utils.agent import AGENT, AGENT_BOT_TYPE
+        from plane.db.models import WorkspaceMember
 
-        if api_token.workspace_id is None or api_token.user.bot_type != AGENT_BOT_TYPE:
+        agent_account = api_token.user.bot_type == AGENT_BOT_TYPE
+        if not agent_account and api_token.user_type != 1:
             return True
+        if api_token.workspace_id is None:
+            # Existing integration bots use instance-wide tokens. Agent accounts and the legacy
+            # human tokens minted through /agents/ must always be workspace-bound.
+            return api_token.user.is_bot and not agent_account
+        if api_token.user_type == 1 and api_token.description == "Agent token" and not agent_account:
+            return False
+        if (
+            agent_account
+            and not WorkspaceMember.objects.filter(
+                workspace_id=api_token.workspace_id, member_id=api_token.user_id, role=AGENT, is_active=True
+            ).exists()
+        ):
+            return False
         kwargs = (getattr(request, "parser_context", None) or {}).get("kwargs") or {}
         slug = kwargs.get("slug")
-        if slug is None:
-            return True
-        return api_token.workspace.slug == slug
+        workspace_id = kwargs.get("workspace_id")
+        if slug is not None and api_token.workspace.slug != slug:
+            return False
+        return workspace_id is None or str(api_token.workspace_id) == str(workspace_id)

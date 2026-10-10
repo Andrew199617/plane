@@ -22,7 +22,7 @@ type UseNavigationItemsProps = {
   workspaceSlug: string;
   projectId: string;
   project?: IPartialProject;
-  allowPermissions: (
+  allowReadPermissions: (
     access: EUserPermissions[] | EUserProjectRoles[],
     level: EUserPermissionsLevel,
     workspaceSlug: string,
@@ -34,7 +34,7 @@ export const useNavigationItems = ({
   workspaceSlug,
   projectId,
   project,
-  allowPermissions,
+  allowReadPermissions,
 }: UseNavigationItemsProps): TNavigationItem[] => {
   // Base navigation items
   const baseNavigation = useCallback(
@@ -111,14 +111,19 @@ export const useNavigationItems = ({
     // Filter by permissions and shouldRender
     const filteredItems = navItems.filter((item) => {
       if (!item.shouldRender) return false;
-      const hasAccess = allowPermissions(item.access, EUserPermissionsLevel.PROJECT, workspaceSlug, project?.id ?? "");
+      const hasAccess = allowReadPermissions(
+        item.access,
+        EUserPermissionsLevel.PROJECT,
+        workspaceSlug,
+        project?.id ?? ""
+      );
       return hasAccess;
     });
 
     // Sort by sortOrder
     // oxlint-disable-next-line unicorn/no-array-sort
     return filteredItems.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  }, [workspaceSlug, projectId, baseNavigation, allowPermissions, project?.id]);
+  }, [workspaceSlug, projectId, baseNavigation, allowReadPermissions, project?.id]);
 
   return navigationItems;
 };

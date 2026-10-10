@@ -54,6 +54,9 @@ export class ProjectCategoriesStore implements IProjectCategoriesStore {
   rootStore: CoreRootStore;
   // services
   service: ProjectCategoriesService;
+  private latestFetchId = 0;
+  private isCurrentWorkspace = (workspaceSlug: string) =>
+    this.fetchedWorkspaceSlug === workspaceSlug && this.rootStore.router.workspaceSlug === workspaceSlug;
 
   constructor(rootStore: CoreRootStore) {
     makeObservable(this, {
@@ -75,17 +78,22 @@ export class ProjectCategoriesStore implements IProjectCategoriesStore {
   }
 
   get sortedCategories() {
+    if (this.rootStore.router.workspaceSlug && this.fetchedWorkspaceSlug !== this.rootStore.router.workspaceSlug)
+      return [];
     return sortBy(Object.values(this.categoryMap), ["sort_order", (category) => category.name.toLowerCase()]);
   }
 
-  getCategoryById = computedFn((categoryId: string | null | undefined) =>
-    categoryId ? this.categoryMap[categoryId] : undefined
-  );
+  getCategoryById = computedFn((categoryId: string | null | undefined) => {
+    if (this.rootStore.router.workspaceSlug && this.fetchedWorkspaceSlug !== this.rootStore.router.workspaceSlug)
+      return undefined;
+    return categoryId ? this.categoryMap[categoryId] : undefined;
+  });
 
   /** Active (non-archived) projects of the category in the current workspace. */
   getProjectIdsByCategoryId = computedFn((categoryId: string | null | undefined): string[] => {
     if (!categoryId) return [];
-    const category = this.categoryMap[categoryId];
+    const category = this.getCategoryById(categoryId);
+    if (!category) return [];
     const { projectMap, workspaceProjectIds } = this.rootStore.projectRoot.project;
     const projects = (workspaceProjectIds ?? []).map((projectId) => projectMap[projectId]).filter(Boolean);
     if (projects.length === 0) return category?.project_ids ?? [];
@@ -94,6 +102,8 @@ export class ProjectCategoriesStore implements IProjectCategoriesStore {
 
   getCategoryIdByProjectId = computedFn((projectId: string | null | undefined): string | null => {
     if (!projectId) return null;
+    if (this.rootStore.router.workspaceSlug && this.fetchedWorkspaceSlug !== this.rootStore.router.workspaceSlug)
+      return null;
     const project = this.rootStore.projectRoot.project.projectMap[projectId];
     if (project && project.category_id !== undefined) return project.category_id ?? null;
     return Object.values(this.categoryMap).find((category) => category.project_ids?.includes(projectId))?.id ?? null;
@@ -104,16 +114,21 @@ export class ProjectCategoriesStore implements IProjectCategoriesStore {
   );
 
   fetchProjectCategories = async (workspaceSlug: string) => {
+    if (this.rootStore.router.workspaceSlug && this.rootStore.router.workspaceSlug !== workspaceSlug)
+      return this.service.list(workspaceSlug);
+    const fetchId = ++this.latestFetchId;
     // never serve another workspace's categories while this workspace loads
     if (this.fetchedWorkspaceSlug !== workspaceSlug)
       runInAction(() => {
         this.categoryMap = {};
+        this.cyclesMap = {};
         this.fetchedWorkspaceSlug = null;
       });
     const categories = await this.service.list(workspaceSlug);
     // a late response for a workspace the user has left must not replace the current one
     const routedWorkspaceSlug = this.rootStore.router.workspaceSlug;
-    if (routedWorkspaceSlug && routedWorkspaceSlug !== workspaceSlug) return categories;
+    if (fetchId !== this.latestFetchId || (routedWorkspaceSlug && routedWorkspaceSlug !== workspaceSlug))
+      return categories;
     runInAction(() => {
       this.categoryMap = Object.fromEntries(categories.map((category) => [category.id, category]));
       this.fetchedWorkspaceSlug = workspaceSlug;
@@ -123,6 +138,7 @@ export class ProjectCategoriesStore implements IProjectCategoriesStore {
 
   fetchCategoryCycles = async (workspaceSlug: string, categoryId: string) => {
     const cycles = await this.service.listCycles(workspaceSlug, categoryId);
+    if (!this.isCurrentWorkspace(workspaceSlug)) return cycles;
     runInAction(() => {
       set(this.cyclesMap, [categoryId], cycles);
     });
@@ -131,6 +147,7 @@ export class ProjectCategoriesStore implements IProjectCategoriesStore {
 
   createCategory = async (workspaceSlug: string, data: TProjectCategoryPayload) => {
     const category = await this.service.create(workspaceSlug, data);
+    if (!this.isCurrentWorkspace(workspaceSlug)) return category;
     runInAction(() => {
       set(this.categoryMap, [category.id], category);
     });
@@ -147,12 +164,13 @@ export class ProjectCategoriesStore implements IProjectCategoriesStore {
       });
     try {
       const category = await this.service.update(workspaceSlug, categoryId, data);
+      if (!this.isCurrentWorkspace(workspaceSlug)) return category;
       runInAction(() => {
         set(this.categoryMap, [categoryId], { ...previous, ...category });
       });
       return category;
     } catch (error) {
-      if (previous)
+      if (previous && this.isCurrentWorkspace(workspaceSlug))
         runInAction(() => {
           set(this.categoryMap, [categoryId], previous);
         });
@@ -210,7 +228,7 @@ export class ProjectCategoriesStore implements IProjectCategoriesStore {
       await this.fetchProjectCategories(workspaceSlug);
     }
     // other categories may have lost projects: keep every category's project_ids in sync
-    this.syncProjectsCategory(categoryId, wanted, currentProjectIds);
+    if (this.isCurrentWorkspace(workspaceSlug)) this.syncProjectsCategory(categoryId, wanted, currentProjectIds);
     if (applied) await this.fetchProjectCategories(workspaceSlug);
   };
 

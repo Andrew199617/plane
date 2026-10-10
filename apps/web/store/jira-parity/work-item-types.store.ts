@@ -53,6 +53,7 @@ export class WorkItemTypesStore implements IWorkItemTypesStore {
   rootStore: CoreRootStore;
   // services
   service: WorkItemTypesService;
+  private latestFetchId = 0;
 
   constructor(rootStore: CoreRootStore) {
     makeObservable(this, {
@@ -69,6 +70,8 @@ export class WorkItemTypesStore implements IWorkItemTypesStore {
   }
 
   get workItemTypes() {
+    if (this.rootStore.router.workspaceSlug && this.fetchedWorkspaceSlug !== this.rootStore.router.workspaceSlug)
+      return [];
     return sortWorkItemTypes(Object.values(this.workItemTypeMap));
   }
 
@@ -83,9 +86,11 @@ export class WorkItemTypesStore implements IWorkItemTypesStore {
     );
   }
 
-  getWorkItemTypeById = computedFn((workItemTypeId: string | null | undefined) =>
-    workItemTypeId ? this.workItemTypeMap[workItemTypeId] : undefined
-  );
+  getWorkItemTypeById = computedFn((workItemTypeId: string | null | undefined) => {
+    if (this.rootStore.router.workspaceSlug && this.fetchedWorkspaceSlug !== this.rootStore.router.workspaceSlug)
+      return undefined;
+    return workItemTypeId ? this.workItemTypeMap[workItemTypeId] : undefined;
+  });
 
   isEpicWorkItemType = computedFn((workItemTypeId: string | null | undefined) =>
     Boolean(this.getWorkItemTypeById(workItemTypeId)?.is_epic)
@@ -98,6 +103,10 @@ export class WorkItemTypesStore implements IWorkItemTypesStore {
   getProjectWorkItemTypes = computedFn((_projectId: string | null | undefined) => this.activeWorkItemTypes);
 
   fetchWorkItemTypes = async (workspaceSlug: string) => {
+    // Background revalidation for a route we have left must not clear the active workspace.
+    if (this.rootStore.router.workspaceSlug && this.rootStore.router.workspaceSlug !== workspaceSlug)
+      return this.service.list(workspaceSlug);
+    const fetchId = ++this.latestFetchId;
     // never serve another workspace's types while this workspace loads
     if (this.fetchedWorkspaceSlug !== workspaceSlug)
       runInAction(() => {
@@ -107,7 +116,8 @@ export class WorkItemTypesStore implements IWorkItemTypesStore {
     const workItemTypes = await this.service.list(workspaceSlug);
     // a late response for a workspace the user has left must not replace the current one
     const routedWorkspaceSlug = this.rootStore.router.workspaceSlug;
-    if (routedWorkspaceSlug && routedWorkspaceSlug !== workspaceSlug) return workItemTypes;
+    if (fetchId !== this.latestFetchId || (routedWorkspaceSlug && routedWorkspaceSlug !== workspaceSlug))
+      return workItemTypes;
     runInAction(() => {
       this.workItemTypeMap = Object.fromEntries(workItemTypes.map((workItemType) => [workItemType.id, workItemType]));
       this.fetchedWorkspaceSlug = workspaceSlug;
@@ -117,6 +127,8 @@ export class WorkItemTypesStore implements IWorkItemTypesStore {
 
   updateWorkItemType = async (workspaceSlug: string, workItemTypeId: string, data: TWorkItemTypePayload) => {
     const workItemType = await this.service.update(workspaceSlug, workItemTypeId, data);
+    if (this.fetchedWorkspaceSlug !== workspaceSlug || this.rootStore.router.workspaceSlug !== workspaceSlug)
+      return workItemType;
     runInAction(() => {
       this.workItemTypeMap[workItemType.id] = workItemType;
       // keep a single default across the map when the server moved it

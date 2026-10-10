@@ -22,6 +22,7 @@ import uuid
 
 # Django imports
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -179,8 +180,8 @@ def apply_agent_workspace_role_change(workspace_member, new_role):
 
 
 def _revoke_workspace_tokens(workspace_member):
-    APIToken.objects.filter(
-        user_id=workspace_member.member_id, workspace_id=workspace_member.workspace_id, is_active=True
+    APIToken.objects.filter(user_id=workspace_member.member_id, is_active=True).filter(
+        Q(workspace_id=workspace_member.workspace_id) | Q(workspace__isnull=True, user_type=1)
     ).update(is_active=False, updated_at=timezone.now())
 
 
@@ -272,19 +273,37 @@ def create_agent_user(workspace, display_name, email=None, first_name="", last_n
 
 def create_agent_token(user, workspace, label=None):
     """Mint an API token (X-Api-Key for /api/v1) for an agent; the token string is only shown once."""
-    return APIToken.objects.create(
-        user=user,
-        workspace=workspace,
-        user_type=1,
-        label=(label or f"{user.display_name} token")[:255],
-        description="Agent token",
-    )
+    with transaction.atomic():
+        # Share the membership lock with deactivation: a stale view must not mint a token after
+        # the workspace's administrator has revoked the agent's membership.
+        member = (
+            WorkspaceMember.objects.select_for_update()
+            .filter(
+                workspace=workspace,
+                member=user,
+                role=AGENT,
+                is_active=True,
+                member__bot_type=AGENT_BOT_TYPE,
+                member__is_active=True,
+            )
+            .first()
+        )
+        if member is None:
+            raise AgentProvisioningError("Only active agent accounts can receive agent tokens")
+        return APIToken.objects.create(
+            user=user,
+            workspace=workspace,
+            user_type=1,
+            label=(label or f"{user.display_name} token")[:255],
+            description="Agent token",
+        )
 
 
 def deactivate_agent(workspace_member):
     """Deactivate an agent in its workspace: membership, project memberships, API tokens of that
     workspace and team memberships (so deactivated agents do not linger in the workspace's teams)."""
     with transaction.atomic():
+        workspace_member = WorkspaceMember.objects.select_for_update().get(pk=workspace_member.pk)
         TeamMember.objects.filter(
             workspace_id=workspace_member.workspace_id, member_id=workspace_member.member_id
         ).delete(soft=False)

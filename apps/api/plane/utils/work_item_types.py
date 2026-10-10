@@ -372,7 +372,7 @@ def set_default_work_item_type(issue_type):
 def visible_issues_q(user):
     """Work items `user` can see: active project memberships; guests of projects without
     guest_view_all_features only their own work items (same rule as the issue lists)."""
-    memberships = ProjectMember.objects.filter(member=user, is_active=True)
+    memberships = ProjectMember.objects.filter(member=user, is_active=True, project__deleted_at__isnull=True)
     full_access = memberships.filter(Q(role__gt=5) | Q(role=5, project__guest_view_all_features=True))
     own_only = memberships.filter(role=5, project__guest_view_all_features=False)
     return Q(project_id__in=full_access.values("project_id")) | Q(

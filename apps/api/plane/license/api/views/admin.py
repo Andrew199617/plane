@@ -5,7 +5,7 @@
 # Python imports
 from urllib.parse import urlencode, urljoin
 import uuid
-from plane.utils.password_policy import password_score
+from plane.utils.password_policy import password_error_payload, password_score
 
 # Django imports
 from django.http import HttpResponseRedirect
@@ -199,6 +199,7 @@ class InstanceAdminSignUpEndpoint(View):
                     error_code=AUTHENTICATION_ERROR_CODES["PASSWORD_TOO_WEAK"],
                     error_message="PASSWORD_TOO_WEAK",
                     payload={
+                        **password_error_payload(results),
                         "email": email,
                         "first_name": first_name,
                         "last_name": last_name,

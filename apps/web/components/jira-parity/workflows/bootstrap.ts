@@ -29,6 +29,12 @@ export function useWorkflowsProjectBootstrap(workspaceSlug: string, projectId: s
   useSWR(
     workspaceSlug && projectId ? JP_MY_STATE_TRANSITIONS_SWR_KEY(projectId) : null,
     workspaceSlug && projectId ? () => fetchMyTransitions(workspaceSlug, projectId) : null,
-    { revalidateOnMount: true, revalidateOnFocus: false, shouldRetryOnError: false }
+    {
+      revalidateOnMount: true,
+      dedupingInterval: 0,
+      revalidateOnFocus: true,
+      refreshInterval: 60_000,
+      shouldRetryOnError: false,
+    }
   );
 }

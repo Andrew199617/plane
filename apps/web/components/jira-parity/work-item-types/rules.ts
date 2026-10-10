@@ -18,6 +18,28 @@ import type { TLogoProps, TWorkItemType, TWorkItemTypeHierarchyError, TWorkItemT
 type TWorkItemTypeLike = Pick<TWorkItemType, "name"> &
   Partial<Pick<TWorkItemType, "logo_props" | "is_epic" | "is_sub_task">>;
 
+/** Preserve the API's order until every referenced type is loaded; untyped items sort last. */
+export const sortWorkItemsByTypeName = <T extends { type_id?: string | null }>(
+  items: T[],
+  getTypeName: (typeId: string) => string | undefined,
+  descending = false
+): T[] | undefined => {
+  const rows = items.map((item) => ({ item, name: item.type_id ? getTypeName(item.type_id)?.toLowerCase() : null }));
+  if (rows.some((row) => row.name === undefined)) return undefined;
+  return (
+    rows
+      // oxlint-disable-next-line unicorn/no-array-sort -- sorts a new array; web targets ES2022
+      .sort((a, b) => {
+        if (a.name === b.name) return 0;
+        if (a.name === null) return 1;
+        if (b.name === null) return -1;
+        const order = a.name! < b.name! ? -1 : 1;
+        return descending ? -order : order;
+      })
+      .map((row) => row.item)
+  );
+};
+
 const HEX_COLOR_REGEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const WHITE_COLORS = new Set(["#fff", "#ffffff"]);
 

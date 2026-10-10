@@ -14,7 +14,7 @@ import { Button } from "@makeplane/propel/components/button";
 import { Checkbox } from "@makeplane/propel/components/checkbox";
 import { Input, InputGroup } from "@makeplane/propel/components/input";
 import { AuthService } from "@plane/services";
-import { getPasswordStrength, validatePersonName, validateCompanyName } from "@plane/utils";
+import { getPasswordPolicyFeedback, getPasswordStrength, validatePersonName, validateCompanyName } from "@plane/utils";
 // components
 import { AuthHeader } from "@/app/(all)/(home)/auth-header";
 import { PasswordStrengthIndicator } from "@/components/common/password-strength-indicator";
@@ -69,6 +69,7 @@ export function InstanceSetupForm() {
   const isTelemetryEnabledParam = (searchParams?.get("is_telemetry_enabled") === "True" ? true : false) || true;
   const errorCode = searchParams?.get("error_code") || undefined;
   const errorMessage = searchParams?.get("error_message") || undefined;
+  const passwordRules = searchParams?.get("password_rules");
   // state
   const [showPassword, setShowPassword] = useState({
     password: false,
@@ -147,6 +148,12 @@ export function InstanceSetupForm() {
             heading="Setup your Plane Instance"
             subHeading="Post setup you will be able to manage this Plane instance."
           />
+          {errorMessage === "PASSWORD_TOO_WEAK" && (
+            <Banner
+              type="error"
+              message={getPasswordPolicyFeedback(passwordRules) ?? "Please use a stronger password."}
+            />
+          )}
           {errorData.type &&
             errorData?.message &&
             ![EErrorCodes.INVALID_EMAIL, EErrorCodes.INVALID_PASSWORD].includes(errorData.type) && (

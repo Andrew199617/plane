@@ -33,8 +33,8 @@ Semantics:
    normalised so "Todo" == "To Do").
 4. Member (15) / Guest (5): unrestricted unless the project's workflow is enabled AND at least one
    active rule lists that role; then only the listed (from, to) pairs are allowed. Rules with
-   exclude_epics=True do not apply to epics. Moving out of the Triage state (intake) counts as moving
-   out of the default state: Triage -> default state (what accepting does) is always allowed.
+   exclude_epics=True do not apply to epics. Direct edits of pending intake items are checked against
+   their actual Triage state. The admin-only intake accept flow moves them to the default state.
 5. Anyone else (e.g. a creator removed from the project) can't change states (PROJECT_MEMBERSHIP_REQUIRED).
 Forbidden -> HTTP 403 {"error", "code": "STATE_TRANSITION_NOT_ALLOWED" | "AGENT_EPIC_STATE_CHANGE_FORBIDDEN"
 | "PROJECT_MEMBERSHIP_REQUIRED", "from_state_id", "to_state_id", "allowed_state_ids"}.
@@ -201,10 +201,6 @@ def _is_workflow_enabled(project_id):
     return bool(Project.objects.filter(pk=project_id).values_list("is_workflow_enabled", flat=True).first())
 
 
-def _is_triage_state(state_id):
-    return State.all_state_objects.filter(pk=state_id, group=StateGroup.TRIAGE.value).exists()
-
-
 def get_default_state_id(project_id):
     """The state Issue._ensure_default_state gives a work item saved without one (None: no states)."""
     states = State.objects.filter(project_id=project_id, is_triage=False)
@@ -284,14 +280,6 @@ def allowed_target_state_ids(project_id, from_state_id, role, epic=False):
     return _targets(pairs, from_state_id)
 
 
-def _policy_source(project_id, from_state_id, role):
-    """The state the rules are applied from: leaving Triage counts as leaving the default state
-    (accepting an intake item lands there), except for agents."""
-    if role != AGENT and from_state_id is not None and _is_triage_state(from_state_id):
-        return get_default_state_id(project_id)
-    return from_state_id
-
-
 def is_transition_allowed(*, project_id, issue, to_state_id, role=None, user=None):
     """Return (allowed, error_code) for moving `issue` to `to_state_id`.
 
@@ -313,10 +301,7 @@ def is_transition_allowed(*, project_id, issue, to_state_id, role=None, user=Non
     epic = is_epic_issue(issue)
     if role == AGENT and epic:
         return False, AGENT_EPIC_STATE_CHANGE_FORBIDDEN
-    source = _policy_source(project_id, from_state_id, role)
-    if source is not None and str(source) == str(to_state_id):
-        return True, None
-    allowed = allowed_target_state_ids(project_id, source, role, epic=epic)
+    allowed = allowed_target_state_ids(project_id, from_state_id, role, epic=epic)
     if allowed is None or str(to_state_id) in allowed:
         return True, None
     return False, STATE_TRANSITION_NOT_ALLOWED
@@ -350,8 +335,7 @@ def assert_state_transition_allowed(*, issue, to_state_id, user=None, role=None,
     from_name = names.get(_valid_uuid(from_state_id), "this state") if from_state_id else "no state"
     to_name = names.get(_valid_uuid(to_state_id), "that state")
     effective_role = _role_value(role) if role is not None else get_effective_project_role(user, project_id)
-    source = _policy_source(project_id, from_state_id, effective_role)
-    allowed_ids = allowed_target_state_ids(project_id, source, effective_role, epic=is_epic_issue(issue))
+    allowed_ids = allowed_target_state_ids(project_id, from_state_id, effective_role, epic=is_epic_issue(issue))
     if creating:
         message = f"You can't create a work item in '{to_name}'."
     else:
@@ -524,15 +508,16 @@ def _remove_state(source):
     State.all_state_objects.filter(pk=source.pk).update(deleted_at=Now())
 
 
-def ensure_standard_states(project):
+def ensure_standard_states(project, *, merge_existing_states=False):
     """Make the project's (non-triage) states the standard set, idempotently.
 
     - an existing state named exactly like a standard state, else one whose normalised name is an
       alias ("Todo" -> "To Do", "Cancelled" -> "Won't Fix"), is adopted and renamed in place (keeps
       its id, so work items and activity stay valid); missing ones are created
-    - Backlog (and duplicate aliases) are merged: their work items move to To Do / the matching
-      standard state (with a state activity each), saved filters are repointed, then the empty
-      state is removed
+    - existing Backlog and duplicate aliases are preserved unless `merge_existing_states=True`:
+      their work items then move to the matching standard state (with a state activity each), saved
+      state-id filters are repointed, then the empty state is removed. State-group filters retain
+      their meaning; callers must explicitly opt in to removing the Backlog group.
     - To Do becomes the only default state; standard states get the standard group/order
     - any other custom state is left untouched
     Returns (states_by_key, summary).
@@ -586,22 +571,23 @@ def ensure_standard_states(project):
         used.add(state.id)
         by_key[spec["key"]] = state
 
-    merge_into = {}
-    for key, aliases in STANDARD_STATE_ALIASES.items():
-        for alias in (*aliases, *STANDARD_STATE_MERGES.get(key, ())):
-            merge_into.setdefault(alias, key)
-    repointed = {}
-    for state in states:
-        if state.id in used:
-            continue
-        key = merge_into.get(normalize_state_name(state.name))
-        if key is None or key not in by_key:
-            continue
-        # like the auto-close/archive jobs, system state changes are attributed to the project creator
-        summary["merged"][state.name] = _repoint_state(state, by_key[key], actor_id=project.created_by_id)
-        _remove_state(state)
-        repointed[state.id] = by_key[key].id
-    rewrite_saved_state_filters(project.workspace_id, repointed)
+    if merge_existing_states:
+        merge_into = {}
+        for key, aliases in STANDARD_STATE_ALIASES.items():
+            for alias in (*aliases, *STANDARD_STATE_MERGES.get(key, ())):
+                merge_into.setdefault(alias, key)
+        repointed = {}
+        for state in states:
+            if state.id in used:
+                continue
+            key = merge_into.get(normalize_state_name(state.name))
+            if key is None or key not in by_key:
+                continue
+            # like auto-close/archive jobs, system changes are attributed to the project creator
+            summary["merged"][state.name] = _repoint_state(state, by_key[key], actor_id=project.created_by_id)
+            _remove_state(state)
+            repointed[state.id] = by_key[key].id
+        rewrite_saved_state_filters(project.workspace_id, repointed)
 
     todo = by_key.get("todo")
     if todo is not None:
@@ -647,14 +633,16 @@ def seed_agent_transition_rules(project, states_by_key):
     return changed
 
 
-def seed_project_workflow(project, *, enable=True):
+def seed_project_workflow(project, *, enable=True, merge_existing_states=False):
     """Standard states + agent transition rules + Project.is_workflow_enabled for `project`.
 
     Called by run_project_created_hooks for every new project (states already standard there) and by
-    the `apply_jira_workflow` / setup commands for existing projects. Idempotent. Returns a summary.
+    the `apply_jira_workflow` / setup commands for existing projects. Existing states are only merged
+    when explicitly requested, preserving Backlog items and saved group filters by default.
+    Idempotent. Returns a summary.
     """
     with transaction.atomic():
-        states_by_key, summary = ensure_standard_states(project)
+        states_by_key, summary = ensure_standard_states(project, merge_existing_states=merge_existing_states)
         summary["rules_changed"] = seed_agent_transition_rules(project, states_by_key)
         if enable and not project.is_workflow_enabled:
             Project.all_objects.filter(pk=project.pk).update(is_workflow_enabled=True)

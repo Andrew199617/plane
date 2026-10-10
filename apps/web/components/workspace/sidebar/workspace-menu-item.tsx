@@ -39,7 +39,7 @@ export const SidebarWorkspaceMenuItem = observer(function SidebarWorkspaceMenuIt
   // nextjs hooks
   const pathname = usePathname();
   const { workspaceSlug } = useParams();
-  const { allowPermissions } = useUserPermissions();
+  const { allowReadPermissions } = useUserPermissions();
   // store hooks
   const { toggleSidebar } = useAppTheme();
 
@@ -49,7 +49,7 @@ export const SidebarWorkspaceMenuItem = observer(function SidebarWorkspaceMenuIt
     }
   };
 
-  if (!allowPermissions(item.access as any, EUserPermissionsLevel.WORKSPACE, workspaceSlug.toString())) {
+  if (!allowReadPermissions(item.access as any, EUserPermissionsLevel.WORKSPACE, workspaceSlug.toString())) {
     return null;
   }
 
