@@ -9,6 +9,8 @@ from typing import Any, Dict, List, Union
 
 from dateutil.parser import parse as dateutil_parse
 
+from plane.utils.priority import LEGACY_PRIORITY_MAP, PRIORITY_VALUES
+
 
 class LegacyToRichFiltersConverter:
     # Default mapping from legacy filter names to new rich filter field names
@@ -42,7 +44,8 @@ class LegacyToRichFiltersConverter:
     # Default valid choices for choice fields
     DEFAULT_VALID_CHOICES = {
         "state_group": ["backlog", "unstarted", "started", "completed", "cancelled"],
-        "priority": ["urgent", "high", "medium", "low", "none"],
+        # Jira-parity keys plus legacy keys, so migration 0107 keeps legacy tokens for 0124_jp_priorities to remap
+        "priority": [*PRIORITY_VALUES, *LEGACY_PRIORITY_MAP],
     }
 
     # Default date fields

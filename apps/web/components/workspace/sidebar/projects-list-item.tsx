@@ -82,7 +82,7 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
   const { t } = useTranslation();
   const { getPartialProjectById } = useProject();
   const { isMobile } = usePlatformOS();
-  const { allowPermissions } = useUserPermissions();
+  const { allowPermissions, allowReadPermissions } = useUserPermissions();
   const { getIsProjectListOpen, toggleProjectListOpen } = useCommandPalette();
   const { preferences: projectPreferences } = useProjectNavigationPreferences();
   const { isExtendedProjectSidebarOpened, toggleExtendedProjectSidebar, toggleAnySidebarDropdown } = useAppTheme();
@@ -108,7 +108,7 @@ export const SidebarProjectsListItem = observer(function SidebarProjectsListItem
     workspaceSlug: workspaceSlug.toString(),
     projectId,
     project,
-    allowPermissions,
+    allowReadPermissions,
   });
   const availableTabKeys = navigationItems.map((item) => item.key);
 

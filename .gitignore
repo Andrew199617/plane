@@ -111,9 +111,19 @@ build/
 temp/
 scripts/
 !packages/i18n/scripts/
+# ...except the local dev stack scripts at the repo root
+!/scripts/
+/scripts/*
+!/scripts/local/
 
 # i18n auto-generated types (regenerated on every build)
 packages/i18n/src/types/keys.generated.ts
 
 # Local security notes (not for version control)
 /security/
+
+# Local dev data (credentials, private configs, Jira exports, DB dumps, dev-server logs)
+/.local/
+/.devlogs/
+/apps/api/.jira_import_tmp/
+*.dump

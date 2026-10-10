@@ -73,6 +73,12 @@ from plane.utils.issue_filters import issue_filters
 from plane.utils.order_queryset import order_issue_queryset
 from plane.utils.paginator import GroupedOffsetPaginator, SubGroupedOffsetPaginator
 from plane.utils.timezone_converter import user_timezone_converter
+from plane.utils.workflow import assert_create_state_allowed, assert_state_change_allowed  # Jira-parity workflows
+from plane.utils.jira_parity.description_migration import (  # Jira-parity: editor id-only saves
+    audit_snapshot,
+    is_description_migration_update,
+    restore_audit_fields,
+)
 
 from .. import BaseAPIView, BaseViewSet
 
@@ -179,12 +185,15 @@ class IssueListEndpoint(BaseAPIView):
                 "sort_order",
                 "completed_at",
                 "estimate_point",
+                "original_estimate",
+                "remaining_estimate",
                 "priority",
                 "start_date",
                 "target_date",
                 "sequence_id",
                 "project_id",
                 "parent_id",
+                "type_id",  # jira-parity: work item type
                 "cycle_id",
                 "module_ids",
                 "label_ids",
@@ -415,6 +424,10 @@ class IssueViewSet(BaseViewSet):
         )
 
         if serializer.is_valid():
+            # Jira-parity: creating in a state = moving there from the default state
+            assert_create_state_allowed(
+                project_id=project_id, validated_data=serializer.validated_data, user=request.user
+            )
             serializer.save()
 
             # Track the issue
@@ -444,12 +457,15 @@ class IssueViewSet(BaseViewSet):
                     "sort_order",
                     "completed_at",
                     "estimate_point",
+                    "original_estimate",
+                    "remaining_estimate",
                     "priority",
                     "start_date",
                     "target_date",
                     "sequence_id",
                     "project_id",
                     "parent_id",
+                    "type_id",  # jira-parity: work item type
                     "cycle_id",
                     "module_ids",
                     "label_ids",
@@ -675,11 +691,16 @@ class IssueViewSet(BaseViewSet):
             return Response({"error": "Issue not found"}, status=status.HTTP_404_NOT_FOUND)
 
         current_instance = json.dumps(IssueDetailSerializer(issue).data, cls=DjangoJSONEncoder)
+        # Jira-parity: an editor id-only description save keeps updated_at/updated_by
+        audit_before = audit_snapshot(issue) if is_description_migration_update(request.data, skip_activity) else None
 
         requested_data = json.dumps(self.request.data, cls=DjangoJSONEncoder)
         serializer = IssueCreateSerializer(issue, data=request.data, partial=True, context={"project_id": project_id})
         if serializer.is_valid():
+            # Jira-parity: role-based state transitions (HTTP 403 STATE_TRANSITION_NOT_ALLOWED)
+            assert_state_change_allowed(issue=issue, validated_data=serializer.validated_data, user=request.user)
             serializer.save()
+            restore_audit_fields(Issue, issue.pk, audit_before)
             # Check if the update is a migration description update
             is_migration_description_update = skip_activity and is_description_update
             # Log all the updates
@@ -712,6 +733,11 @@ class IssueViewSet(BaseViewSet):
                 )
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, *args, **kwargs):
+        # Jira-parity: the "put" route used DRF's undecorated default update (no permission or
+        # workflow checks); route it through partial_update instead.
+        return self.partial_update(request, *args, **kwargs)
 
     @allow_permission([ROLE.ADMIN], creator=True, model=Issue)
     def destroy(self, request, slug, project_id, pk=None):
@@ -876,12 +902,15 @@ class IssuePaginatedViewSet(BaseViewSet):
             "sort_order",
             "completed_at",
             "estimate_point",
+            "original_estimate",
+            "remaining_estimate",
             "priority",
             "start_date",
             "target_date",
             "sequence_id",
             "project_id",
             "parent_id",
+            "type_id",  # jira-parity: work item type
             "cycle_id",
             "created_at",
             "updated_at",

@@ -4,7 +4,7 @@
  * See the LICENSE file for details.
  */
 
-import { ISSUE_PRIORITIES } from "@plane/constants";
+import { DEFAULT_ISSUE_PRIORITY, ISSUE_PRIORITIES } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { PriorityIcon } from "../icons/priority-icon";
 import type { TIssuePriorities } from "@plane/types";
@@ -58,14 +58,18 @@ export function PrioritySelect(props: PrioritySelectProps) {
 
   const selected = value ? (ISSUE_PRIORITIES.find((priority) => priority.key === value) ?? null) : null;
 
-  // Priority titles are shipped as English strings; prefer the localized copy keyed off `key`.
-  const labelOf = (option: PriorityOption) => t(option.key) || option.title;
+  // Priority titles are shipped as English strings; prefer the localized Jira-parity label (jp-priorities).
+  const labelOf = (option: PriorityOption) => {
+    const i18nKey = `jp_priorities.${option.key}`;
+    const label = t(i18nKey);
+    return label && label !== i18nKey ? label : option.title;
+  };
 
   return (
     <Select<PriorityOption>
       getValues={() => ISSUE_PRIORITIES}
       value={selected}
-      onChange={(key) => onChange((key || "none") as TIssuePriorities)}
+      onChange={(key) => onChange((key || DEFAULT_ISSUE_PRIORITY) as TIssuePriorities)}
       disabled={disabled}
       placeholder={placeholder}
       showSearch={false}
@@ -82,7 +86,7 @@ export function PrioritySelect(props: PrioritySelectProps) {
         className={className}
         data-testid={testId}
         prependIcon={(priorities) => {
-          const priority = priorities[0]?.key ?? "none";
+          const priority = priorities[0]?.key ?? null;
           return <PriorityIcon priority={priority} />;
         }}
         label={(priorities) => (priorities[0] ? labelOf(priorities[0]) : placeholder)}

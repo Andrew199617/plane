@@ -18,12 +18,15 @@ from plane.db.mixins import AuditModel
 
 from .base import BaseModel
 
-ROLE_CHOICES = ((20, "Admin"), (15, "Member"), (5, "Guest"))
+# Single source of truth for workspace + project roles (Jira-parity adds AGENT = 10).
+# plane.app.permissions.ROLE and plane.utils.permissions.ROLE re-export this enum.
+ROLE_CHOICES = ((20, "Admin"), (15, "Member"), (10, "Agent"), (5, "Guest"))
 
 
 class ROLE(Enum):
     ADMIN = 20
     MEMBER = 15
+    AGENT = 10
     GUEST = 5
 
 
@@ -112,6 +115,16 @@ class Project(BaseModel):
     logo_props = models.JSONField(default=dict)
     default_state = models.ForeignKey("db.State", on_delete=models.SET_NULL, null=True, related_name="default_state")
     archived_at = models.DateTimeField(null=True)
+    # Jira-parity: state transition rules (db.StateTransition) are enforced when True
+    is_workflow_enabled = models.BooleanField(default=False)
+    # Jira-parity: project category (db.ProjectCategory); deleting a category un-categorizes its projects
+    category = models.ForeignKey(
+        "db.ProjectCategory",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="projects",
+    )
     # timezone
     TIMEZONE_CHOICES = tuple(zip(pytz.common_timezones, pytz.common_timezones))
     timezone = models.CharField(max_length=255, default="UTC", choices=TIMEZONE_CHOICES)

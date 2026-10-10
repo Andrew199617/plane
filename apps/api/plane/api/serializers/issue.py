@@ -11,6 +11,7 @@ from django.db import IntegrityError
 from rest_framework import serializers
 
 # Module imports
+from plane.utils.priority_field import PriorityField
 from plane.db.models import (
     Issue,
     IssueType,
@@ -30,6 +31,11 @@ from plane.db.models import (
 from plane.utils.content_validator import (
     validate_html_content,
     validate_binary_data,
+)
+from plane.utils.work_item_types import (
+    normalize_type_name_input,
+    validate_issue_type_and_parent,
+    work_item_type_name,
 )
 
 from .base import BaseSerializer
@@ -66,6 +72,13 @@ class IssueSerializer(BaseSerializer):
     type_id = serializers.PrimaryKeyRelatedField(
         source="type", queryset=IssueType.objects.all(), required=False, allow_null=True
     )
+    # Jira-parity work item types: set the type by name ("Bug", case-insensitive); `type` also
+    # accepts a name. Responses carry `type_id` and `type_name`.
+    type_name = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True, write_only=True, help_text="Work item type name, e.g. Bug"
+    )
+    # Jira-parity priorities: accepts "Highest" and legacy "urgent"/"none"
+    priority = PriorityField(required=False, help_text="highest, high, medium (default), low or lowest")
 
     class Meta:
         model = Issue
@@ -109,7 +122,7 @@ class IssueSerializer(BaseSerializer):
                 ProjectMember.objects.filter(
                     project_id=self.context.get("project_id"),
                     is_active=True,
-                    role__gte=15,
+                    role__gte=10,  # Jira-parity: Agents (10) can be assigned; guests (5) cannot
                     member_id__in=data["assignees"],
                 ).values_list("member_id", flat=True)
             )
@@ -160,7 +173,20 @@ class IssueSerializer(BaseSerializer):
         ):
             raise serializers.ValidationError("Estimate point is not valid please pass a valid estimate_point_id")
 
+        # Jira-parity work item types: type_id/type_name scoped to the workspace, default type,
+        # Sub-task parent rules
+        data = validate_issue_type_and_parent(
+            data,
+            instance=self.instance,
+            workspace_id=self.context.get("workspace_id"),
+            project_id=self.context.get("project_id"),
+        )
+
         return data
+
+    def to_internal_value(self, data):
+        # Jira-parity: `"type": "Bug"` is accepted as a work item type name
+        return super().to_internal_value(normalize_type_name_input(data))
 
     def create(self, validated_data):
         assignees = validated_data.pop("assignees", None)
@@ -209,7 +235,7 @@ class IssueSerializer(BaseSerializer):
                     and ProjectMember.objects.filter(
                         member_id=default_assignee_id,
                         project_id=project_id,
-                        role__gte=15,
+                        role__gte=10,  # Jira-parity: Agents (10) can be assigned; guests (5) cannot
                         is_active=True,
                     ).exists()
                 ):
@@ -330,6 +356,9 @@ class IssueSerializer(BaseSerializer):
                 data["labels"] = [
                     str(label) for label in IssueLabel.objects.filter(issue=instance).values_list("label_id", flat=True)
                 ]
+        # Jira-parity: work item type name next to type_id
+        if "type_id" in self.fields or "type" in self.fields:
+            data["type_name"] = work_item_type_name(instance, serializer=self)
 
         return data
 

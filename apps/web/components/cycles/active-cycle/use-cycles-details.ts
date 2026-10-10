@@ -62,7 +62,7 @@ const useCyclesDetails = (props: IActiveCycleDetails) => {
       : null
   );
   useSWR(
-    workspaceSlug && projectId && cycle?.id ? CYCLE_ISSUES_WITH_PARAMS(cycle?.id, { priority: "urgent,high" }) : null,
+    workspaceSlug && projectId && cycle?.id ? CYCLE_ISSUES_WITH_PARAMS(cycle?.id, { priority: "highest,high" }) : null,
     workspaceSlug && projectId && cycle?.id
       ? () => fetchActiveCycleIssues(workspaceSlug, projectId, 30, cycle?.id)
       : null,

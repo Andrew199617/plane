@@ -12,10 +12,15 @@ import type {
   TIssue,
   EIssuesStoreType,
 } from "@plane/types";
+import type { TIssuePriorities as TIssuePrioritiesBase } from "@plane/types";
 
 export const ALL_ISSUES = "All Issues";
 
-export type TIssuePriorities = "urgent" | "high" | "medium" | "low" | "none";
+// Jira-parity priorities (highest/high/medium/low/lowest); the union lives in @plane/types.
+export type TIssuePriorities = TIssuePrioritiesBase;
+
+/** Default priority for new work items (Jira: Medium). */
+export const DEFAULT_ISSUE_PRIORITY: TIssuePriorities = "medium";
 
 export type TIssueFilterPriorityObject = {
   key: TIssuePriorities;
@@ -33,10 +38,15 @@ export enum EIssueGroupByToServerOptions {
   "cycle" = "cycle_id",
   "module" = "issue_module__module_id",
   "target_date" = "target_date",
+  // oxlint-disable-next-line typescript/no-duplicate-enum-values -- "team_project" reuses this value on purpose
   "project" = "project_id",
   "created_by" = "created_by",
   // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   "team_project" = "project_id",
+  // jira-parity (project-categories master boards)
+  "state__name" = "state__name",
+  // jira-parity (work item types)
+  "issue_type" = "type_id",
 }
 
 export enum EIssueGroupBYServerToProperty {
@@ -50,6 +60,8 @@ export enum EIssueGroupBYServerToProperty {
   "target_date" = "target_date",
   "project_id" = "project_id",
   "created_by" = "created_by",
+  // jira-parity (work item types)
+  "type_id" = "type_id",
 }
 
 export enum EIssueCommentAccessSpecifier {
@@ -64,29 +76,37 @@ export enum EIssueListRow {
   QUICK_ADD = "QUICK_ADD",
 }
 
+// Jira-parity: ordered most -> least important (drives select order, group-by columns and client sorting).
+// `i18n_label` is the translated label (jp-priorities namespace); `title` is the English fallback.
 export const ISSUE_PRIORITIES: {
   key: TIssuePriorities;
   title: string;
+  i18n_label: string;
 }[] = [
   {
-    key: "urgent",
-    title: "Urgent",
+    key: "highest",
+    title: "Highest",
+    i18n_label: "jp_priorities.highest",
   },
   {
     key: "high",
     title: "High",
+    i18n_label: "jp_priorities.high",
   },
   {
     key: "medium",
     title: "Medium",
+    i18n_label: "jp_priorities.medium",
   },
   {
     key: "low",
     title: "Low",
+    i18n_label: "jp_priorities.low",
   },
   {
-    key: "none",
-    title: "None",
+    key: "lowest",
+    title: "Lowest",
+    i18n_label: "jp_priorities.lowest",
   },
 ];
 
@@ -97,6 +117,8 @@ export const DRAG_ALLOWED_GROUPS: TIssueGroupByOptions[] = [
   "labels",
   "module",
   "cycle",
+  // jira-parity (project-categories master boards): drop resolves the column name to the project's state
+  "state__name",
 ];
 
 export type TCreateModalStoreTypes =
@@ -114,6 +136,8 @@ export const ISSUE_GROUP_BY_OPTIONS: {
   key: TIssueGroupByOptions;
   titleTranslationKey: string;
 }[] = [
+  // jira-parity (project-categories master boards): Jira-like status columns, listed first where offered
+  { key: "state__name", titleTranslationKey: "jp_categories.board.group_by_status" },
   { key: "state", titleTranslationKey: "common.states" },
   { key: "state_detail.group", titleTranslationKey: "common.state_groups" },
   { key: "priority", titleTranslationKey: "common.priority" },
@@ -124,6 +148,8 @@ export const ISSUE_GROUP_BY_OPTIONS: {
   { key: "labels", titleTranslationKey: "common.labels" },
   { key: "assignees", titleTranslationKey: "common.assignees" },
   { key: "created_by", titleTranslationKey: "common.created_by" },
+  // jira-parity (work item types)
+  { key: "issue_type", titleTranslationKey: "jp_work_item_types.group_by" },
   { key: null, titleTranslationKey: "common.none" },
 ];
 
@@ -156,6 +182,9 @@ export const ISSUE_DISPLAY_PROPERTIES_KEYS: (keyof IIssueDisplayProperties)[] = 
   "modules",
   "cycle",
   "issue_type",
+  // jira-parity (time tracking)
+  "original_estimate",
+  "remaining_estimate",
 ];
 
 export const SUB_ISSUES_DISPLAY_PROPERTIES_KEYS: (keyof IIssueDisplayProperties)[] = [
@@ -208,9 +237,15 @@ export const ISSUE_DISPLAY_PROPERTIES: {
   },
   { key: "modules", titleTranslationKey: "common.module" },
   { key: "cycle", titleTranslationKey: "common.cycle" },
+  // jira-parity
+  { key: "issue_type", titleTranslationKey: "jp_work_item_types.display_property" },
+  { key: "original_estimate", titleTranslationKey: "jp_time_tracking.original_estimate" },
+  { key: "remaining_estimate", titleTranslationKey: "jp_time_tracking.remaining_estimate" },
 ];
 
 export const SPREADSHEET_PROPERTY_LIST: (keyof IIssueDisplayProperties)[] = [
+  // jira-parity
+  "issue_type",
   "state",
   "priority",
   "assignee",
@@ -220,6 +255,9 @@ export const SPREADSHEET_PROPERTY_LIST: (keyof IIssueDisplayProperties)[] = [
   "start_date",
   "due_date",
   "estimate",
+  // jira-parity (time tracking)
+  "original_estimate",
+  "remaining_estimate",
   "created_on",
   "updated_on",
   "link",
@@ -296,9 +334,9 @@ export const SPREADSHEET_PROPERTY_DETAILS: {
   priority: {
     i18n_title: "common.priority",
     ascendingOrderKey: "priority",
-    ascendingOrderTitle: "None",
+    ascendingOrderTitle: "Lowest",
     descendingOrderKey: "-priority",
-    descendingOrderTitle: "Urgent",
+    descendingOrderTitle: "Highest",
     icon: "PriorityPropertyIcon",
   },
   start_date: {
@@ -348,6 +386,31 @@ export const SPREADSHEET_PROPERTY_DETAILS: {
     descendingOrderKey: "sub_issues_count",
     descendingOrderTitle: "Least",
     icon: "LayersIcon",
+  },
+  // jira-parity
+  issue_type: {
+    i18n_title: "jp_work_item_types.spreadsheet_column",
+    ascendingOrderKey: "type__name",
+    ascendingOrderTitle: "A",
+    descendingOrderKey: "-type__name",
+    descendingOrderTitle: "Z",
+    icon: "WorkItemsOutline",
+  },
+  original_estimate: {
+    i18n_title: "jp_time_tracking.original_estimate",
+    ascendingOrderKey: "original_estimate",
+    ascendingOrderTitle: "Low",
+    descendingOrderKey: "-original_estimate",
+    descendingOrderTitle: "High",
+    icon: "EstimateOutline",
+  },
+  remaining_estimate: {
+    i18n_title: "jp_time_tracking.remaining_estimate",
+    ascendingOrderKey: "remaining_estimate",
+    ascendingOrderTitle: "Low",
+    descendingOrderKey: "-remaining_estimate",
+    descendingOrderTitle: "High",
+    icon: "EstimateOutline",
   },
 };
 

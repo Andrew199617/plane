@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Suivi du temps",
+    "original_estimate": "Estimation initiale",
+    "remaining_estimate": "Estimation restante",
+    "time_estimate": "Estimation du temps",
+    "time_remaining": "Temps restant",
+    "add_estimate": "Ajouter une estimation",
+    "input_placeholder": "p. ex. 1w 2d 4h 30m",
+    "input_hint": "Utilisez w, d, h et m (1d = 8h, 1w = 5d).",
+    "invalid_format": "Durée non valide. Utilisez un format comme 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "a défini l’estimation initiale sur {value}",
+      "original_estimate_removed": "a supprimé l’estimation initiale",
+      "remaining_estimate_set": "a défini l’estimation restante sur {value}",
+      "remaining_estimate_removed": "a supprimé l’estimation restante"
+    }
+  }
+}

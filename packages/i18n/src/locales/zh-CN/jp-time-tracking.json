@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "时间跟踪",
+    "original_estimate": "初始预估",
+    "remaining_estimate": "剩余预估",
+    "time_estimate": "预估时间",
+    "time_remaining": "剩余时间",
+    "add_estimate": "添加预估",
+    "input_placeholder": "例如 1w 2d 4h 30m",
+    "input_hint": "使用 w、d、h 和 m（1d = 8h，1w = 5d）。",
+    "invalid_format": "时间无效。请使用 1w 2d 4h 30m 这样的格式。",
+    "activity": {
+      "original_estimate_set": "将初始预估设置为 {value}",
+      "original_estimate_removed": "移除了初始预估",
+      "remaining_estimate_set": "将剩余预估设置为 {value}",
+      "remaining_estimate_removed": "移除了剩余预估"
+    }
+  }
+}

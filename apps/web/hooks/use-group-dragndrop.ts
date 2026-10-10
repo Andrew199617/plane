@@ -7,9 +7,12 @@
 import { useParams } from "next/navigation";
 import { setToast } from "@plane/blocks/toast";
 import type { SetToastProps } from "@plane/blocks/toast";
+import { useTranslation } from "@plane/i18n";
 import type { EIssuesStoreType, TIssue, TIssueGroupByOptions, TIssueOrderByOptions } from "@plane/types";
 import type { GroupDropLocation } from "@/components/issues/issue-layouts/utils";
 import { handleGroupDragDrop } from "@/components/issues/issue-layouts/utils";
+import { StateNameDropError } from "@/components/jira-parity/project-categories/group-by";
+import { getJiraParityForbiddenMessage } from "@/components/jira-parity/workflows/errors";
 import { ISSUE_FILTER_DEFAULT_DATA } from "@/store/issue/helpers/base-issues.store";
 import { useIssueDetail } from "./store/use-issue-detail";
 import { useIssues } from "./store/use-issues";
@@ -35,6 +38,7 @@ export const useGroupIssuesDragNDrop = (
   subGroupBy?: TIssueGroupByOptions
 ) => {
   const { workspaceSlug } = useParams();
+  const { t } = useTranslation();
 
   const {
     issue: { getIssueById },
@@ -95,7 +99,12 @@ export const useGroupIssuesDragNDrop = (
       delete data[moduleKey];
     }
 
-    updateIssue && updateIssue(projectId, issueId, data).catch(() => setToast(errorToastProps));
+    if (updateIssue) {
+      updateIssue(projectId, issueId, data).catch((error: unknown) =>
+        // jira-parity: surface workflow / agent restrictions from the server (the store already rolled back)
+        setToast({ ...errorToastProps, message: getJiraParityForbiddenMessage(error) ?? errorToastProps.message })
+      );
+    }
   };
 
   const handleOnDrop = async (source: GroupDropLocation, destination: GroupDropLocation) => {
@@ -120,7 +129,11 @@ export const useGroupIssuesDragNDrop = (
       setToast({
         title: "Error!",
         type: "error",
-        message: err?.detail ?? "Failed to perform this action",
+        message:
+          // jira-parity: dropped into a status (by name) that the work item's project does not have
+          err instanceof StateNameDropError
+            ? t("jp_categories.board.state_not_in_project", { state: err.stateName })
+            : (err?.detail ?? "Failed to perform this action"),
       });
     });
   };

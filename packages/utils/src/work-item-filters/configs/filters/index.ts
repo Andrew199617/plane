@@ -12,3 +12,5 @@ export * from "./priority";
 export * from "./project";
 export * from "./state";
 export * from "./user";
+// jira-parity
+export * from "./type";

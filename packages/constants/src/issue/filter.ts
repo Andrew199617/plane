@@ -19,6 +19,8 @@ import type { TIssueLayout } from "./layout";
 export type TIssueFilterKeys = "priority" | "state" | "labels";
 
 export enum EServerGroupByToFilterOptions {
+  // jira-parity: oxlint reports the duplicate below ("state__name" = "state") on this first occurrence
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
   "state_id" = "state",
   "priority" = "priority",
   "labels__id" = "labels",
@@ -29,6 +31,12 @@ export enum EServerGroupByToFilterOptions {
   "target_date" = "target_date",
   "project_id" = "project",
   "created_by" = "created_by",
+  // jira-parity (project-categories master boards): placeholder mapping; the category board filter store
+  // replaces it with the server's `state_name` filter when paging a single status column.
+  // eslint-disable-next-line @typescript-eslint/no-duplicate-enum-values
+  "state__name" = "state",
+  // jira-parity (work item types): legacy `issue_type` param when paging a single type group
+  "type_id" = "issue_type",
 }
 
 export enum EIssueFilterType {
@@ -63,36 +71,37 @@ export const ISSUE_DISPLAY_FILTERS_BY_LAYOUT: {
   },
 };
 
+// Jira-parity priorities (class names stay full literals so Tailwind can see them)
 export const ISSUE_PRIORITY_FILTERS: TIssueFilterPriorityObject[] = [
   {
-    key: "urgent",
-    titleTranslationKey: "issue.priority.urgent",
-    className: "bg-layer-2 text-priority-urgent border-strong",
-    icon: "error",
+    key: "highest",
+    titleTranslationKey: "jp_priorities.highest",
+    className: "bg-layer-2 text-priority-highest border-strong",
+    icon: "keyboard_double_arrow_up",
   },
   {
     key: "high",
-    titleTranslationKey: "issue.priority.high",
+    titleTranslationKey: "jp_priorities.high",
     className: "bg-layer-2 text-priority-high border-strong",
-    icon: "signal_cellular_alt",
+    icon: "keyboard_arrow_up",
   },
   {
     key: "medium",
-    titleTranslationKey: "issue.priority.medium",
+    titleTranslationKey: "jp_priorities.medium",
     className: "bg-layer-2 text-priority-medium border-strong",
-    icon: "signal_cellular_alt_2_bar",
+    icon: "drag_handle",
   },
   {
     key: "low",
-    titleTranslationKey: "issue.priority.low",
+    titleTranslationKey: "jp_priorities.low",
     className: "bg-layer-2 text-priority-low border-strong",
-    icon: "signal_cellular_alt_1_bar",
+    icon: "keyboard_arrow_down",
   },
   {
-    key: "none",
-    titleTranslationKey: "common.none",
-    className: "bg-layer-2 text-priority-none border-strong",
-    icon: "block",
+    key: "lowest",
+    titleTranslationKey: "jp_priorities.lowest",
+    className: "bg-layer-2 text-priority-lowest border-strong",
+    icon: "keyboard_double_arrow_down",
   },
 ];
 
@@ -111,7 +120,7 @@ export type TIssueFiltersToDisplayByPageType = {
 
 export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
   profile_issues: {
-    filters: ["priority", "state_group", "label_id", "start_date", "target_date"],
+    filters: ["priority", "state_group", "label_id", "start_date", "target_date", "type_id"],
     layoutOptions: {
       list: {
         display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
@@ -151,6 +160,7 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
       "label_id",
       "start_date",
       "target_date",
+      "type_id",
     ],
     layoutOptions: {
       list: {
@@ -178,6 +188,7 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
       "project_id",
       "start_date",
       "target_date",
+      "type_id",
     ],
     layoutOptions: {
       spreadsheet: {
@@ -216,12 +227,14 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
       "label_id",
       "start_date",
       "target_date",
+      "type_id",
     ],
     layoutOptions: {
       list: {
         display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
         display_filters: {
-          group_by: ["state", "priority", "cycle", "module", "labels", "assignees", "created_by", null],
+          // jira-parity: "issue_type" (group by work item type)
+          group_by: ["state", "issue_type", "priority", "cycle", "module", "labels", "assignees", "created_by", null],
           order_by: ["sort_order", "-created_at", "-updated_at", "start_date", "-priority", "target_date"],
           type: ["active", "backlog"],
         },
@@ -233,8 +246,19 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
       kanban: {
         display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
         display_filters: {
-          group_by: ["state", "priority", "cycle", "module", "labels", "assignees", "created_by"],
-          sub_group_by: ["state", "priority", "cycle", "module", "labels", "assignees", "created_by", null],
+          // jira-parity: "issue_type" (group by work item type)
+          group_by: ["state", "issue_type", "priority", "cycle", "module", "labels", "assignees", "created_by"],
+          sub_group_by: [
+            "state",
+            "issue_type",
+            "priority",
+            "cycle",
+            "module",
+            "labels",
+            "assignees",
+            "created_by",
+            null,
+          ],
           order_by: ["sort_order", "-created_at", "-updated_at", "start_date", "-priority", "target_date"],
           type: ["active", "backlog"],
         },
@@ -278,13 +302,74 @@ export const ISSUE_DISPLAY_FILTERS_BY_PAGE: TIssueFiltersToDisplayByPageType = {
     },
   },
   sub_work_items: {
-    filters: ["priority", "state_id", "assignee_id", "start_date", "target_date"],
+    filters: ["priority", "state_id", "assignee_id", "start_date", "target_date", "type_id"],
     layoutOptions: {
       list: {
         display_properties: SUB_ISSUES_DISPLAY_PROPERTIES_KEYS,
         display_filters: {
           order_by: ["-created_at", "-updated_at", "start_date", "-priority"],
           group_by: ["state", "priority", "assignees", null],
+        },
+        extra_options: {
+          access: true,
+          values: ["sub_issue"],
+        },
+      },
+    },
+  },
+  // jira-parity: project-category master boards (/:workspaceSlug/boards/:categoryId)
+  category_board: {
+    filters: [
+      "project_id",
+      "type_id",
+      "priority",
+      "assignee_id",
+      "state_group",
+      "label_id",
+      "created_by_id",
+      "start_date",
+      "target_date",
+    ],
+    layoutOptions: {
+      list: {
+        display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
+        display_filters: {
+          group_by: [
+            "state__name",
+            "state_detail.group",
+            "issue_type",
+            "priority",
+            "project",
+            "assignees",
+            "labels",
+            null,
+          ],
+          order_by: ["sort_order", "-created_at", "-updated_at", "start_date", "-priority", "target_date"],
+          type: ["active", "backlog"],
+        },
+        extra_options: {
+          access: true,
+          values: ["show_empty_groups", "sub_issue"],
+        },
+      },
+      kanban: {
+        display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
+        display_filters: {
+          group_by: ["state__name", "state_detail.group", "issue_type", "priority", "project", "assignees", "labels"],
+          sub_group_by: ["state__name", "issue_type", "priority", "project", "assignees", "labels", null],
+          order_by: ["sort_order", "-created_at", "-updated_at", "start_date", "-priority", "target_date"],
+          type: ["active", "backlog"],
+        },
+        extra_options: {
+          access: true,
+          values: ["show_empty_groups", "sub_issue"],
+        },
+      },
+      spreadsheet: {
+        display_properties: ISSUE_DISPLAY_PROPERTIES_KEYS,
+        display_filters: {
+          order_by: ["sort_order", "-created_at", "-updated_at", "start_date", "-priority"],
+          type: ["active", "backlog"],
         },
         extra_options: {
           access: true,
@@ -353,9 +438,9 @@ export const filterActivityOnSelectedFilters = (
   activity: TIssueActivityComment[],
   filters: TActivityFilters[]
 ): TIssueActivityComment[] =>
-  activity.filter((activity) => {
-    if (activity.activity_type === EActivityFilterType.DEFAULT) return true;
-    return filters.includes(activity.activity_type as TActivityFilters);
+  activity.filter((item) => {
+    if (item.activity_type === EActivityFilterType.DEFAULT) return true;
+    return filters.includes(item.activity_type as TActivityFilters);
   });
 
 export const ENABLE_ISSUE_DEPENDENCIES = false;

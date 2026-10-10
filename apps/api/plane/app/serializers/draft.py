@@ -10,6 +10,8 @@ from rest_framework import serializers
 
 # Module imports
 from .base import BaseSerializer
+from plane.utils.priority_field import PriorityField
+from plane.utils.work_item_types import validate_draft_work_item_type, work_item_type_id_field
 from plane.db.models import (
     User,
     Issue,
@@ -48,6 +50,10 @@ class DraftIssueCreateSerializer(BaseSerializer):
         write_only=True,
         required=False,
     )
+    # Jira-parity priorities: accepts "Highest" and legacy "urgent"/"none"
+    priority = PriorityField(required=False)
+    # Jira-parity work item type (workspace-scoped; hierarchy is checked on conversion to a work item)
+    type_id = work_item_type_id_field()
 
     class Meta:
         model = DraftIssue
@@ -94,7 +100,7 @@ class DraftIssueCreateSerializer(BaseSerializer):
         if attrs.get("assignee_ids", []):
             attrs["assignee_ids"] = ProjectMember.objects.filter(
                 project_id=self.context["project_id"],
-                role__gte=ROLE.MEMBER.value,
+                role__gte=ROLE.AGENT.value,  # Jira-parity: Agents can be assigned; guests cannot
                 is_active=True,
                 member_id__in=attrs["assignee_ids"],
             ).values_list("member_id", flat=True)
@@ -136,6 +142,11 @@ class DraftIssueCreateSerializer(BaseSerializer):
             ).exists()
         ):
             raise serializers.ValidationError("Estimate point is not valid please pass a valid estimate_point_id")
+
+        # Jira-parity: the work item type must belong to the draft's workspace
+        attrs = validate_draft_work_item_type(
+            attrs, instance=self.instance, workspace_id=self.context.get("workspace_id")
+        )
 
         return attrs
 

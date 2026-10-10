@@ -20,6 +20,13 @@ export enum PasswordStrength {
   STRONG = "strong",
 }
 
+// Policy (same character classes as the API's plane/utils/password_policy.py, which also requires a
+// zxcvbn score >= 3): 8+ code points, an uppercase letter (Lu), a number (Nd) and a symbol (P* or S*).
+const PASSWORD_UPPERCASE_REGEX = /\p{Lu}/u;
+const PASSWORD_NUMBER_REGEX = /\p{Nd}/u;
+const PASSWORD_SYMBOL_REGEX = /[\p{P}\p{S}]/u;
+const getPasswordLength = (password: string): number => [...password].length;
+
 /**
  * Calculate password strength based on various criteria
  */
@@ -28,17 +35,16 @@ export const getPasswordStrength = (password: string): E_PASSWORD_STRENGTH => {
     return E_PASSWORD_STRENGTH.EMPTY;
   }
 
-  if (password.length < 8) {
+  if (getPasswordLength(password) < 8) {
     return E_PASSWORD_STRENGTH.LENGTH_NOT_VALID;
   }
 
   // Check all criteria
-  const hasUpperCase = /[A-Z]/.test(password);
-  const hasLowerCase = /[a-z]/.test(password);
-  const hasDigit = /[0-9]/.test(password);
-  const hasSpecialChar = /[!@#$%^&*()\-_+=\[\]{}|;:'",.<>?/]/.test(password);
+  const hasUpperCase = PASSWORD_UPPERCASE_REGEX.test(password);
+  const hasDigit = PASSWORD_NUMBER_REGEX.test(password);
+  const hasSpecialChar = PASSWORD_SYMBOL_REGEX.test(password);
 
-  if (hasUpperCase && hasLowerCase && hasDigit && hasSpecialChar) {
+  if (hasUpperCase && hasDigit && hasSpecialChar) {
     return E_PASSWORD_STRENGTH.STRENGTH_VALID;
   }
 
@@ -58,29 +64,41 @@ export const getPasswordCriteria = (password: string): PasswordCriteria[] => [
   {
     key: "length",
     label: "Min 8 characters",
-    isValid: password.length >= 8,
+    isValid: getPasswordLength(password) >= 8,
   },
   {
     key: "uppercase",
     label: "Min 1 upper-case letter",
-    isValid: /[A-Z]/.test(password),
-  },
-  {
-    key: "lowercase",
-    label: "Min 1 lower-case letter",
-    isValid: /[a-z]/.test(password),
+    isValid: PASSWORD_UPPERCASE_REGEX.test(password),
   },
   {
     key: "number",
     label: "Min 1 number",
-    isValid: /[0-9]/.test(password),
+    isValid: PASSWORD_NUMBER_REGEX.test(password),
   },
   {
     key: "special",
     label: "Min 1 special character",
-    isValid: /[!@#$%^&*()\-_+=\[\]{}|;:'",.<>?/]/.test(password),
+    isValid: PASSWORD_SYMBOL_REGEX.test(password),
   },
 ];
+
+const PASSWORD_RULE_MESSAGES: Record<string, string> = {
+  length: "Use at least 8 characters.",
+  uppercase: "Use an uppercase letter.",
+  number: "Use a number.",
+  special: "Use a symbol.",
+  strength: "Choose a less predictable password. Avoid common words and patterns.",
+};
+
+/** Describe the API's failed password rules without displaying arbitrary redirect parameters. */
+export const getPasswordPolicyFeedback = (rules: unknown): string | undefined => {
+  if (typeof rules !== "string") return undefined;
+  const messages = [...new Set(rules.split(","))]
+    .filter((rule) => Object.hasOwn(PASSWORD_RULE_MESSAGES, rule))
+    .map((rule) => PASSWORD_RULE_MESSAGES[rule]);
+  return messages.length > 0 ? messages.join(" ") : undefined;
+};
 
 // Error code messages
 const errorCodeMessages: {
@@ -307,13 +325,18 @@ const errorCodeMessages: {
 };
 
 // Error handler
-export const authErrorHandler = (errorCode: EAuthErrorCodes, email?: string): TAuthErrorInfo | undefined => {
+export const authErrorHandler = (
+  errorCode: EAuthErrorCodes,
+  email?: string,
+  passwordRules?: unknown
+): TAuthErrorInfo | undefined => {
   const bannerAlertErrorCodes = [
     EAuthErrorCodes.INSTANCE_NOT_CONFIGURED,
     EAuthErrorCodes.INVALID_EMAIL,
     EAuthErrorCodes.EMAIL_REQUIRED,
     EAuthErrorCodes.SIGNUP_DISABLED,
     EAuthErrorCodes.INVALID_PASSWORD,
+    EAuthErrorCodes.PASSWORD_TOO_WEAK,
     EAuthErrorCodes.SMTP_NOT_CONFIGURED,
     EAuthErrorCodes.USER_ALREADY_EXIST,
     EAuthErrorCodes.AUTHENTICATION_FAILED_SIGN_UP,
@@ -362,7 +385,10 @@ export const authErrorHandler = (errorCode: EAuthErrorCodes, email?: string): TA
       type: EErrorAlertType.BANNER_ALERT,
       code: errorCode,
       title: errorCodeMessages[errorCode]?.title || "Error",
-      message: errorCodeMessages[errorCode]?.message(email) || "Something went wrong. Please try again.",
+      message:
+        (errorCode === EAuthErrorCodes.PASSWORD_TOO_WEAK && getPasswordPolicyFeedback(passwordRules)) ||
+        errorCodeMessages[errorCode]?.message(email) ||
+        "Something went wrong. Please try again.",
     };
 
   return undefined;

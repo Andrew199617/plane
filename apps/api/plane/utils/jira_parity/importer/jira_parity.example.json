@@ -1,0 +1,13 @@
+{
+  "timezone": "UTC",
+  "categories": [
+    { "name": "Product", "description": "Customer-facing apps.", "emoji": 128241 },
+    { "name": "Platform", "description": "Shared services and tooling.", "emoji": 128736 }
+  ],
+  "projects": {
+    "ABC": { "name": "Example App", "category": "Product", "emoji": 128241 },
+    "XYZ": { "name": "Example Service", "category": "Platform" }
+  },
+  "skip_projects": ["IDEA"],
+  "name_replacements": {}
+}

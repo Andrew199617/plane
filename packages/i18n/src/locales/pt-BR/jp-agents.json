@@ -1,0 +1,103 @@
+{
+  "jp_agents": {
+    "settings": {
+      "title": "Agents",
+      "heading": "Agents",
+      "description": "Create AI agent accounts, issue API tokens and manage what agents can do."
+    },
+    "role_details": {
+      "title": "Agent",
+      "description": "AI agent account: can view work items, comment, be assigned and move work items along its allowed state transitions."
+    },
+    "badge": "Agent",
+    "load_error": "Could not load the agents. Please try again.",
+    "permissions_note": "Agents join every project automatically. They can read work items, comment, be assigned, and only move work items To Do → In Progress → In Review (never epics).",
+    "list": {
+      "add_agent": "Add agent",
+      "empty_title": "No agents yet",
+      "empty_description": "Create an agent account so AI tools can read work items, comment and move work along the workflow through the API.",
+      "name": "Name",
+      "email": "Email",
+      "projects": "Projects",
+      "tokens": "API tokens",
+      "project_count": "{count, plural, one {1 project} other {{count} projects}}",
+      "token_count": "{count, plural, =0 {No active tokens} one {1 active token} other {{count} active tokens}}"
+    },
+    "actions": {
+      "options": "Agent options",
+      "generate_token": "Generate token",
+      "rename": "Rename",
+      "deactivate": "Deactivate",
+      "show_tokens": "Show tokens",
+      "hide_tokens": "Hide tokens"
+    },
+    "create": {
+      "title": "Add agent",
+      "description": "Agents are workspace members with the Agent role and join every project automatically.",
+      "display_name": "Display name",
+      "display_name_placeholder": "e.g. Claude Dev",
+      "display_name_required": "Display name is required",
+      "email_hint": "The agent gets a placeholder email address on {domain}.",
+      "generate_token": "Generate an API token now",
+      "token_label": "Token label (optional)",
+      "token_label_placeholder": "e.g. CI agent",
+      "submit": "Create agent",
+      "submitting": "Creating agent",
+      "cancel": "Cancel",
+      "success_title": "Agent created",
+      "success_message": "{name} was added to the workspace.",
+      "error": "Could not create the agent."
+    },
+    "rename": {
+      "title": "Rename agent",
+      "submit": "Save",
+      "submitting": "Saving",
+      "success": "Agent renamed",
+      "error": "Could not rename the agent."
+    },
+    "deactivate": {
+      "title": "Deactivate {name}?",
+      "description": "The agent loses access to the workspace and all of its API tokens are revoked.",
+      "confirm": "Deactivate",
+      "confirming": "Deactivating",
+      "success": "Agent deactivated",
+      "error": "Could not deactivate the agent."
+    },
+    "token": {
+      "created_title": "Copy the API token now",
+      "created_description": "This token is shown only once. Store it securely; the agent sends it in the X-Api-Key header of the public API.",
+      "copy": "Copy token",
+      "copied": "Token copied to clipboard",
+      "done": "Done",
+      "for_agent": "Token for {name}",
+      "label": "Label",
+      "default_label": "Agent token",
+      "created": "Created {date}",
+      "last_used": "Last used {time}",
+      "never_used": "Never used",
+      "expires": "Expires {date}",
+      "never_expires": "Never expires",
+      "active": "Active",
+      "inactive": "Revoked",
+      "empty": "No API tokens. Generate one to let this agent use the API.",
+      "generate_error": "Could not generate a token.",
+      "revoke": {
+        "action": "Revoke",
+        "title": "Revoke this token?",
+        "description": "Anything using this token immediately loses access. This can't be undone.",
+        "confirm": "Revoke",
+        "confirming": "Revoking",
+        "success": "Token revoked",
+        "error": "Could not revoke the token."
+      },
+      "rotate": {
+        "action": "Rotate",
+        "title": "Rotate this token?",
+        "description": "A new token is generated and this one is revoked right away.",
+        "confirm": "Rotate",
+        "confirming": "Rotating",
+        "error": "Could not rotate the token."
+      }
+    }
+  }
+}

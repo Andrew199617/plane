@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Pelacakan waktu",
+    "original_estimate": "Estimasi awal",
+    "remaining_estimate": "Estimasi tersisa",
+    "time_estimate": "Estimasi waktu",
+    "time_remaining": "Sisa waktu",
+    "add_estimate": "Tambahkan estimasi",
+    "input_placeholder": "mis. 1w 2d 4h 30m",
+    "input_hint": "Gunakan w, d, h, dan m (1d = 8h, 1w = 5d).",
+    "invalid_format": "Waktu tidak valid. Gunakan format seperti 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "mengatur estimasi awal menjadi {value}",
+      "original_estimate_removed": "menghapus estimasi awal",
+      "remaining_estimate_set": "mengatur estimasi tersisa menjadi {value}",
+      "remaining_estimate_removed": "menghapus estimasi tersisa"
+    }
+  }
+}

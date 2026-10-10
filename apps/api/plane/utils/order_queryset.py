@@ -4,8 +4,9 @@
 
 from django.db.models import Case, CharField, Min, Value, When
 
+from plane.utils.priority import PRIORITY_ORDER  # noqa: F401  (re-exported; Jira-parity priorities)
+
 # Custom ordering for priority and state
-PRIORITY_ORDER = ["urgent", "high", "medium", "low", "none"]
 STATE_ORDER = ["backlog", "unstarted", "started", "completed", "cancelled"]
 
 # ---------------------------------------------------------------------------
@@ -30,6 +31,11 @@ ISSUE_ORDER_BY_ALLOWLIST = frozenset({
     "assignees__first_name",
     "labels__name",
     "issue_module__module__name",
+    # jira-parity: time tracking spreadsheet columns
+    "original_estimate",
+    "remaining_estimate",
+    # jira-parity: work item type spreadsheet column
+    "type__name",
 })
 
 # IntakeIssue queryset — fields are prefixed with `issue__` for the join.
@@ -102,6 +108,8 @@ ISSUE_GROUP_BY_ALLOWLIST = frozenset({
     "created_by",
     "target_date",
     "start_date",
+    # jira-parity: group by work item type (plain FK column; resolved by both groupers)
+    "type_id",
 })
 
 # Cycle list queryset.

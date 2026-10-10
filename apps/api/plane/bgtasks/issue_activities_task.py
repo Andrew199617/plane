@@ -35,6 +35,9 @@ from plane.db.models import (
 from plane.settings.redis import redis_instance
 from plane.utils.exception_logger import log_exception
 from plane.utils.issue_relation_mapper import get_inverse_relation
+from plane.utils.priority import normalize_priority
+from plane.utils.time_tracking import track_original_estimate, track_remaining_estimate
+from plane.utils.work_item_types import track_work_item_type
 from plane.utils.uuid import is_valid_uuid
 
 
@@ -168,14 +171,16 @@ def track_priority(
     issue_activities,
     epoch,
 ):
-    if current_instance.get("priority") != requested_data.get("priority"):
+    # Jira-parity: record the canonical key even if the client sent "Highest" or legacy "urgent"/"none"
+    new_priority = normalize_priority(requested_data.get("priority"), requested_data.get("priority"))
+    if current_instance.get("priority") != new_priority:
         issue_activities.append(
             IssueActivity(
                 issue_id=issue_id,
                 actor_id=actor_id,
                 verb="updated",
                 old_value=current_instance.get("priority"),
-                new_value=requested_data.get("priority"),
+                new_value=new_priority,
                 field="priority",
                 project_id=project_id,
                 workspace_id=workspace_id,
@@ -612,6 +617,13 @@ def update_issue_activity(
         "label_ids": track_labels,
         "assignee_ids": track_assignees,
         "estimate_point": track_estimate_points,
+        # jira-parity: time tracking (minutes)
+        "original_estimate": track_original_estimate,
+        "remaining_estimate": track_remaining_estimate,
+        # jira-parity: work item type (app/v1 type_id, v1 type / type_name)
+        "type_id": track_work_item_type,
+        "type": track_work_item_type,
+        "type_name": track_work_item_type,
         "archived_at": track_archive_at,
         "closed_to": track_closed_to,
         # External endpoint keys

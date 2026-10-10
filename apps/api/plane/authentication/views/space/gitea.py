@@ -14,7 +14,7 @@ from django.views import View
 from plane.authentication.provider.oauth.gitea import GiteaOAuthProvider
 from plane.authentication.utils.login import user_login
 from plane.license.models import Instance
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 from plane.authentication.adapter.error import (
     AUTHENTICATION_ERROR_CODES,
     AuthenticationException,
@@ -25,7 +25,7 @@ from plane.utils.path_validator import validate_next_path
 class GiteaOauthInitiateSpaceEndpoint(View):
     def get(self, request):
         # Get host and next path
-        request.session["host"] = base_host(request=request, is_space=True)
+        request.session["host"] = redirect_host(request=request, is_space=True)
         next_path = request.GET.get("next_path")
         if next_path:
             request.session["next_path"] = str(validate_next_path(next_path))
@@ -40,7 +40,7 @@ class GiteaOauthInitiateSpaceEndpoint(View):
             params = exc.get_error_dict()
             if next_path:
                 params["next_path"] = str(validate_next_path(next_path))
-            url = f"{base_host(request=request, is_space=True)}?{urlencode(params)}"
+            url = f"{redirect_host(request=request, is_space=True)}?{urlencode(params)}"
             return HttpResponseRedirect(url)
 
         try:
@@ -53,7 +53,7 @@ class GiteaOauthInitiateSpaceEndpoint(View):
             params = e.get_error_dict()
             if next_path:
                 params["next_path"] = str(next_path)
-            url = f"{base_host(request=request, is_space=True)}?{urlencode(params)}"
+            url = f"{redirect_host(request=request, is_space=True)}?{urlencode(params)}"
             return HttpResponseRedirect(url)
 
 
@@ -71,7 +71,7 @@ class GiteaCallbackSpaceEndpoint(View):
             params = exc.get_error_dict()
             if next_path:
                 params["next_path"] = str(validate_next_path(next_path))
-            url = f"{base_host(request=request, is_space=True)}?{urlencode(params)}"
+            url = f"{redirect_host(request=request, is_space=True)}?{urlencode(params)}"
             return HttpResponseRedirect(url)
 
         if not code:
@@ -82,7 +82,7 @@ class GiteaCallbackSpaceEndpoint(View):
             params = exc.get_error_dict()
             if next_path:
                 params["next_path"] = str(validate_next_path(next_path))
-            url = f"{base_host(request=request, is_space=True)}?{urlencode(params)}"
+            url = f"{redirect_host(request=request, is_space=True)}?{urlencode(params)}"
             return HttpResponseRedirect(url)
 
         try:
@@ -93,12 +93,12 @@ class GiteaCallbackSpaceEndpoint(View):
             # Process workspace and project invitations
             # redirect to referer path
             url = (
-                f"{base_host(request=request, is_space=True)}{str(validate_next_path(next_path)) if next_path else ''}"
+                f"{redirect_host(request=request, is_space=True)}{str(validate_next_path(next_path)) if next_path else ''}"  # noqa: E501
             )
             return HttpResponseRedirect(url)
         except AuthenticationException as e:
             params = e.get_error_dict()
             if next_path:
                 params["next_path"] = str(validate_next_path(next_path))
-            url = f"{base_host(request=request, is_space=True)}?{urlencode(params)}"
+            url = f"{redirect_host(request=request, is_space=True)}?{urlencode(params)}"
             return HttpResponseRedirect(url)

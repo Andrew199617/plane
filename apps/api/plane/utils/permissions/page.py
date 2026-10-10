@@ -13,6 +13,7 @@ from rest_framework.permissions import BasePermission, SAFE_METHODS
 ADMIN = ROLE.ADMIN.value
 MEMBER = ROLE.MEMBER.value
 GUEST = ROLE.GUEST.value
+AGENT = ROLE.AGENT.value  # Jira-parity: agents may read pages, never write them
 
 
 class ProjectPagePermission(BasePermission):
@@ -108,7 +109,7 @@ class ProjectPagePermission(BasePermission):
 
         # Safe methods (GET, HEAD, OPTIONS) allowed for all active roles
         if method in SAFE_METHODS:
-            if role in [ADMIN, MEMBER, GUEST]:
+            if role in [ADMIN, MEMBER, AGENT, GUEST]:
                 return True
             return False
 

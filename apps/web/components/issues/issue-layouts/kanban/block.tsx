@@ -28,6 +28,7 @@ import { HIGHLIGHT_CLASS, getIssueBlockId } from "@/components/issues/issue-layo
 import { IssueIdentifier } from "@/components/issues/issue-detail/issue-identifier";
 // hooks
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
+import { useIsAgent } from "@/hooks/store/jira-parity/use-is-agent";
 import { useKanbanView } from "@/hooks/store/use-kanban-view";
 import { useProject } from "@/hooks/store/use-project";
 import useIssuePeekOverviewRedirection from "@/hooks/use-issue-peek-overview-redirection";
@@ -180,8 +181,11 @@ export const KanbanIssueBlock = observer(function KanbanIssueBlock(props: IssueB
   const [isCurrentBlockDragging, setIsCurrentBlockDragging] = useState(false);
 
   const canEditIssueProperties = canEditProperties(issue?.project_id ?? undefined);
+  // jira-parity: agents may drag to change the state; the workflow drop gating blocks everything else
+  const isAgent = useIsAgent(issue?.project_id);
 
-  const isDragAllowed = canDragIssuesInCurrentGrouping && !issue?.tempId && canEditIssueProperties;
+  const isDragAllowed =
+    canDragIssuesInCurrentGrouping && !issue?.tempId && (canEditIssueProperties || (isAgent && !issue?.archived_at));
   const projectIdentifier = getProjectIdentifierById(issue?.project_id);
 
   const workItemLink = generateWorkItemLink({

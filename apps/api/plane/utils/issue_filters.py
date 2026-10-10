@@ -2,11 +2,15 @@
 # SPDX-License-Identifier: AGPL-3.0-only
 # See the LICENSE file for details.
 
+import json
 import re
 import uuid
 from datetime import timedelta
 
+from django.db.models import Q
 from django.utils import timezone
+
+from plane.utils.priority import remap_priority_tokens
 
 # The date from pattern
 pattern = re.compile(r"\d+_(weeks|months)$")
@@ -123,10 +127,11 @@ def filter_priority(params, issue_filter, method, prefix=""):
     if method == "GET":
         priorities = [item for item in params.get("priority").split(",") if item != "null"]
         if len(priorities) and "" not in priorities:
-            issue_filter[f"{prefix}priority__in"] = priorities
+            # Jira-parity: legacy "urgent"/"none" in old URLs map to highest/medium
+            issue_filter[f"{prefix}priority__in"] = remap_priority_tokens(priorities)
     else:
         if params.get("priority", None) and len(params.get("priority")) and params.get("priority") != "null":
-            issue_filter[f"{prefix}priority__in"] = params.get("priority")
+            issue_filter[f"{prefix}priority__in"] = remap_priority_tokens(params.get("priority"))
     return issue_filter
 
 
@@ -425,6 +430,83 @@ def filter_logged_by(params, issue_filter, method, prefix=""):
     return issue_filter
 
 
+# Jira-parity (master boards): state by name, sprint (cycle) by name across projects, project category
+def _jp_split_values(value):
+    items = value if isinstance(value, (list, tuple)) else str(value or "").split(",")
+    return [str(item).strip() for item in items if item is not None and str(item).strip() not in ("", "null")]
+
+
+def filter_state_name(params, issue_filter, method, prefix=""):
+    names = _jp_split_values(params.get("state_name"))
+    if names:
+        issue_filter[f"{prefix}state__name__in"] = names
+    return issue_filter
+
+
+def _jp_match_issues(issue_filter, prefix, condition):
+    # Filter kwargs cannot express OR: match the issues satisfying `condition` (a Q on Issue) by id
+    from plane.db.models import Issue
+
+    issues = Issue.all_objects.filter(condition)
+    key = f"{prefix}id__in"
+    if key in issue_filter:  # set by another OR filter: both apply
+        issues = issues.filter(id__in=issue_filter[key])
+    issue_filter[key] = issues.values("id")
+
+
+def _jp_cycle_names(value):
+    """(names, no_sprint) of `cycle_name`: a JSON array of exact names, null meaning "no sprint"
+    (comma-safe, sent by the master board), else legacy comma-separated names with "None"."""
+    if isinstance(value, str) and value.startswith("["):
+        try:
+            items = json.loads(value)
+        except ValueError:
+            items = None
+        if isinstance(items, list):
+            names = [item for item in items if isinstance(item, str) and item.strip()]
+            return list(dict.fromkeys(names)), None in items
+    names = _jp_split_values(value)
+    return [name for name in names if name != "None"], "None" in names
+
+
+def filter_cycle_name(params, issue_filter, method, prefix=""):
+    names, no_sprint = _jp_cycle_names(params.get("cycle_name"))
+    in_sprints = {
+        "issue_cycle__cycle__name__in": names,
+        "issue_cycle__deleted_at__isnull": True,
+        "issue_cycle__cycle__deleted_at__isnull": True,
+    }
+    without_sprint = {"issue_cycle__cycle_id__isnull": True, "issue_cycle__deleted_at__isnull": True}
+    if names and no_sprint and method == "GET":
+        _jp_match_issues(issue_filter, prefix, Q(**in_sprints) | Q(**without_sprint))
+        return issue_filter
+    # stored (non-GET) queries must stay JSON: "no sprint" + names keeps only the names there
+    conditions = in_sprints if names else without_sprint if no_sprint else {}
+    issue_filter.update({f"{prefix}{key}": value for key, value in conditions.items()})
+    return issue_filter
+
+
+def filter_issue_type(params, issue_filter, method, prefix=""):
+    # Jira-parity work item types: legacy `issue_type=<id>[,<id>|None]` (group "load more", sub-items)
+    values = _jp_split_values(params.get("issue_type"))
+    no_type = "None" in values
+    type_ids = [str(type_id) for type_id in filter_valid_uuids([value for value in values if value != "None"])]
+    if no_type and type_ids and method == "GET":
+        _jp_match_issues(issue_filter, prefix, Q(type__isnull=True) | Q(type_id__in=type_ids))
+    elif type_ids:
+        issue_filter[f"{prefix}type_id__in"] = type_ids
+    elif no_type:
+        issue_filter[f"{prefix}type__isnull"] = True
+    return issue_filter
+
+
+def filter_project_category(params, issue_filter, method, prefix=""):
+    categories = [str(category) for category in filter_valid_uuids(_jp_split_values(params.get("project_category")))]
+    if categories:
+        issue_filter[f"{prefix}project__category_id__in"] = categories
+    return issue_filter
+
+
 def issue_filters(query_params, method, prefix=""):
     issue_filter = {}
 
@@ -454,6 +536,12 @@ def issue_filters(query_params, method, prefix=""):
         "sub_issue": filter_sub_issue_toggle,
         "subscriber": filter_subscribed_issues,
         "start_target_date": filter_start_target_date_issues,
+        # Jira-parity (master boards)
+        "state_name": filter_state_name,
+        "cycle_name": filter_cycle_name,
+        "project_category": filter_project_category,
+        # Jira-parity work item types
+        "issue_type": filter_issue_type,
     }
 
     for key, value in ISSUE_FILTER.items():

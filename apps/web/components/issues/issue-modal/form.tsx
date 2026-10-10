@@ -43,6 +43,7 @@ import {
   IssueProjectSelect,
   IssueTitleInput,
 } from "@/components/issues/issue-modal/components";
+import { WorkItemTypeFormSelect } from "@/components/jira-parity/work-item-types/form-select";
 // helpers
 // hooks
 import { useIssueModal } from "@/hooks/context/use-issue-modal";
@@ -372,6 +373,14 @@ export const IssueFormRoot = observer(function IssueFormRoot(props: IssueFormPro
                     control={control}
                     disabled={!!data?.id || !!data?.sourceIssueId || isProjectSelectionDisabled}
                     handleFormChange={handleFormChange}
+                  />
+                  {/* jira-parity: work item type (Sub-task requires a parent) */}
+                  <WorkItemTypeFormSelect
+                    workItemId={data?.id}
+                    isDraft={isDraft}
+                    disabled={isDisabled}
+                    handleFormChange={handleFormChange}
+                    tabIndex={getIndex("project_id")}
                   />
                 </div>
               </div>

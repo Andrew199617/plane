@@ -18,7 +18,7 @@ import { Button } from "@makeplane/propel/components/button";
 import { setToast } from "@plane/blocks/toast";
 import { PasswordStrengthIndicator } from "@plane/blocks/auth";
 // components
-import { getPasswordStrength } from "@plane/utils";
+import { getPasswordPolicyFeedback, getPasswordStrength } from "@plane/utils";
 // hooks
 import { useUser } from "@/hooks/store/user";
 import { useAppRouter } from "@/hooks/use-app-router";
@@ -93,11 +93,8 @@ export const SetPasswordForm = observer(function SetPasswordForm() {
       await handleSetPassword(csrfToken, { password: passwordFormData.password });
       router.push("/");
     } catch (error: unknown) {
-      let message = undefined;
-      if (error instanceof Error) {
-        const err = error as Error & { error?: string };
-        message = err.error;
-      }
+      const err = error as { error?: string; password_rules?: unknown } | undefined;
+      const message = getPasswordPolicyFeedback(err?.password_rules) ?? err?.error;
       setToast({
         type: "error",
         title: t("common.errors.default.title"),

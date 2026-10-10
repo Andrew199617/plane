@@ -7,6 +7,7 @@
 import { useState } from "react";
 import { observer } from "mobx-react";
 // ui
+import { JP_HIDE_UPSELL } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { Tooltip } from "@makeplane/propel/components/tooltip";
 // hooks
@@ -23,6 +24,9 @@ export const WorkspaceEditionBadge = observer(function WorkspaceEditionBadge() {
   const { t } = useTranslation();
   // platform
   const { isMobile } = usePlatformOS();
+
+  // jira-parity: hide upsell UI
+  if (JP_HIDE_UPSELL) return null;
 
   return (
     <>

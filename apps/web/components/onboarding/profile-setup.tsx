@@ -20,7 +20,7 @@ import type { IUser, TUserProfile, TOnboardingSteps } from "@plane/types";
 import { PasswordStrengthIndicator } from "@plane/blocks/auth";
 import { Spinner } from "@plane/blocks/spinner";
 // components
-import { cn, getFileURL, getPasswordStrength, validatePersonName } from "@plane/utils";
+import { cn, getFileURL, getPasswordPolicyFeedback, getPasswordStrength, validatePersonName } from "@plane/utils";
 import { UserImageUploadModal } from "@/components/core/modals/user-image-upload-modal";
 // hooks
 import { useUser, useUserProfile } from "@/hooks/store/user";
@@ -172,11 +172,12 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
           setProfileSetupStep(EProfileSetupSteps.USER_PERSONALIZATION);
         }
       });
-    } catch {
+    } catch (error) {
+      const err = error as { password_rules?: unknown } | undefined;
       setToast({
         type: "error",
         title: "Error",
-        message: "User details update failed. Please try again!",
+        message: getPasswordPolicyFeedback(err?.password_rules) ?? "User details update failed. Please try again!",
       });
     }
   };

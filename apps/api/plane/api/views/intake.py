@@ -30,6 +30,9 @@ from plane.bgtasks.issue_activities_task import issue_activity
 from plane.db.models import Intake, IntakeIssue, Issue, Project, ProjectMember, State, StateGroup
 from plane.utils.host import base_host
 from plane.utils.content_validator import validate_html_content
+from plane.utils.priority import resolve_request_priority
+from plane.utils.project_defaults import assign_default_assignee
+from plane.utils.workflow import assert_state_change_allowed  # Jira-parity workflows
 from .base import BaseAPIView
 from plane.db.models.intake import SourceType
 from plane.utils.openapi import (
@@ -160,14 +163,9 @@ class IntakeIssueListCreateAPIEndpoint(BaseAPIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # Check for valid priority
-        if request.data.get("issue", {}).get("priority", "none") not in [
-            "low",
-            "medium",
-            "high",
-            "urgent",
-            "none",
-        ]:
+        # Check for valid priority (Jira-parity keys; legacy "urgent"/"none" are mapped, missing -> medium)
+        priority = resolve_request_priority(request.data.get("issue", {}).get("priority"))
+        if priority is None:
             return Response({"error": "Invalid priority"}, status=status.HTTP_400_BAD_REQUEST)
 
         # get the triage state
@@ -196,10 +194,12 @@ class IntakeIssueListCreateAPIEndpoint(BaseAPIView):
             name=issue_data.get("name"),
             description_json=description_json,
             description_html=safe_description_html,
-            priority=issue_data.get("priority", "none"),
+            priority=priority,
             project_id=project_id,
             state_id=triage_state.id,
         )
+        # Jira-parity: same default-assignee behavior as the app intake / issue create paths
+        assign_default_assignee(issue, project.default_assignee_id)
 
         # create an intake issue
         intake_issue = IntakeIssue.objects.create(
@@ -393,6 +393,8 @@ class IntakeIssueDetailAPIEndpoint(BaseAPIView):
 
             if not issue_serializer.is_valid():
                 return Response(issue_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            # Jira-parity: direct edits follow workflow rules, including pending Triage items.
+            assert_state_change_allowed(issue=issue, validated_data=issue_serializer.validated_data, user=request.user)
 
         # Only project admins and members can edit intake issue attributes
         if project_member.role > 15:

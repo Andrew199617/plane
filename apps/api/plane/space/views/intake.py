@@ -24,6 +24,8 @@ from plane.app.serializers import (
     IssueStateIntakeSerializer,
 )
 from plane.utils.content_validator import validate_html_content
+from plane.utils.priority import resolve_request_priority
+from plane.utils.project_defaults import assign_default_assignee
 from plane.utils.issue_filters import issue_filters
 from plane.bgtasks.issue_activities_task import issue_activity
 from plane.db.models.intake import SourceType
@@ -124,14 +126,9 @@ class IntakeIssuePublicViewSet(BaseViewSet):
         if not request.data.get("issue", {}).get("name", False):
             return Response({"error": "Name is required"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Check for valid priority
-        if request.data.get("issue", {}).get("priority", "none") not in [
-            "low",
-            "medium",
-            "high",
-            "urgent",
-            "none",
-        ]:
+        # Check for valid priority (Jira-parity keys; legacy "urgent"/"none" are mapped, missing -> medium)
+        priority = resolve_request_priority(request.data.get("issue", {}).get("priority"))
+        if priority is None:
             return Response({"error": "Invalid priority"}, status=status.HTTP_400_BAD_REQUEST)
 
         # get the triage state
@@ -160,10 +157,12 @@ class IntakeIssuePublicViewSet(BaseViewSet):
             name=request.data.get("issue", {}).get("name"),
             description_json=request.data.get("issue", {}).get("description_json", {}),
             description_html=safe_description_html,
-            priority=request.data.get("issue", {}).get("priority", "low"),
+            priority=priority,
             project_id=project_deploy_board.project_id,
             state_id=triage_state.id,
         )
+        # Jira-parity: same default-assignee behavior as the app intake / issue create paths
+        assign_default_assignee(issue)
 
         # Create an Issue Activity
         issue_activity.delay(

@@ -29,12 +29,17 @@ class ViewIssueListSerializer(serializers.Serializer):
             "sort_order": instance.sort_order,
             "completed_at": instance.completed_at,
             "estimate_point": instance.estimate_point_id,
+            # jira-parity: time tracking (minutes)
+            "original_estimate": instance.original_estimate,
+            "remaining_estimate": instance.remaining_estimate,
             "priority": instance.priority,
             "start_date": instance.start_date,
             "target_date": instance.target_date,
             "sequence_id": instance.sequence_id,
             "project_id": instance.project_id,
             "parent_id": instance.parent_id,
+            # jira-parity: work item type
+            "type_id": instance.type_id,
             "cycle_id": instance.cycle_id,
             "sub_issues_count": instance.sub_issues_count,
             "created_at": instance.created_at,
@@ -66,6 +71,8 @@ class IssueViewSerializer(DynamicBaseSerializer):
             "owned_by",
             "access",
             "is_locked",
+            # jira-parity: the master-board link of a project category is managed server-side only
+            "category",
         ]
 
     def create(self, validated_data):

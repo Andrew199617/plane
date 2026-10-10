@@ -188,6 +188,11 @@ def issue_group_values(
     filters: Dict[str, Any] = {},
     queryset: Optional[QuerySet] = None,
 ) -> List[Union[str, Any]]:
+    if field == "type_id":
+        # Jira-parity: group by work item type (ISSUE_GROUP_BY_ALLOWLIST is shared with the app grouper)
+        from plane.db.models import IssueType
+
+        return list(IssueType.objects.filter(workspace__slug=slug).values_list("id", flat=True)) + ["None"]
     if field == "state_id":
         queryset = State.objects.filter(is_triage=False, workspace__slug=slug).values_list("id", flat=True)
         if project_id:
@@ -225,7 +230,9 @@ def issue_group_values(
         queryset = Project.objects.filter(workspace__slug=slug).values_list("id", flat=True)
         return list(queryset)
     if field == "priority":
-        return ["low", "medium", "high", "urgent", "none"]
+        from plane.utils.priority import PRIORITY_VALUES  # Jira-parity priorities
+
+        return list(PRIORITY_VALUES)
     if field == "state__group":
         return ["backlog", "unstarted", "started", "completed", "cancelled"]
     if field == "target_date":

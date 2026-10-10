@@ -34,6 +34,7 @@ from plane.utils.openapi import (
     PROJECT_MEMBER_EXAMPLE,
     create_paginated_response,
 )
+from plane.utils.teams import clear_team_provisioning
 
 
 class WorkspaceMemberAPIEndpoint(BaseAPIView):
@@ -161,6 +162,7 @@ class ProjectMemberListCreateAPIEndpoint(BaseAPIView):
         serializer = ProjectMemberSerializer(data=request.data, context={"slug": slug})
         serializer.is_valid(raise_exception=True)
         serializer.save(project_id=project_id)
+        clear_team_provisioning(project_id, [serializer.instance.member_id])
         return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 
@@ -213,6 +215,7 @@ class ProjectMemberDetailAPIEndpoint(ProjectMemberListCreateAPIEndpoint):
         serializer = ProjectMemberSerializer(project_member, data=request.data, partial=True, context={"slug": slug})
         serializer.is_valid(raise_exception=True)
         serializer.save()
+        clear_team_provisioning(project_id, [project_member.member_id])
         return Response(serializer.data, status=status.HTTP_200_OK)
 
     @extend_schema(
@@ -227,6 +230,7 @@ class ProjectMemberDetailAPIEndpoint(ProjectMemberListCreateAPIEndpoint):
         project_member = ProjectMember.objects.get(project_id=project_id, workspace__slug=slug, pk=pk)
         project_member.is_active = False
         project_member.save()
+        clear_team_provisioning(project_id, [project_member.member_id])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

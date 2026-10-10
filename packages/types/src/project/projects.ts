@@ -13,6 +13,8 @@ import type { IWorkspace } from "../workspace";
 export enum EUserProjectRoles {
   ADMIN = 20,
   MEMBER = 15,
+  // Jira-parity: AI agent accounts
+  AGENT = 10,
   GUEST = 5,
 }
 
@@ -40,6 +42,8 @@ export interface IPartialProject {
   created_by?: string;
   updated_by?: string;
   intake_count?: number;
+  // jira-parity (project categories)
+  category_id?: string | null;
 }
 
 export interface IProject extends IPartialProject {
@@ -59,6 +63,8 @@ export interface IProject extends IPartialProject {
   members?: string[];
   timezone?: string;
   next_work_item_sequence?: number;
+  // jira-parity (workflows)
+  is_workflow_enabled?: boolean;
 }
 
 export type TProjectAnalyticsCountParams = {

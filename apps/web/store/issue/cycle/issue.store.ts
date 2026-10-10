@@ -333,8 +333,8 @@ export class CycleIssues extends BaseIssuesStore implements ICycleIssues {
     // set loader
     set(this.activeCycleIds, [cycleId], undefined);
 
-    // set params for urgent and high
-    const params = { priority: `urgent,high`, cursor: `${perPageCount}:0:0`, per_page: perPageCount };
+    // set params for highest and high (Jira-parity priorities)
+    const params = { priority: `highest,high`, cursor: `${perPageCount}:0:0`, per_page: perPageCount };
     // call the fetch issues API
     const response = await this.cycleService.getCycleIssues(workspaceSlug, projectId, cycleId, params);
 
@@ -373,7 +373,7 @@ export class CycleIssues extends BaseIssuesStore implements ICycleIssues {
     if (!activeCycle || !activeCycle.nextPageResults) return;
 
     // create params
-    const params = { priority: `urgent,high`, cursor: activeCycle.nextCursor, per_page: activeCycle.perPageCount };
+    const params = { priority: `highest,high`, cursor: activeCycle.nextCursor, per_page: activeCycle.perPageCount };
     // fetch API response
     const response = await this.cycleService.getCycleIssues(workspaceSlug, projectId, cycleId, params);
 

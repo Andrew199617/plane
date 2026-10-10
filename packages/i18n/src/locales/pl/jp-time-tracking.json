@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Śledzenie czasu",
+    "original_estimate": "Szacunek początkowy",
+    "remaining_estimate": "Pozostały szacunek",
+    "time_estimate": "Szacowany czas",
+    "time_remaining": "Pozostały czas",
+    "add_estimate": "Dodaj szacunek",
+    "input_placeholder": "np. 1w 2d 4h 30m",
+    "input_hint": "Jednostki: w, d, h i m (1d = 8h, 1w = 5d).",
+    "invalid_format": "Nieprawidłowy czas. Wymagany format, np. 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "ustawił/ustawiła szacunek początkowy na {value}",
+      "original_estimate_removed": "usunął/usunęła szacunek początkowy",
+      "remaining_estimate_set": "ustawił/ustawiła pozostały szacunek na {value}",
+      "remaining_estimate_removed": "usunął/usunęła pozostały szacunek"
+    }
+  }
+}

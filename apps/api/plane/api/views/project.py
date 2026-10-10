@@ -42,6 +42,8 @@ from plane.bgtasks.webhook_task import model_activity, webhook_activity
 from plane.utils.exception_logger import log_exception
 from .base import BaseAPIView
 from plane.utils.host import base_host
+from plane.utils.jira_parity.project_hooks import run_project_created_hooks
+from plane.utils.project_defaults import apply_project_lead_change
 from plane.utils.order_queryset import PROJECT_ORDER_BY_ALLOWLIST, sanitize_order_by
 from plane.api.serializers import (
     ProjectSerializer,
@@ -269,6 +271,9 @@ class ProjectListCreateAPIEndpoint(BaseAPIView):
                             for state in DEFAULT_STATES
                         ]
                     )
+
+                    # Jira-parity: types, workflow, agents, teams, lead defaults (never blocks creation)
+                    run_project_created_hooks(serializer.instance, request.user)
 
                     project = self.get_queryset().filter(pk=serializer.instance.id).first()
 
@@ -571,6 +576,14 @@ class ProjectDetailAPIEndpoint(BaseAPIView):
 
             if serializer.is_valid():
                 serializer.save()
+                # Jira-parity: the default assignee follows the project lead
+                previous = json.loads(current_instance)
+                apply_project_lead_change(
+                    serializer.instance,
+                    old_lead_id=previous.get("project_lead"),
+                    old_default_assignee_id=previous.get("default_assignee"),
+                    requested_data=request.data,
+                )
                 if serializer.data["intake_view"]:
                     intake = Intake.objects.filter(project=project, is_default=True).first()
                     if not intake:

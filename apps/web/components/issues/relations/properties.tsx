@@ -69,6 +69,7 @@ export const RelationIssueProperty = observer(function RelationIssueProperty(pro
         disabled={disabled}
         variant="pill-sm"
         tooltip
+        workItemId={issueId}
       />
 
       <PrioritySelect

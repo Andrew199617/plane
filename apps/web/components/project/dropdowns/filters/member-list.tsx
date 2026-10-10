@@ -34,12 +34,16 @@ type Props = {
 const PROJECT_ROLE_OPTIONS: IRoleOption[] = [
   { value: String(EUserProjectRoles.ADMIN), label: "Admin" },
   { value: String(EUserProjectRoles.MEMBER), label: "Member" },
+  // jira-parity
+  { value: String(EUserProjectRoles.AGENT), label: "Agent" },
   { value: String(EUserProjectRoles.GUEST), label: "Guest" },
 ];
 
 const WORKSPACE_ROLE_OPTIONS: IRoleOption[] = [
   { value: String(EUserWorkspaceRoles.ADMIN), label: "Admin" },
   { value: String(EUserWorkspaceRoles.MEMBER), label: "Member" },
+  // jira-parity
+  { value: String(EUserWorkspaceRoles.AGENT), label: "Agent" },
   { value: String(EUserWorkspaceRoles.GUEST), label: "Guest" },
   { value: "suspended", label: "Suspended" },
 ];

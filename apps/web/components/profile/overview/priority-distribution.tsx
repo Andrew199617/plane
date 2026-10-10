@@ -5,6 +5,7 @@
  */
 
 // plane imports
+import { JP_PRIORITY_COLORS, JP_PRIORITY_FALLBACK_COLOR } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { BarChart } from "@plane/blocks/charts/bar-chart";
 import { EmptyStateCompact } from "@plane/blocks/empty-state";
@@ -17,13 +18,8 @@ type Props = {
   userProfile: IUserProfileData | undefined;
 };
 
-const priorityColors = {
-  urgent: "#991b1b",
-  high: "#ef4444",
-  medium: "#f59e0b",
-  low: "#16a34a",
-  none: "#e5e5e5",
-};
+// Jira-parity priorities (highest/high/medium/low/lowest)
+const priorityColors: Record<string, string> = JP_PRIORITY_COLORS;
 
 export function ProfilePriorityDistribution({ userProfile }: Props) {
   const { t } = useTranslation();
@@ -46,7 +42,7 @@ export function ProfilePriorityDistribution({ userProfile }: Props) {
                   key: "count",
                   label: "Count",
                   stackId: "bar-one",
-                  fill: (payload: any) => priorityColors[payload.key as keyof typeof priorityColors], // TODO: fix types
+                  fill: (payload: any) => priorityColors[payload.key as string] ?? JP_PRIORITY_FALLBACK_COLOR, // TODO: fix types
                   textClassName: "",
                   showPercentage: false,
                   showTopBorderRadius: () => true,

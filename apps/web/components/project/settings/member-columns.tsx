@@ -8,6 +8,7 @@ import { observer } from "mobx-react";
 import Link from "next/link";
 import { Controller, useForm } from "react-hook-form";
 import { CircleMinus } from "lucide-react";
+import { Badge } from "@makeplane/propel/components/badge";
 import { Icon } from "@makeplane/propel/components/icon";
 import { IconButton } from "@makeplane/propel/components/icon-button";
 import { Menu, MenuContent, MenuItem, MenuTrigger } from "@makeplane/propel/components/menu";
@@ -75,7 +76,11 @@ export function NameColumn(props: NameProps) {
               </span>
             </Link>
           )}
-          {first_name} {last_name}
+          {/* jira-parity: agent accounts may only have a display name */}
+          {first_name || last_name ? `${first_name ?? ""} ${last_name ?? ""}`.trim() : display_name}
+          {Number(rowData.original_role) === EUserPermissions.AGENT && (
+            <Badge variant="purple" size="xs" label={t("jp_agents.badge")} />
+          )}
         </div>
         {(isAdmin || id === currentUser?.id) && (
           <Menu>
@@ -126,18 +131,17 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
   const roleLabel = ROLE[rowData.original_role ?? EUserPermissions.GUEST];
   const isCurrentUser = currentUser?.id === rowData.member.id;
   const isRowDataWorkspaceAdmin = [EUserPermissions.ADMIN].includes(
-    Number(getWorkspaceMemberDetails(rowData.member.id)?.role) ?? EUserPermissions.GUEST
+    Number(getWorkspaceMemberDetails(rowData.member.id)?.role ?? EUserPermissions.GUEST)
   );
   const isCurrentUserWorkspaceAdmin = currentUser
     ? [EUserPermissions.ADMIN].includes(
-        Number(getWorkspaceMemberDetails(currentUser.id)?.role) ?? EUserPermissions.GUEST
+        Number(getWorkspaceMemberDetails(currentUser.id)?.role ?? EUserPermissions.GUEST)
       )
     : false;
   const currentProjectRole = getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId);
 
-  const isCurrentUserProjectAdmin = currentProjectRole
-    ? ![EUserPermissions.MEMBER, EUserPermissions.GUEST].includes(Number(currentProjectRole) ?? EUserPermissions.GUEST)
-    : false;
+  // jira-parity: positive check (a negative MEMBER/GUEST list would treat an Agent as project admin)
+  const isCurrentUserProjectAdmin = currentProjectRole ? Number(currentProjectRole) === EUserPermissions.ADMIN : false;
 
   // logic
   // Workspace admin can change his own role
@@ -150,9 +154,15 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
     if (!value || !currentMemberWorkspaceRole) return ROLE;
 
     const isGuest = [EUserPermissions.GUEST].includes(currentMemberWorkspaceRole);
+    // jira-parity: the Agent project role follows the workspace role (agents only get Agent, others never do)
+    const isAgent = Number(currentMemberWorkspaceRole) === EUserPermissions.AGENT;
 
     return Object.fromEntries(
-      Object.entries(ROLE).filter(([key]) => !isGuest || parseInt(key) === EUserPermissions.GUEST)
+      Object.entries(ROLE).filter(([key]) =>
+        isAgent
+          ? parseInt(key) === EUserPermissions.AGENT
+          : parseInt(key) !== EUserPermissions.AGENT && (!isGuest || parseInt(key) === EUserPermissions.GUEST)
+      )
     );
   };
 

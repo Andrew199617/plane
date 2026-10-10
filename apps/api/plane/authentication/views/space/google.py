@@ -14,7 +14,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from plane.authentication.provider.oauth.google import GoogleOAuthProvider
 from plane.authentication.utils.login import user_login
 from plane.license.models import Instance
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 from plane.authentication.adapter.error import (
     AuthenticationException,
     AUTHENTICATION_ERROR_CODES,
@@ -24,7 +24,7 @@ from plane.utils.path_validator import get_safe_redirect_url, validate_next_path
 
 class GoogleOauthInitiateSpaceEndpoint(View):
     def get(self, request):
-        request.session["host"] = base_host(request=request, is_space=True)
+        request.session["host"] = redirect_host(request=request, is_space=True)
         next_path = request.GET.get("next_path")
 
         # Check instance configuration
@@ -36,7 +36,7 @@ class GoogleOauthInitiateSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -49,7 +49,7 @@ class GoogleOauthInitiateSpaceEndpoint(View):
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
 
@@ -58,7 +58,6 @@ class GoogleCallbackSpaceEndpoint(View):
     def get(self, request):
         code = request.GET.get("code")
         state = request.GET.get("state")
-        base_host = request.session.get("host")
         next_path = request.session.get("next_path")
 
         if state != request.session.get("state", ""):
@@ -68,7 +67,7 @@ class GoogleCallbackSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
         if not code:
@@ -78,7 +77,7 @@ class GoogleCallbackSpaceEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)
         try:
@@ -89,14 +88,14 @@ class GoogleCallbackSpaceEndpoint(View):
             # redirect to referer path
             next_path = validate_next_path(next_path=next_path)
 
-            url = f"{base_host(request=request, is_space=True).rstrip('/')}{next_path}"
-            if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts()):
+            url = f"{redirect_host(request=request, is_space=True).rstrip('/')}{next_path}"
+            if url_has_allowed_host_and_scheme(url, allowed_hosts=get_allowed_hosts(url)):
                 return HttpResponseRedirect(url)
             else:
-                return HttpResponseRedirect(base_host(request=request, is_space=True))
+                return HttpResponseRedirect(redirect_host(request=request, is_space=True))
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_space=True), next_path=next_path, params=params
+                base_url=redirect_host(request=request, is_space=True), next_path=next_path, params=params
             )
             return HttpResponseRedirect(url)

@@ -14,6 +14,8 @@ export const getUserRole = (role: EUserPermissions | EUserWorkspaceRoles | EUser
       return "GUEST";
     case EUserPermissions.MEMBER:
       return "MEMBER";
+    case EUserPermissions.AGENT:
+      return "AGENT";
     case EUserPermissions.ADMIN:
       return "ADMIN";
   }

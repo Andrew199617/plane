@@ -5,19 +5,34 @@
  */
 
 import type { ReactNode } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import { observer } from "mobx-react";
 import { useParams } from "next/navigation";
 // plane imports
 import { StateSelect as StateSelectBlock } from "@plane/blocks/property-select";
 import type { StateOption } from "@plane/blocks/property-select";
 import type { SelectPaginationParams, SelectTooltip, SelectTooltipOverride, SelectVariant } from "@plane/blocks/select";
+import { setToast } from "@plane/blocks/toast";
 import { useTranslation } from "@plane/i18n";
 import type { IState, TPaginatedResponse } from "@plane/types";
+// components
+import { getJiraParityForbiddenMessage } from "@/components/jira-parity/workflows/errors";
+import { hasTransitionsForState } from "@/components/jira-parity/workflows/helpers";
 // hooks
 import { useProjectState } from "@/hooks/store/use-project-state";
+import { useIsAgent } from "@/hooks/store/jira-parity/use-is-agent";
+import { useWorkflows } from "@/hooks/store/jira-parity/use-workflows";
+import { useIssueDetail } from "@/hooks/store/use-issue-detail";
 
 type StateSelectWebProps = {
+  /**
+   * Jira-parity: the work item whose state this dropdown changes. Used to detect epics for the
+   * workflow, and lets agents change the state along their allowed transitions even when the
+   * surrounding (read-only) surface passes `disabled`.
+   */
+  workItemId?: string;
+  /** Jira-parity: show every state (e.g. when picking the state of a new work item). */
+  disableWorkflowFilter?: boolean;
   /** Project whose states are offered. */
   projectId: string | undefined;
   /** Current state id (`null` / `undefined` when none). */
@@ -52,7 +67,10 @@ const toOption = (state: IState): StateOption => ({
  *
  * CE change: EE reads a paginated state "lite" resource with workflow gating (`typeId`,
  * `isForWorkItemCreation`, `scopedProjectIds`); CE has neither, so the whole project list is served
- * as one page and `allowedStateIds` stays unset.
+ * as one page.
+ *
+ * Jira-parity: `allowedStateIds` comes from the current user's allowed transitions (workflows store),
+ * using the work item's persisted state (else `value`) as the from-state.
  */
 export const StateSelect = observer(function StateSelect(props: StateSelectWebProps) {
   const {
@@ -68,6 +86,8 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
     appendElement,
     testId,
     tabIndex,
+    workItemId,
+    disableWorkflowFilter = false,
   } = props;
   // router params
   const { workspaceSlug } = useParams();
@@ -75,6 +95,51 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
   const { getProjectStateIds, getStateById, fetchProjectStates } = useProjectState();
   // translation
   const { t } = useTranslation();
+  // jira-parity: workflow gating
+  const { getAllowedStateIds, getMyTransitions, ensureMyTransitions, isWorkItemEpic } = useWorkflows();
+  const {
+    issue: { getIssueById },
+  } = useIssueDetail();
+  const isAgent = useIsAgent(projectId);
+  const workItem = workItemId ? getIssueById(workItemId) : undefined;
+  // the persisted state is the from-state (a form value may already hold the picked target)
+  const fromStateId = workItem && workItem.project_id === projectId ? (workItem.state_id ?? value) : value;
+  const allowedStateIds = disableWorkflowFilter
+    ? null
+    : getAllowedStateIds(projectId, fromStateId, isWorkItemEpic(workItem));
+  const canAgentChangeState =
+    isAgent && !!workItem && !workItem.archived_at && (allowedStateIds === null || allowedStateIds.size > 1);
+  const isDisabled = !!disabled && !canAgentChangeState;
+  const myTransitions = getMyTransitions(projectId);
+  // missing, or loaded before the from-state was created
+  const needsMyTransitions = !myTransitions || (!!fromStateId && !hasTransitionsForState(myTransitions, fromStateId));
+
+  // jira-parity: agents only get an enabled dropdown once their transitions are known, so load them up
+  // front on surfaces outside the project pages (workspace views, boards); requests are shared per project.
+  useEffect(() => {
+    if (!isAgent || disableWorkflowFilter || !needsMyTransitions || !workspaceSlug || !projectId) return;
+    void ensureMyTransitions(workspaceSlug.toString(), projectId, fromStateId);
+  }, [isAgent, disableWorkflowFilter, needsMyTransitions, workspaceSlug, projectId, fromStateId, ensureMyTransitions]);
+
+  // jira-parity: callers whose update promise rejects (list/kanban chips, spreadsheet) get a toast; the
+  // issue store has already rolled the optimistic change back.
+  const handleChange = useCallback(
+    (stateId: string) => {
+      const result: unknown = onChange(stateId);
+      if (result instanceof Promise) {
+        result.catch((error: unknown) => {
+          setToast({
+            type: "error",
+            title: t("common.error.label"),
+            message:
+              getJiraParityForbiddenMessage(error) ??
+              t("entity.update.failed", { entity: t("issue.label", { count: 1 }) }),
+          });
+        });
+      }
+    },
+    [onChange, t]
+  );
   const resolvedTooltip = useMemo<SelectTooltipOverride | undefined>(() => {
     if (!tooltip) return undefined;
     const override = typeof tooltip === "object" ? tooltip : undefined;
@@ -92,6 +157,8 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
         await fetchProjectStates(workspaceSlug.toString(), projectId);
         stateIds = getProjectStateIds(projectId);
       }
+      // jira-parity: outside project pages the transitions may not be loaded yet (or predate the from-state)
+      if (!disableWorkflowFilter) await ensureMyTransitions(workspaceSlug.toString(), projectId, fromStateId);
       const query = search?.trim().toLowerCase();
       const results = (stateIds ?? [])
         .map((stateId) => getStateById(stateId))
@@ -100,7 +167,16 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
         .map(toOption);
       return { results, next_page_results: false };
     },
-    [workspaceSlug, projectId, getProjectStateIds, fetchProjectStates, getStateById]
+    [
+      workspaceSlug,
+      projectId,
+      getProjectStateIds,
+      fetchProjectStates,
+      getStateById,
+      disableWorkflowFilter,
+      fromStateId,
+      ensureMyTransitions,
+    ]
   );
 
   // Resolved in the observer render (not in a memo) so MobX re-renders when the state loads.
@@ -111,9 +187,10 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
     <StateSelectBlock
       getValues={getValues}
       value={selected}
-      onChange={onChange}
+      onChange={handleChange}
       variant={variant}
-      disabled={disabled}
+      disabled={isDisabled}
+      allowedStateIds={allowedStateIds}
       placeholder={placeholder ?? t("state")}
       onClose={onClose}
       className={className}

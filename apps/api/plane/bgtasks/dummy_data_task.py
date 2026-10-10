@@ -39,6 +39,7 @@ from plane.db.models import (
     IntakeIssue,
 )
 from plane.db.models.intake import SourceType
+from plane.utils.priority import PRIORITY_VALUES
 
 
 def create_project(workspace, user_id):
@@ -313,7 +314,7 @@ def create_issues(workspace, project, user_id, issue_count):
                 sort_order=largest_sort_order,
                 start_date=start_date,
                 target_date=end_date,
-                priority=["urgent", "high", "medium", "low", "none"][random.randint(0, 4)],
+                priority=random.choice(PRIORITY_VALUES),
                 created_by_id=creators[random.randint(0, len(creators) - 1)],
             )
         )

@@ -73,6 +73,18 @@ import {
   SpreadsheetSubIssueColumn,
   SpreadsheetUpdatedOnColumn,
 } from "@/components/issues/issue-layouts/spreadsheet/columns";
+// jira-parity
+import { JIRA_PARITY_GROUP_BY_COLUMNS } from "@/components/jira-parity/group-by";
+import type { TJiraParityGroupByKey } from "@/components/jira-parity/group-by";
+import {
+  resolveStateNameGroupDrop,
+  scopeProjectColumnIdsToCategoryBoard,
+} from "@/components/jira-parity/project-categories/group-by";
+import {
+  SpreadsheetOriginalEstimateColumn,
+  SpreadsheetRemainingEstimateColumn,
+} from "@/components/jira-parity/time-tracking/spreadsheet-columns";
+import { SpreadsheetWorkItemTypeColumn } from "@/components/jira-parity/work-item-types/spreadsheet-column";
 
 export const HIGHLIGHT_CLASS = "highlight";
 export const HIGHLIGHT_WITH_LINE = "highlight-with-line";
@@ -101,6 +113,8 @@ export const isWorkspaceLevel = (type: EIssuesStoreType) =>
     EIssuesStoreType.TEAM_VIEW,
     EIssuesStoreType.TEAM_PROJECT_WORK_ITEMS,
     EIssuesStoreType.WORKSPACE_DRAFT,
+    // jira-parity (project-categories master boards)
+    EIssuesStoreType.CATEGORY_BOARD,
   ].includes(type)
     ? true
     : false;
@@ -140,7 +154,7 @@ export const getGroupByColumns = ({
 
   // Map of group by options to their corresponding column getter functions
   const groupByColumnMap: Record<
-    GroupByColumnTypes,
+    GroupByColumnTypes | TJiraParityGroupByKey,
     ({ isWorkspaceLevel, projectId }: TGetColumns) => IGroupByColumn[] | undefined
   > = {
     project: getProjectColumns,
@@ -153,6 +167,8 @@ export const getGroupByColumns = ({
     assignees: getAssigneeColumns,
     created_by: getCreatedByColumns,
     team_project: getTeamProjectColumns,
+    // jira-parity ("state__name" -> project-categories, "issue_type" -> work-item-types)
+    ...JIRA_PARITY_GROUP_BY_COLUMNS,
   };
 
   // Get and return the columns for the specified group by option
@@ -163,8 +179,8 @@ const getProjectColumns = (): IGroupByColumn[] | undefined => {
   const { joinedProjectIds: projectIds, projectMap } = store.projectRoot.project;
   // Return undefined if no project ids
   if (!projectIds) return;
-  // Map project ids to project columns
-  return projectIds
+  // Map project ids to project columns (jira-parity: only the category's projects on a master board)
+  return scopeProjectColumnIdsToCategoryBoard(projectIds)
     .map((projectId: string) => {
       const project = projectMap[projectId];
       if (!project) return;
@@ -626,6 +642,9 @@ export const handleGroupDragDrop = async (
     updatedIssue = { ...updatedIssue, [subGroupKey]: subGroupValue };
   }
 
+  // jira-parity: "state__name" columns carry a state NAME; resolve it to the work item's project state
+  updatedIssue = resolveStateNameGroupDrop(updatedIssue, sourceIssue, groupBy, subGroupBy, source, destination);
+
   if (updatedIssue && sourceIssue?.project_id) {
     return await updateIssueOnDrop(sourceIssue?.project_id, sourceIssue.id, updatedIssue, issueUpdates);
   }
@@ -760,10 +779,11 @@ export const getBlockViewDetails = (
  * @param iconKey
  */
 export function SpreadSheetPropertyIcon(props: ISvgIcons & { iconKey: string }) {
-  const { iconKey } = props;
+  // jira-parity: keep `iconKey` off the DOM (React warns about unknown props on <svg>)
+  const { iconKey, ...iconProps } = props;
   const Icon = SpreadSheetPropertyIconMap[iconKey];
   if (!Icon) return null;
-  return <Icon {...props} />;
+  return <Icon {...iconProps} />;
 }
 
 /**
@@ -876,6 +896,10 @@ export const SPREADSHEET_COLUMNS: { [key in keyof IIssueDisplayProperties]: TSpr
   sub_issue_count: SpreadsheetSubIssueColumn,
   updated_on: SpreadsheetUpdatedOnColumn,
   attachment_count: SpreadsheetAttachmentColumn,
+  // jira-parity
+  issue_type: SpreadsheetWorkItemTypeColumn,
+  original_estimate: SpreadsheetOriginalEstimateColumn,
+  remaining_estimate: SpreadsheetRemainingEstimateColumn,
 };
 
 export const useGroupByOptions = (

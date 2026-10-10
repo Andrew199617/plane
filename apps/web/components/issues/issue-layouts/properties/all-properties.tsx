@@ -32,6 +32,7 @@ import { MemberSelect } from "@/components/dropdowns/member/member-select";
 import { ModuleSelect } from "@/components/dropdowns/module/module-select";
 import { PrioritySelect } from "@/components/dropdowns/priority/priority-select";
 import { StateSelect } from "@/components/dropdowns/state/state-select";
+import { TimeTrackingCardBadges } from "@/components/jira-parity/time-tracking/card-badges";
 // hooks
 import { useProjectEstimates } from "@/hooks/store/estimates";
 import { useIssues } from "@/hooks/store/use-issues";
@@ -217,6 +218,7 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
             disabled={isReadOnly}
             variant="pill-sm"
             tooltip
+            workItemId={issue.id}
           />
         </div>
       </WithDisplayPropertiesHOC>
@@ -389,6 +391,9 @@ export const IssueProperties = observer(function IssueProperties(props: IIssuePr
           </div>
         </WithDisplayPropertiesHOC>
       )}
+
+      {/* jira-parity: original / remaining estimate (time tracking) */}
+      <TimeTrackingCardBadges issue={issue} displayProperties={displayProperties} isMobile={isMobile} />
 
       {/* extra render properties */}
       {/* sub-issues */}

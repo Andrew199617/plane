@@ -9,7 +9,7 @@ from django.http import HttpResponseRedirect
 from django.utils import timezone
 
 # Module imports
-from plane.authentication.utils.host import user_ip, base_host
+from plane.authentication.utils.host import user_ip, redirect_host
 from plane.db.models import User
 
 
@@ -23,6 +23,6 @@ class SignOutAuthEndpoint(View):
             user.save()
             # Log the user out
             logout(request)
-            return HttpResponseRedirect(base_host(request=request, is_app=True))
+            return HttpResponseRedirect(redirect_host(request=request, is_app=True))
         except Exception:
-            return HttpResponseRedirect(base_host(request=request, is_app=True))
+            return HttpResponseRedirect(redirect_host(request=request, is_app=True))

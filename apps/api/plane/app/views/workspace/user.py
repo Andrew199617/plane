@@ -420,7 +420,9 @@ class WorkspaceUserProfileStatsEndpoint(BaseAPIView):
             .order_by("state_group")
         )
 
-        priority_order = ["urgent", "high", "medium", "low", "none"]
+        from plane.utils.priority import PRIORITY_ORDER  # Jira-parity priorities
+
+        priority_order = list(PRIORITY_ORDER)
 
         priority_distribution = (
             Issue.issue_objects.filter(

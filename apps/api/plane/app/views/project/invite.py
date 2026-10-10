@@ -34,6 +34,7 @@ from plane.db.models import (
 )
 from plane.db.models.project import ProjectNetwork
 from plane.utils.host import base_host
+from plane.utils.teams import clear_team_provisioning
 
 
 class ProjectInvitationsViewset(BaseViewSet):
@@ -153,6 +154,11 @@ class UserProjectInvitationsViewset(BaseViewSet):
         # network check above (GHSA-45hc-q4mw-jhxm).
         validated_project_ids = [str(p.id) for p in projects]
 
+        # A previous Agent role cannot survive a non-agent's manual rejoin.
+        ProjectMember.objects.filter(
+            workspace__slug=slug, project_id__in=validated_project_ids, member=request.user, role=ROLE.AGENT.value
+        ).update(role=workspace_role)
+
         # If the user was already part of workspace
         _ = ProjectMember.objects.filter(
             workspace__slug=slug, project_id__in=validated_project_ids, member=request.user
@@ -171,6 +177,8 @@ class UserProjectInvitationsViewset(BaseViewSet):
             ],
             ignore_conflicts=True,
         )
+        for project_id in validated_project_ids:
+            clear_team_provisioning(project_id, [request.user.id])
 
         ProjectUserProperty.objects.bulk_create(
             [
@@ -272,6 +280,7 @@ class ProjectJoinEndpoint(BaseAPIView):
                     project_member.is_active = True
                     project_member.role = project_invite.role
                     project_member.save()
+                clear_team_provisioning(project_id, [user.id])
 
                 return Response(
                     {"message": "Project Invitation Accepted"},

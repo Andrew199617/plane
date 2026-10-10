@@ -68,7 +68,7 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
   const { workspaceSlug } = useParams();
 
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { allowReadPermissions } = useUserPermissions();
   const {
     preferences: personalPreferences,
     togglePersonalItem,
@@ -96,7 +96,7 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
   const workspaceItems = useMemo(() => {
     const items = WORKSPACE_SIDEBAR_DYNAMIC_NAVIGATION_ITEMS_LINKS.filter((item) => {
       // Permission check
-      const hasPermission = allowPermissions(
+      const hasPermission = allowReadPermissions(
         item.access,
         EUserPermissionsLevel.WORKSPACE,
         workspaceSlug?.toString() || ""
@@ -118,7 +118,7 @@ export const CustomizeNavigationDialog = observer(function CustomizeNavigationDi
 
     // oxlint-disable-next-line unicorn/no-array-sort
     return items.sort((a, b) => a.sortOrder - b.sortOrder);
-  }, [workspaceSlug, allowPermissions, workspacePreferences]);
+  }, [workspaceSlug, allowReadPermissions, workspacePreferences]);
 
   // Handle checkbox toggle
   const handleWorkspaceItemToggle = useCallback(

@@ -18,6 +18,7 @@ import {
   StartDateOutline,
   StateOutline,
   UserOutline,
+  WorkItemsOutline,
 } from "@makeplane/propel/icons";
 // plane imports
 import { Avatar } from "@makeplane/propel/components/avatar";
@@ -51,6 +52,7 @@ import {
   getSubscriberFilterConfig,
   getTargetDateFilterConfig,
   getUpdatedAtFilterConfig,
+  getWorkItemTypeFilterConfig,
   isLoaderReady,
 } from "@plane/utils";
 // store hooks
@@ -62,6 +64,9 @@ import { useProject } from "@/hooks/store/use-project";
 import { useProjectState } from "@/hooks/store/use-project-state";
 // plane web imports
 import { useFiltersOperatorConfigs } from "@/hooks/rich-filters/use-filters-operator-configs";
+// jira-parity
+import { WorkItemTypeIcon } from "@/components/jira-parity/work-item-types/icons";
+import { useWorkItemTypes } from "@/hooks/store/jira-parity/use-work-item-types";
 
 export type TWorkItemFiltersEntityProps = {
   workspaceSlug: string;
@@ -98,6 +103,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
   const { getModuleById } = useModule();
   const { getStateById } = useProjectState();
   const { getUserDetails } = useMember();
+  const { workItemTypes } = useWorkItemTypes();
   // derived values
   const operatorConfigs = useFiltersOperatorConfigs({ workspaceSlug });
   const filtersToShow = useMemo(() => new Set(allowedFilters), [allowedFilters]);
@@ -131,10 +137,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
     [moduleIds, getModuleById]
   );
   const projects = useMemo(
-    () =>
-      projectIds
-        ? (projectIds.map((projectId) => getProjectById(projectId)).filter((project) => project) as IProject[])
-        : [],
+    () => (projectIds ? (projectIds.map((id) => getProjectById(id)).filter((item) => item) as IProject[]) : []),
     [projectIds, getProjectById]
   );
   const areAllConfigsInitialized = useMemo(() => isLoaderReady(projectLoader), [projectLoader]);
@@ -349,6 +352,19 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
     [operatorConfigs]
   );
 
+  // jira-parity: work item type filter config
+  const workItemTypeFilterConfig = useMemo(
+    () =>
+      getWorkItemTypeFilterConfig<TWorkItemFilterProperty>("type_id")({
+        isEnabled: isFilterEnabled("type_id") && workItemTypes.length > 0,
+        filterIcon: WorkItemsOutline,
+        workItemTypes,
+        getOptionIcon: (workItemType) => <WorkItemTypeIcon workItemType={workItemType} className="size-3.5" />,
+        ...operatorConfigs,
+      }),
+    [isFilterEnabled, workItemTypes, operatorConfigs]
+  );
+
   // project filter config
   const projectFilterConfig = useMemo(
     () =>
@@ -356,7 +372,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
         isEnabled: isFilterEnabled("project_id") && projects !== undefined,
         filterIcon: ProjectsOutline,
         projects: projects,
-        getOptionIcon: (project) => <Logo logo={project.logo_props} size={12} />,
+        getOptionIcon: (option) => <Logo logo={option.logo_props} size={12} />,
         ...operatorConfigs,
       }),
     [isFilterEnabled, projects, operatorConfigs]
@@ -367,6 +383,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
     configs: [
       stateFilterConfig,
       stateGroupFilterConfig,
+      workItemTypeFilterConfig,
       assigneeFilterConfig,
       priorityFilterConfig,
       projectFilterConfig,
@@ -397,6 +414,7 @@ export const useWorkItemFiltersConfig = (props: TUseWorkItemFiltersConfigProps):
       target_date: targetDateFilterConfig,
       created_at: createdAtFilterConfig,
       updated_at: updatedAtFilterConfig,
+      type_id: workItemTypeFilterConfig,
     },
     isFilterEnabled,
     members: members ?? [],

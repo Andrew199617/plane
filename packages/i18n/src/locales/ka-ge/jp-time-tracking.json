@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "დროის აღრიცხვა",
+    "original_estimate": "საწყისი შეფასება",
+    "remaining_estimate": "დარჩენილი შეფასება",
+    "time_estimate": "დროის შეფასება",
+    "time_remaining": "დარჩენილი დრო",
+    "add_estimate": "შეფასების დამატება",
+    "input_placeholder": "მაგ. 1w 2d 4h 30m",
+    "input_hint": "გამოიყენეთ w, d, h და m (1d = 8h, 1w = 5d).",
+    "invalid_format": "არასწორი დრო. გამოიყენეთ ფორმატი, მაგალითად 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "საწყისი შეფასება დააყენა: {value}",
+      "original_estimate_removed": "წაშალა საწყისი შეფასება",
+      "remaining_estimate_set": "დარჩენილი შეფასება დააყენა: {value}",
+      "remaining_estimate_removed": "წაშალა დარჩენილი შეფასება"
+    }
+  }
+}

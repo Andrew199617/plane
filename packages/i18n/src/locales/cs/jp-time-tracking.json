@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Sledování času",
+    "original_estimate": "Původní odhad",
+    "remaining_estimate": "Zbývající odhad",
+    "time_estimate": "Odhad času",
+    "time_remaining": "Zbývající čas",
+    "add_estimate": "Přidat odhad",
+    "input_placeholder": "např. 1w 2d 4h 30m",
+    "input_hint": "Použijte w, d, h a m (1d = 8h, 1w = 5d).",
+    "invalid_format": "Neplatný čas. Použijte formát jako 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "nastavil(a) původní odhad na {value}",
+      "original_estimate_removed": "odebral(a) původní odhad",
+      "remaining_estimate_set": "nastavil(a) zbývající odhad na {value}",
+      "remaining_estimate_removed": "odebral(a) zbývající odhad"
+    }
+  }
+}

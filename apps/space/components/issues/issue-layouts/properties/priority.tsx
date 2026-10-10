@@ -24,12 +24,13 @@ export function IssueBlockPriority({
   const { t } = useTranslation();
   const priority_detail = priority != null ? getIssuePriorityFilters(priority) : null;
 
-  const priorityClasses = {
-    urgent: "bg-layer-2 text-priority-urgent border-priority-urgent px-1",
+  // Jira-parity priorities (full class literals so Tailwind generates them)
+  const priorityClasses: Record<TIssuePriorities, string> = {
+    highest: "bg-layer-2 text-priority-highest border-priority-highest px-1",
     high: "bg-layer-2 text-priority-high border-priority-high",
     medium: "bg-layer-2 text-priority-medium border-priority-medium",
     low: "bg-layer-2 text-priority-low border-priority-low",
-    none: "bg-layer-2 text-priority-none border-priority-none",
+    lowest: "bg-layer-2 text-priority-lowest border-priority-lowest",
   };
 
   if (priority_detail === null) return <></>;
@@ -39,12 +40,12 @@ export function IssueBlockPriority({
       <div
         className={cn(
           "flex h-full items-center gap-1.5 rounded-sm border-[0.5px] px-2 py-0.5 text-11",
-          priorityClasses[priority ?? "none"],
+          priority ? priorityClasses[priority] : "border-priority-none bg-layer-2 text-priority-none",
           {
             // compact the icons if text is hidden
             "px-0.5": !shouldShowName,
-            // highlight the whole button if text is hidden and priority is urgent
-            "border-priority-urgent": priority === "urgent" && shouldShowName,
+            // highlight the whole button if text is hidden and priority is highest
+            "border-priority-highest": priority === "highest" && shouldShowName,
           }
         )}
       >

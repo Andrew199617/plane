@@ -1,3 +1,4 @@
+// oxlint-disable no-shadow
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -20,6 +21,7 @@ import { useIssues } from "@/hooks/store/use-issues";
 import { useUserPermissions } from "@/hooks/store/user";
 import { useIssueStoreType } from "@/hooks/use-issue-layout-store";
 import { useWorkItemProperties } from "@/hooks/use-issue-properties";
+import { getJiraParityForbiddenMessage } from "@/components/jira-parity/workflows/errors";
 // local imports
 import type { TIssueOperations } from "../issue-detail";
 import { IssueView } from "./view";
@@ -83,11 +85,14 @@ export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWor
               fetchActivities(workspaceSlug, projectId, issueId);
               return;
             })
-            .catch((_error) => {
+            .catch((updateError) => {
               setToast({
                 title: t("toast.error"),
                 type: "error",
-                message: t("entity.update.failed", { entity: t("issue.label", { count: 1 }) }),
+                // jira-parity: surface workflow / agent restrictions from the server
+                message:
+                  getJiraParityForbiddenMessage(updateError) ??
+                  t("entity.update.failed", { entity: t("issue.label", { count: 1 }) }),
               });
             });
         }

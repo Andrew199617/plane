@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Облік часу",
+    "original_estimate": "Початкова оцінка",
+    "remaining_estimate": "Залишкова оцінка",
+    "time_estimate": "Оцінка часу",
+    "time_remaining": "Залишок часу",
+    "add_estimate": "Додати оцінку",
+    "input_placeholder": "наприклад, 1w 2d 4h 30m",
+    "input_hint": "Використовуйте w, d, h і m (1d = 8h, 1w = 5d).",
+    "invalid_format": "Недійсний час. Використовуйте формат на кшталт 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "встановив(-ла) початкову оцінку: {value}",
+      "original_estimate_removed": "видалив(-ла) початкову оцінку",
+      "remaining_estimate_set": "встановив(-ла) залишкову оцінку: {value}",
+      "remaining_estimate_removed": "видалив(-ла) залишкову оцінку"
+    }
+  }
+}

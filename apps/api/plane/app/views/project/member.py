@@ -22,6 +22,8 @@ from plane.db.models import Project, ProjectMember, ProjectUserProperty, Workspa
 from plane.bgtasks.project_add_user_email_task import project_add_user_email
 from plane.utils.host import base_host
 from plane.app.permissions.base import allow_permission, ROLE
+from plane.utils.agent import agent_role_mismatch
+from plane.utils.teams import clear_team_provisioning
 
 
 class ProjectMemberViewSet(BaseViewSet):
@@ -82,6 +84,13 @@ class ProjectMemberViewSet(BaseViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+            # Jira-parity: the Agent role (10) is reserved for agent accounts (workspace role 10)
+            if agent_role_mismatch(workspace_member_role, member_roles.get(member)):
+                return Response(
+                    {"error": "The Agent role is reserved for agent accounts, which can only be agents in projects"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         # Update roles in the members array based on the member_roles dictionary and set is_active to True
         for project_member in ProjectMember.objects.filter(
             project_id=project_id,
@@ -134,6 +143,9 @@ class ProjectMemberViewSet(BaseViewSet):
         project_members = ProjectMember.objects.bulk_create(bulk_project_members, batch_size=10, ignore_conflicts=True)
 
         _ = ProjectUserProperty.objects.bulk_create(bulk_issue_props, batch_size=10, ignore_conflicts=True)
+
+        # Jira-parity: memberships managed by hand are no longer team-provisioned
+        clear_team_provisioning(project_id, [member.get("member_id") for member in members])
 
         project_members = ProjectMember.objects.filter(
             project_id=project_id,
@@ -195,7 +207,8 @@ class ProjectMemberViewSet(BaseViewSet):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if requesting_project_member.role > ROLE.GUEST.value:
+        # Jira-parity: agents (10) get the guest view (no emails)
+        if requesting_project_member.role >= ROLE.MEMBER.value:
             serializer = ProjectMemberAdminSerializer(project_member)
         else:
             serializer = ProjectMemberRoleSerializer(project_member, fields=("id", "member", "role"))
@@ -261,6 +274,13 @@ class ProjectMemberViewSet(BaseViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+            # Jira-parity: the Agent role (10) is reserved for agent accounts (workspace role 10)
+            if agent_role_mismatch(target_workspace_role, new_role):
+                return Response(
+                    {"error": "The Agent role is reserved for agent accounts, which can only be agents in projects"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
         # Guard privileged `is_active` mutations (member (de)activation). These are NOT
         # covered by the role block above, so without this check a GUEST could PATCH
         # {"is_active": false} while omitting "role" to deactivate any member — including
@@ -284,6 +304,9 @@ class ProjectMemberViewSet(BaseViewSet):
 
         if serializer.is_valid():
             serializer.save()
+            # Jira-parity: memberships managed by hand are no longer team-provisioned
+            if "role" in request.data or "is_active" in request.data:
+                clear_team_provisioning(project_id, [project_member.member_id])
             return Response(serializer.data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -318,6 +341,8 @@ class ProjectMemberViewSet(BaseViewSet):
 
         project_member.is_active = False
         project_member.save()
+        # Jira-parity: memberships managed by hand are no longer team-provisioned
+        clear_team_provisioning(project_id, [project_member.member_id])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
     @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.GUEST])
@@ -346,6 +371,7 @@ class ProjectMemberViewSet(BaseViewSet):
         # Deactivate the user
         project_member.is_active = False
         project_member.save()
+        clear_team_provisioning(project_id, [project_member.member_id])
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

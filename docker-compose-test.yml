@@ -22,6 +22,10 @@
 #   use plane.settings.test, which inherits from common and reads DATABASE_URL,
 #   REDIS_URL, RABBITMQ_* etc. from the environment.
 
+# Own project name so the test stack never shares a project with docker-compose-local.yml
+# (both would otherwise default to the directory name "plane").
+name: plane-test
+
 services:
   test-db:
     image: postgres:15.7-alpine

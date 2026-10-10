@@ -1,3 +1,4 @@
+// oxlint-disable no-shadow
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -16,6 +17,7 @@ import { EIssuesStoreType } from "@plane/types";
 import emptyIssue from "@/app/assets/empty-state/issue.svg?url";
 // components
 import { EmptyState } from "@/components/common/empty-state";
+import { getJiraParityForbiddenMessage } from "@/components/jira-parity/workflows/errors";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
@@ -99,7 +101,8 @@ export const IssueDetailRoot = observer(function IssueDetailRoot(props: TIssueDe
           setToast({
             title: t("common.error.label"),
             type: "error",
-            message: t("entity.update.failed", { entity: t("issue.label") }),
+            // jira-parity: surface workflow / agent restrictions from the server
+            message: getJiraParityForbiddenMessage(error) ?? t("entity.update.failed", { entity: t("issue.label") }),
           });
         }
       },

@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -109,6 +110,8 @@ export const ProjectSettingsMemberDefaults = observer(function ProjectSettingsMe
         formData.project_lead === "none" ? null : (formData.project_lead ?? currentProjectDetails?.project_lead),
     })
       .then(() => {
+        // jira-parity: the server moves the default assignee along with the project lead; reload it
+        if ("project_lead" in formData) void fetchProjectDetails(workspaceSlug, projectId);
         setToast({
           title: `${t("success")}!`,
           type: "success",

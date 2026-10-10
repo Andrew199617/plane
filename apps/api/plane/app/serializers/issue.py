@@ -12,6 +12,7 @@ from django.db import IntegrityError
 from rest_framework import serializers
 
 # Module imports
+from plane.utils.priority_field import PriorityField
 from .base import BaseSerializer, DynamicBaseSerializer
 from .user import UserLiteSerializer
 from .state import StateLiteSerializer
@@ -47,6 +48,7 @@ from plane.utils.content_validator import (
     validate_html_content,
     validate_binary_data,
 )
+from plane.utils.work_item_types import validate_issue_type_and_parent, work_item_type_id_field
 
 
 class IssueFlatSerializer(BaseSerializer):
@@ -87,6 +89,8 @@ class IssueCreateSerializer(BaseSerializer):
     parent_id = serializers.PrimaryKeyRelatedField(
         source="parent", queryset=Issue.objects.all(), required=False, allow_null=True
     )
+    # Jira-parity work item type (scoped + validated in validate_issue_type_and_parent)
+    type_id = work_item_type_id_field()
     label_ids = serializers.ListField(
         child=serializers.PrimaryKeyRelatedField(queryset=Label.objects.all()),
         write_only=True,
@@ -99,6 +103,8 @@ class IssueCreateSerializer(BaseSerializer):
     )
     project_id = serializers.UUIDField(source="project.id", read_only=True)
     workspace_id = serializers.UUIDField(source="workspace.id", read_only=True)
+    # Jira-parity priorities: accepts "Highest" and legacy "urgent"/"none"
+    priority = PriorityField(required=False)
 
     class Meta:
         model = Issue
@@ -150,7 +156,7 @@ class IssueCreateSerializer(BaseSerializer):
         if attrs.get("assignee_ids", []):
             attrs["assignee_ids"] = ProjectMember.objects.filter(
                 project_id=self.context["project_id"],
-                role__gte=15,
+                role__gte=10,  # Jira-parity: Agents (10) can be assigned; guests (5) cannot
                 is_active=True,
                 member_id__in=attrs["assignee_ids"],
             ).values_list("member_id", flat=True)
@@ -194,6 +200,14 @@ class IssueCreateSerializer(BaseSerializer):
         ):
             raise serializers.ValidationError("Estimate point is not valid please pass a valid estimate_point_id")
 
+        # Jira-parity work item types: workspace-scoped type, default type, Sub-task parent rules
+        attrs = validate_issue_type_and_parent(
+            attrs,
+            instance=self.instance,
+            workspace_id=self.context.get("workspace_id"),
+            project_id=self.context.get("project_id"),
+        )
+
         return attrs
 
     def create(self, validated_data):
@@ -236,7 +250,7 @@ class IssueCreateSerializer(BaseSerializer):
                 and ProjectMember.objects.filter(
                     member_id=default_assignee_id,
                     project_id=project_id,
-                    role__gte=15,
+                    role__gte=10,  # Jira-parity: Agents (10) can be assigned; guests (5) cannot
                     is_active=True,
                 ).exists()
             ):
@@ -406,6 +420,7 @@ class IssueRelationSerializer(BaseSerializer):
     name = serializers.CharField(source="related_issue.name", read_only=True)
     relation_type = serializers.CharField(read_only=True)
     state_id = serializers.UUIDField(source="related_issue.state.id", read_only=True)
+    type_id = serializers.UUIDField(source="related_issue.type_id", read_only=True)  # jira-parity
     priority = serializers.CharField(source="related_issue.priority", read_only=True)
     assignee_ids = serializers.ListField(
         child=serializers.PrimaryKeyRelatedField(queryset=User.objects.all()),
@@ -422,6 +437,7 @@ class IssueRelationSerializer(BaseSerializer):
             "relation_type",
             "name",
             "state_id",
+            "type_id",
             "priority",
             "assignee_ids",
             "created_by",
@@ -446,6 +462,7 @@ class RelatedIssueSerializer(BaseSerializer):
     name = serializers.CharField(source="issue.name", read_only=True)
     relation_type = serializers.CharField(read_only=True)
     state_id = serializers.UUIDField(source="issue.state.id", read_only=True)
+    type_id = serializers.UUIDField(source="issue.type_id", read_only=True)  # jira-parity
     priority = serializers.CharField(source="issue.priority", read_only=True)
     assignee_ids = serializers.ListField(
         child=serializers.PrimaryKeyRelatedField(queryset=User.objects.all()),
@@ -462,6 +479,7 @@ class RelatedIssueSerializer(BaseSerializer):
             "relation_type",
             "name",
             "state_id",
+            "type_id",
             "priority",
             "assignee_ids",
             "created_by",
@@ -790,12 +808,17 @@ class IssueSerializer(DynamicBaseSerializer):
             "sort_order",
             "completed_at",
             "estimate_point",
+            # jira-parity: time tracking (minutes)
+            "original_estimate",
+            "remaining_estimate",
             "priority",
             "start_date",
             "target_date",
             "sequence_id",
             "project_id",
             "parent_id",
+            # jira-parity: work item type
+            "type_id",
             "cycle_id",
             "module_ids",
             "label_ids",
@@ -847,12 +870,17 @@ class IssueListDetailSerializer(serializers.Serializer):
             "sort_order": instance.sort_order,
             "completed_at": instance.completed_at,
             "estimate_point": instance.estimate_point_id,
+            # jira-parity: time tracking (minutes)
+            "original_estimate": instance.original_estimate,
+            "remaining_estimate": instance.remaining_estimate,
             "priority": instance.priority,
             "start_date": instance.start_date,
             "target_date": instance.target_date,
             "sequence_id": instance.sequence_id,
             "project_id": instance.project_id,
             "parent_id": instance.parent_id,
+            # jira-parity: work item type
+            "type_id": instance.type_id,
             "created_at": instance.created_at,
             "updated_at": instance.updated_at,
             "created_by": instance.created_by_id,

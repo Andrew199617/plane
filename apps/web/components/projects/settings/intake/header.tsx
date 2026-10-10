@@ -32,17 +32,20 @@ export const ProjectInboxHeader = observer(function ProjectInboxHeader() {
   const { workspaceSlug, projectId } = useParams();
   const projectCrumb = useProjectCrumbProps(workspaceSlug?.toString(), projectId?.toString());
   // store hooks
-  const { allowPermissions } = useUserPermissions();
+  const { allowPermissions, isAgentInProject } = useUserPermissions();
   const { t } = useTranslation();
 
   const { currentProjectDetails, loader: currentProjectDetailsLoader } = useProject();
   const { loader } = useProjectInbox();
 
   // derived value
-  const isAuthorized = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER, EUserPermissions.GUEST],
-    EUserPermissionsLevel.PROJECT
-  );
+  const isAuthorized =
+    allowPermissions(
+      [EUserPermissions.ADMIN, EUserPermissions.MEMBER, EUserPermissions.GUEST],
+      EUserPermissionsLevel.PROJECT
+    ) &&
+    // jira-parity: agents pass GUEST checks (read access) but cannot create work items
+    !isAgentInProject(workspaceSlug?.toString(), projectId?.toString());
 
   return (
     <Header>

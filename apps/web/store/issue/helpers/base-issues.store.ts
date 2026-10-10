@@ -30,6 +30,7 @@ import { EIssueServiceType, EIssueLayoutTypes } from "@plane/types";
 // helpers
 import { convertToISODateString } from "@plane/utils";
 // plane web imports
+import { sortWorkItemsByTypeName } from "@/components/jira-parity/work-item-types/rules";
 // services
 import { CycleService } from "@/services/cycle.service";
 import { IssueArchiveService, IssueService } from "@/services/issue";
@@ -124,6 +125,10 @@ export const ISSUE_GROUP_BY_KEY: Record<TIssueDisplayFilterOptions, keyof TIssue
   cycle: "cycle_id",
   module: "module_ids",
   team_project: "project_id",
+  // jira-parity (project-categories): grouped by the NAME of the issue's state, see getDefaultGroupValue
+  state__name: "state_id",
+  // jira-parity (work item types)
+  issue_type: "type_id",
 };
 
 export const ISSUE_FILTER_DEFAULT_DATA: Record<TIssueDisplayFilterOptions, keyof TIssue> = {
@@ -138,6 +143,10 @@ export const ISSUE_FILTER_DEFAULT_DATA: Record<TIssueDisplayFilterOptions, keyof
   assignees: "assignee_ids",
   target_date: "target_date",
   team_project: "project_id",
+  // jira-parity (project-categories): drops resolve the state name to the project's state id
+  state__name: "state_id",
+  // jira-parity (work item types)
+  issue_type: "type_id",
 };
 
 // This constant maps the order by keys to the respective issue property that the key relies on
@@ -171,6 +180,13 @@ const ISSUE_ORDERBY_KEY: Record<TIssueOrderByOptions, keyof TIssue> = {
   "-attachment_count": "attachment_count",
   sub_issues_count: "sub_issues_count",
   "-sub_issues_count": "sub_issues_count",
+  // jira-parity
+  type__name: "type_id",
+  "-type__name": "type_id",
+  original_estimate: "original_estimate",
+  "-original_estimate": "original_estimate",
+  remaining_estimate: "remaining_estimate",
+  "-remaining_estimate": "remaining_estimate",
 };
 
 export abstract class BaseIssuesStore implements IBaseIssuesStore {
@@ -1607,7 +1623,8 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
     const issueGroupKey = issue?.[this.issueGroupKey] as string | string[] | null | undefined;
     // if they are grouped then identify the paths based on props on which group by is dependent on
     const issueKeyActions: { path: string[]; action: EIssueGroupedAction.REORDER }[] = [];
-    const groupByValues = this.getArrayStringArray(issue, issueGroupKey);
+    // jira-parity: pass the group key so derived groups (state group / state name) resolve correctly
+    const groupByValues = this.getArrayStringArray(issue, issueGroupKey, this.groupBy);
 
     // if issues are not subGrouped then, provide path from groupByValues
     if (!this.issueSubGroupKey) {
@@ -1620,7 +1637,7 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
 
     const issueSubGroupKey = issue?.[this.issueSubGroupKey] as string | string[] | null | undefined;
     // if they are grouped then identify the paths based on props on which sub group by is dependent on
-    const subGroupByValues = this.getArrayStringArray(issue, issueSubGroupKey);
+    const subGroupByValues = this.getArrayStringArray(issue, issueSubGroupKey, this.subGroupBy);
 
     // if issues are subGrouped then, provide path from subGroupByValues
     for (const groupKey of groupByValues) {
@@ -1668,6 +1685,10 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
     // Handle special case for state group
     if (groupByKey === "state_detail.group") {
       return [this.rootIssueStore.rootStore.state.stateMap?.[value]?.group ?? issueObject.state__group];
+    }
+    // jira-parity (project-categories): group key is the state NAME (shared across projects)
+    if (groupByKey === "state__name") {
+      return [this.rootIssueStore.rootStore.state.stateMap?.[value]?.name ?? value];
     }
 
     return [value];
@@ -1814,6 +1835,30 @@ export abstract class BaseIssuesStore implements IBaseIssuesStore {
             ["asc", "desc"]
           )
         );
+
+      // jira-parity work item types: by type name, like the API
+      case "type__name":
+      case "-type__name": {
+        const { getWorkItemTypeById } = this.rootIssueStore.rootStore.jiraParity.workItemTypes;
+        const sorted = sortWorkItemsByTypeName(
+          array,
+          (typeId) => getWorkItemTypeById(typeId)?.name,
+          key === "-type__name"
+        );
+        return getIssueIds(sorted ?? issues);
+      }
+
+      // jira-parity time tracking (minutes); empty estimates always stay below
+      case "original_estimate":
+      case "remaining_estimate":
+        return getIssueIds(orderBy(array, [getSortOrderToFilterEmptyValues.bind(null, key), key]));
+      case "-original_estimate":
+      case "-remaining_estimate": {
+        const estimateKey = key === "-original_estimate" ? "original_estimate" : "remaining_estimate";
+        return getIssueIds(
+          orderBy(array, [getSortOrderToFilterEmptyValues.bind(null, estimateKey), estimateKey], ["asc", "desc"])
+        );
+      }
 
       // custom
       case "-priority": {

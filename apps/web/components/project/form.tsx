@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -25,6 +26,7 @@ import { renderFormattedDate } from "@plane/utils";
 import { CoverImage } from "@/components/common/cover-image";
 import { ImagePickerPopover } from "@/components/core/image-picker-popover";
 import { TimezoneSelect } from "@/components/global";
+import { ProjectCategoryFormField } from "@/components/jira-parity/project-categories/category-form-field";
 // helpers
 import { handleCoverImageChange } from "@/helpers/cover-image.helper";
 // hooks
@@ -164,6 +166,8 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
 
       logo_props: formData.logo_props,
       timezone: formData.timezone,
+      // jira-parity: project category
+      ...(formData.category_id !== undefined ? { category_id: formData.category_id } : {}),
     };
 
     // Handle cover image changes
@@ -438,8 +442,8 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
                 <>
                   <TimezoneSelect
                     value={value}
-                    onChange={(value: string) => {
-                      onChange(value);
+                    onChange={(timezone: string) => {
+                      onChange(timezone);
                     }}
                     error={Boolean(errors.timezone)}
                     buttonClassName="!border-subtle !shadow-none font-medium rounded-md"
@@ -450,6 +454,8 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
             />
             {errors.timezone && <span className="text-11 text-danger-primary">{errors.timezone.message}</span>}
           </div>
+          {/* jira-parity: project category */}
+          <ProjectCategoryFormField control={control} disabled={!isAdmin} />
         </div>
         <div className="flex items-center justify-between py-2">
           <>

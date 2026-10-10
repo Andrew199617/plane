@@ -92,7 +92,7 @@ const cases: TCase[] = [
   ],
   [
     "PrioritySelect",
-    (tabIndex) => <PrioritySelect value="none" onChange={vi.fn()} variant="pill-sm" tabIndex={tabIndex} />,
+    (tabIndex) => <PrioritySelect value="medium" onChange={vi.fn()} variant="pill-sm" tabIndex={tabIndex} />,
   ],
   [
     "ProjectSelect (single)",

@@ -79,6 +79,8 @@ export const RESTRICTED_URLS: string[] = [
 
 export const ROLE = {
   [EUserWorkspaceRoles.GUEST]: "Guest",
+  // Jira-parity: the label must stay "Agent" (send-project-invitation-modal maps label.toUpperCase() to the enum key)
+  [EUserWorkspaceRoles.AGENT]: "Agent",
   [EUserWorkspaceRoles.MEMBER]: "Member",
   [EUserWorkspaceRoles.ADMIN]: "Admin",
 };
@@ -87,6 +89,11 @@ export const ROLE_DETAILS = {
   [EUserWorkspaceRoles.GUEST]: {
     i18n_title: "role_details.guest.title",
     i18n_description: "role_details.guest.description",
+  },
+  // Jira-parity: agent role strings live in the jp-agents namespace
+  [EUserWorkspaceRoles.AGENT]: {
+    i18n_title: "jp_agents.role_details.title",
+    i18n_description: "jp_agents.role_details.description",
   },
   [EUserWorkspaceRoles.MEMBER]: {
     i18n_title: "role_details.member.title",

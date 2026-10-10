@@ -14,7 +14,7 @@ import { Button } from "@makeplane/propel/components/button";
 import { setToast } from "@plane/blocks/toast";
 import type { IUser } from "@plane/types";
 import { EOnboardingSteps } from "@plane/types";
-import { cn, getFileURL, getPasswordStrength, validatePersonName } from "@plane/utils";
+import { cn, getFileURL, getPasswordPolicyFeedback, getPasswordStrength, validatePersonName } from "@plane/utils";
 // components
 import { UserImageUploadModal } from "@/components/core/modals/user-image-upload-modal";
 // hooks
@@ -96,12 +96,15 @@ export const ProfileSetupStep = observer(function ProfileSetupStep({ handleStepC
         updateCurrentUser(userDetailsPayload),
         formData.password && handleSetPassword(formData.password),
       ]);
-    } catch {
+      return true;
+    } catch (error) {
+      const err = error as { password_rules?: unknown } | undefined;
       setToast({
         type: "error",
         title: "Error",
-        message: "User details update failed. Please try again!",
+        message: getPasswordPolicyFeedback(err?.password_rules) ?? "User details update failed. Please try again!",
       });
+      return false;
     }
   };
 
@@ -110,7 +113,7 @@ export const ProfileSetupStep = observer(function ProfileSetupStep({ handleStepC
     updateUserProfile({
       has_marketing_email_consent: formData.has_marketing_email_consent,
     });
-    await handleSubmitUserDetail(formData);
+    if (!(await handleSubmitUserDetail(formData))) return;
     handleStepChange(EOnboardingSteps.PROFILE_SETUP);
   };
 

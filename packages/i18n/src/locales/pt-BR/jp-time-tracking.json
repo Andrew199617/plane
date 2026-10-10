@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Controle de tempo",
+    "original_estimate": "Estimativa original",
+    "remaining_estimate": "Estimativa restante",
+    "time_estimate": "Estimativa de tempo",
+    "time_remaining": "Tempo restante",
+    "add_estimate": "Adicionar estimativa",
+    "input_placeholder": "ex.: 1w 2d 4h 30m",
+    "input_hint": "Use w, d, h e m (1d = 8h, 1w = 5d).",
+    "invalid_format": "Tempo inválido. Use um formato como 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "definiu a estimativa original como {value}",
+      "original_estimate_removed": "removeu a estimativa original",
+      "remaining_estimate_set": "definiu a estimativa restante como {value}",
+      "remaining_estimate_removed": "removeu a estimativa restante"
+    }
+  }
+}

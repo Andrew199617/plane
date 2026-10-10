@@ -7,6 +7,7 @@
 import { Link } from "react-router";
 // helpers
 import { SUPPORT_EMAIL } from "@plane/constants";
+import { getPasswordPolicyFeedback } from "@plane/utils";
 
 export enum EPageTypes {
   INIT = "INIT",
@@ -33,6 +34,7 @@ export enum EAuthenticationErrorCodes {
   SIGNUP_DISABLED = "5015",
   // Password strength
   INVALID_PASSWORD = "5020",
+  PASSWORD_TOO_WEAK = "5021",
   SMTP_NOT_CONFIGURED = "5025",
   // Sign Up
   USER_ALREADY_EXIST = "5030",
@@ -107,6 +109,10 @@ const errorCodeMessages: {
   [EAuthenticationErrorCodes.INVALID_PASSWORD]: {
     title: `Invalid password`,
     message: () => `Invalid password. Please try again.`,
+  },
+  [EAuthenticationErrorCodes.PASSWORD_TOO_WEAK]: {
+    title: "Password too weak",
+    message: () => "Please use a stronger password.",
   },
   [EAuthenticationErrorCodes.SMTP_NOT_CONFIGURED]: {
     title: `SMTP not configured`,
@@ -343,13 +349,18 @@ const errorCodeMessages: {
   },
 };
 
-export const authErrorHandler = (errorCode: EAuthenticationErrorCodes, email?: string): TAuthErrorInfo | undefined => {
+export const authErrorHandler = (
+  errorCode: EAuthenticationErrorCodes,
+  email?: string,
+  passwordRules?: unknown
+): TAuthErrorInfo | undefined => {
   const bannerAlertErrorCodes = [
     EAuthenticationErrorCodes.INSTANCE_NOT_CONFIGURED,
     EAuthenticationErrorCodes.INVALID_EMAIL,
     EAuthenticationErrorCodes.EMAIL_REQUIRED,
     EAuthenticationErrorCodes.SIGNUP_DISABLED,
     EAuthenticationErrorCodes.INVALID_PASSWORD,
+    EAuthenticationErrorCodes.PASSWORD_TOO_WEAK,
     EAuthenticationErrorCodes.SMTP_NOT_CONFIGURED,
     EAuthenticationErrorCodes.USER_ALREADY_EXIST,
     EAuthenticationErrorCodes.AUTHENTICATION_FAILED_SIGN_UP,
@@ -398,7 +409,10 @@ export const authErrorHandler = (errorCode: EAuthenticationErrorCodes, email?: s
       type: EErrorAlertType.BANNER_ALERT,
       code: errorCode,
       title: errorCodeMessages[errorCode]?.title || "Error",
-      message: errorCodeMessages[errorCode]?.message(email) || "Something went wrong. Please try again.",
+      message:
+        (errorCode === EAuthenticationErrorCodes.PASSWORD_TOO_WEAK && getPasswordPolicyFeedback(passwordRules)) ||
+        errorCodeMessages[errorCode]?.message(email) ||
+        "Something went wrong. Please try again.",
     };
 
   return undefined;

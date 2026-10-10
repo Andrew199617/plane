@@ -25,11 +25,16 @@ from plane.db.models import (
 from plane.utils.content_validator import (
     validate_html_content,
 )
+from plane.utils.project_categories import ProjectCategoryIdField
 
 
 class ProjectSerializer(BaseSerializer):
     workspace_detail = WorkspaceLiteSerializer(source="workspace", read_only=True)
     inbox_view = serializers.BooleanField(read_only=True, source="intake_view")
+    # Jira-parity: project category (read/write as category_id; only this workspace's categories).
+    # Declared after `category` so category_id wins when a client sends both.
+    category = ProjectCategoryIdField()
+    category_id = ProjectCategoryIdField(source="category")
 
     class Meta:
         model = Project
@@ -121,6 +126,7 @@ class ProjectListSerializer(DynamicBaseSerializer):
     cover_image_url = serializers.CharField(read_only=True)
     inbox_view = serializers.BooleanField(read_only=True, source="intake_view")
     next_work_item_sequence = serializers.SerializerMethodField()
+    category_id = serializers.UUIDField(read_only=True)  # Jira-parity: project category
 
     def get_members(self, obj):
         project_members = getattr(obj, "members_list", None)

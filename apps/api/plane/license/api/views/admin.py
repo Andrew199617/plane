@@ -5,7 +5,7 @@
 # Python imports
 from urllib.parse import urlencode, urljoin
 import uuid
-from zxcvbn import zxcvbn
+from plane.utils.password_policy import password_error_payload, password_score
 
 # Django imports
 from django.http import HttpResponseRedirect
@@ -33,7 +33,8 @@ from plane.license.models import Instance, InstanceAdmin
 from plane.db.models import User, Profile
 from plane.utils.cache import cache_response, invalidate_cache
 from plane.authentication.utils.login import user_login
-from plane.authentication.utils.host import base_host, user_ip
+from plane.authentication.utils.host import redirect_host, user_ip
+from plane.authentication.adapter.base import is_non_interactive_account
 from plane.authentication.adapter.error import (
     AUTHENTICATION_ERROR_CODES,
     AuthenticationException,
@@ -100,7 +101,7 @@ class InstanceAdminSignUpEndpoint(View):
                 error_message="INSTANCE_NOT_CONFIGURED",
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -115,7 +116,7 @@ class InstanceAdminSignUpEndpoint(View):
                 error_message="ADMIN_ALREADY_EXIST",
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -142,7 +143,7 @@ class InstanceAdminSignUpEndpoint(View):
                 },
             )
             url = urljoin(
-                base_host(
+                redirect_host(
                     request=request,
                     is_admin=True,
                 ),
@@ -167,7 +168,7 @@ class InstanceAdminSignUpEndpoint(View):
                 },
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -187,17 +188,18 @@ class InstanceAdminSignUpEndpoint(View):
                 },
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
         else:
-            results = zxcvbn(password)
+            results = password_score(password)
             if results["score"] < 3:
                 exc = AuthenticationException(
                     error_code=AUTHENTICATION_ERROR_CODES["PASSWORD_TOO_WEAK"],
                     error_message="PASSWORD_TOO_WEAK",
                     payload={
+                        **password_error_payload(results),
                         "email": email,
                         "first_name": first_name,
                         "last_name": last_name,
@@ -206,7 +208,7 @@ class InstanceAdminSignUpEndpoint(View):
                     },
                 )
                 url = urljoin(
-                    base_host(request=request, is_admin=True),
+                    redirect_host(request=request, is_admin=True),
                     "?" + urlencode(exc.get_error_dict()),
                 )
                 return HttpResponseRedirect(url)
@@ -228,7 +230,7 @@ class InstanceAdminSignUpEndpoint(View):
                         error_message="ADMIN_ALREADY_EXIST",
                     )
                     url = urljoin(
-                        base_host(request=request, is_admin=True),
+                        redirect_host(request=request, is_admin=True),
                         "?" + urlencode(exc.get_error_dict()),
                     )
                     return HttpResponseRedirect(url)
@@ -262,7 +264,7 @@ class InstanceAdminSignUpEndpoint(View):
             # get tokens for user (outside the transaction — session writes must
             # not be held under the DB lock)
             user_login(request=request, user=user, is_admin=True)
-            url = urljoin(base_host(request=request, is_admin=True), "general/")
+            url = urljoin(redirect_host(request=request, is_admin=True), "general/")
             return HttpResponseRedirect(url)
 
 
@@ -279,7 +281,7 @@ class InstanceAdminSignInEndpoint(View):
                 error_message="INSTANCE_NOT_CONFIGURED",
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -296,7 +298,7 @@ class InstanceAdminSignInEndpoint(View):
                 payload={"email": email},
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -312,7 +314,7 @@ class InstanceAdminSignInEndpoint(View):
                 payload={"email": email},
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -328,7 +330,7 @@ class InstanceAdminSignInEndpoint(View):
                 payload={"email": email},
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -339,15 +341,15 @@ class InstanceAdminSignInEndpoint(View):
         # admin console. A bot is never registered as an InstanceAdmin, so this
         # is not reachable today, but the guard closes the path regardless.
         # Reuse ADMIN_AUTHENTICATION_FAILED so no bot-specific admin error code
-        # is disclosed to the caller.
-        if user.is_bot:
+        # is disclosed to the caller. jira-parity: agent accounts too.
+        if is_non_interactive_account(user):
             exc = AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["ADMIN_AUTHENTICATION_FAILED"],
                 error_message="ADMIN_AUTHENTICATION_FAILED",
                 payload={"email": email},
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -359,7 +361,7 @@ class InstanceAdminSignInEndpoint(View):
                 error_message="ADMIN_USER_DEACTIVATED",
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -372,7 +374,7 @@ class InstanceAdminSignInEndpoint(View):
                 payload={"email": email},
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -385,7 +387,7 @@ class InstanceAdminSignInEndpoint(View):
                 payload={"email": email},
             )
             url = urljoin(
-                base_host(request=request, is_admin=True),
+                redirect_host(request=request, is_admin=True),
                 "?" + urlencode(exc.get_error_dict()),
             )
             return HttpResponseRedirect(url)
@@ -400,7 +402,7 @@ class InstanceAdminSignInEndpoint(View):
 
         # get tokens for user
         user_login(request=request, user=user, is_admin=True)
-        url = urljoin(base_host(request=request, is_admin=True), "general/")
+        url = urljoin(redirect_host(request=request, is_admin=True), "general/")
         return HttpResponseRedirect(url)
 
 
@@ -437,8 +439,8 @@ class InstanceAdminSignOutEndpoint(View):
             user.save()
             # Log the user out
             logout(request)
-            url = get_safe_redirect_url(base_url=base_host(request=request, is_admin=True), next_path="")
+            url = get_safe_redirect_url(base_url=redirect_host(request=request, is_admin=True), next_path="")
             return HttpResponseRedirect(url)
         except Exception:
-            url = get_safe_redirect_url(base_url=base_host(request=request, is_admin=True), next_path="")
+            url = get_safe_redirect_url(base_url=redirect_host(request=request, is_admin=True), next_path="")
             return HttpResponseRedirect(url)

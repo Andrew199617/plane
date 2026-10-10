@@ -10,7 +10,7 @@ from rest_framework import status
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from zxcvbn import zxcvbn
+from plane.utils.password_policy import password_error_payload, password_score
 
 ## Module imports
 from plane.app.serializers import UserSerializer
@@ -22,7 +22,7 @@ from plane.authentication.adapter.error import (
 )
 from django.middleware.csrf import get_token
 from plane.utils.cache import invalidate_cache
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 
 
 class CSRFTokenEndpoint(APIView):
@@ -40,7 +40,7 @@ def csrf_failure(request, reason=""):
     return render(
         request,
         "csrf_failure.html",
-        {"reason": reason, "root_url": base_host(request=request)},
+        {"reason": reason, "root_url": redirect_host(request=request)},
     )
 
 
@@ -80,11 +80,12 @@ class ChangePasswordEndpoint(APIView):
             return Response(exc.get_error_dict(), status=status.HTTP_400_BAD_REQUEST)
 
         # check the password score
-        results = zxcvbn(new_password)
+        results = password_score(new_password)
         if results["score"] < 3:
             exc = AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["PASSWORD_TOO_WEAK"],
                 error_message="PASSWORD_TOO_WEAK",
+                payload=password_error_payload(results),
             )
             return Response(exc.get_error_dict(), status=status.HTTP_400_BAD_REQUEST)
 
@@ -119,11 +120,12 @@ class SetUserPasswordEndpoint(APIView):
             )
             return Response(exc.get_error_dict(), status=status.HTTP_400_BAD_REQUEST)
 
-        results = zxcvbn(password)
+        results = password_score(password)
         if results["score"] < 3:
             exc = AuthenticationException(
-                error_code=AUTHENTICATION_ERROR_CODES["INVALID_PASSWORD"],
-                error_message="INVALID_PASSWORD",
+                error_code=AUTHENTICATION_ERROR_CODES["PASSWORD_TOO_WEAK"],
+                error_message="PASSWORD_TOO_WEAK",
+                payload=password_error_payload(results),
             )
             return Response(exc.get_error_dict(), status=status.HTTP_400_BAD_REQUEST)
 

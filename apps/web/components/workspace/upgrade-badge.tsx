@@ -5,6 +5,7 @@
  */
 
 // helpers
+import { JP_HIDE_UPSELL } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { cn } from "@plane/utils";
 
@@ -17,6 +18,9 @@ export function UpgradeBadge(props: TUpgradeBadge) {
   const { className, size = "sm" } = props;
 
   const { t } = useTranslation();
+
+  // jira-parity: hide upsell UI
+  if (JP_HIDE_UPSELL) return null;
 
   return (
     <div

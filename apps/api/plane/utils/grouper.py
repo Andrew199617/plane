@@ -110,12 +110,15 @@ def issue_on_results(
         "sort_order",
         "completed_at",
         "estimate_point",
+        "original_estimate",
+        "remaining_estimate",
         "priority",
         "start_date",
         "target_date",
         "sequence_id",
         "project_id",
         "parent_id",
+        "type_id",  # jira-parity: work item type
         "cycle_id",
         "sub_issues_count",
         "created_at",
@@ -127,6 +130,8 @@ def issue_on_results(
         "is_draft",
         "archived_at",
         "state__group",
+        # Jira-parity: master boards group by state name across projects (same join as state__group)
+        "state__name",
     ]
 
     if group_by in FIELD_MAPPER:
@@ -148,6 +153,18 @@ def issue_group_values(
     filters: Dict[str, Any] = {},
     queryset: Optional[QuerySet] = None,
 ) -> List[Union[str, Any]]:
+    if field == "state__name":
+        # Jira-parity: distinct state names, standard Jira order first (plane.utils.project_categories)
+        from plane.utils.project_categories import state_name_group_values
+
+        return state_name_group_values(slug=slug, project_id=project_id, filters=filters)
+
+    if field == "type_id":
+        # Jira-parity: group by work item type (workspace-level types + work items without a type)
+        from plane.db.models import IssueType
+
+        return list(IssueType.objects.filter(workspace__slug=slug).values_list("id", flat=True)) + ["None"]
+
     if field == "state_id":
         queryset = State.objects.filter(is_triage=False, workspace__slug=slug).values_list("id", flat=True)
         if project_id:
@@ -188,7 +205,9 @@ def issue_group_values(
         return list(queryset)
 
     if field == "priority":
-        return ["low", "medium", "high", "urgent", "none"]
+        from plane.utils.priority import PRIORITY_VALUES  # Jira-parity priorities
+
+        return list(PRIORITY_VALUES)
 
     if field == "state__group":
         return ["backlog", "unstarted", "started", "completed", "cancelled"]

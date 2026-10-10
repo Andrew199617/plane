@@ -92,7 +92,8 @@ class TestProjectAPIPost(TestProjectBase):
         # Verify default states were created
         states = State.objects.filter(project=project)
         assert states.count() == 5
-        expected_states = ["Backlog", "Todo", "In Progress", "Done", "Cancelled"]
+        # Jira-parity standard states (plane.db.models.state.DEFAULT_STATES)
+        expected_states = ["To Do", "In Progress", "In Review", "Done", "Won't Fix"]
         state_names = list(states.values_list("name", flat=True))
         assert set(state_names) == set(expected_states)
 

@@ -1,3 +1,4 @@
+// oxlint-disable promise/always-return
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -11,6 +12,7 @@ import { useTranslation } from "@plane/i18n";
 import { StateGroupIcon, PriorityIcon } from "@plane/blocks/icons";
 import { DueDateOutline, LinkOutline, PriorityOutline, StateOutline } from "@makeplane/propel/icons";
 import { setToast } from "@plane/blocks/toast";
+import type { TIssuePriorities } from "@plane/types";
 import { cn, getIssuePriorityFilters } from "@plane/utils";
 // helpers
 import { renderFormattedDate } from "@/helpers/date-time.helper";
@@ -25,6 +27,15 @@ import type { IIssue, IPeekMode } from "@/types/issue";
 type Props = {
   issueDetails: IIssue;
   mode?: IPeekMode;
+};
+
+// Jira-parity priorities (full class literals so Tailwind generates them)
+const PRIORITY_CLASSES: Record<TIssuePriorities, string> = {
+  highest: "border-priority-highest text-priority-highest",
+  high: "border-priority-high text-priority-high",
+  medium: "border-priority-medium text-priority-medium",
+  low: "border-priority-low text-priority-low",
+  lowest: "border-priority-lowest text-priority-lowest",
 };
 
 export const PeekOverviewIssueProperties = observer(function PeekOverviewIssueProperties({
@@ -88,15 +99,7 @@ export const PeekOverviewIssueProperties = observer(function PeekOverviewIssuePr
           <div className="w-3/4">
             <div
               className={`inline-flex items-center gap-1.5 rounded-sm bg-layer-2 px-2.5 py-0.5 text-left text-13 capitalize ${
-                priority?.key === "urgent"
-                  ? "border-priority-urgent text-priority-urgent"
-                  : priority?.key === "high"
-                    ? "border-priority-high text-priority-high"
-                    : priority?.key === "medium"
-                      ? "border-priority-medium text-priority-medium"
-                      : priority?.key === "low"
-                        ? "border-priority-low text-priority-low"
-                        : "border-priority-none text-priority-none"
+                (priority && PRIORITY_CLASSES[priority.key]) || "border-priority-none text-priority-none"
               }`}
             >
               {priority && <PriorityIcon priority={priority?.key} className="size-3" />}

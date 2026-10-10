@@ -1,0 +1,19 @@
+{
+  "jp_time_tracking": {
+    "label": "Theo dõi thời gian",
+    "original_estimate": "Ước tính ban đầu",
+    "remaining_estimate": "Ước tính còn lại",
+    "time_estimate": "Ước tính thời gian",
+    "time_remaining": "Thời gian còn lại",
+    "add_estimate": "Thêm ước tính",
+    "input_placeholder": "ví dụ: 1w 2d 4h 30m",
+    "input_hint": "Dùng w, d, h và m (1d = 8h, 1w = 5d).",
+    "invalid_format": "Thời gian không hợp lệ. Hãy dùng định dạng như 1w 2d 4h 30m.",
+    "activity": {
+      "original_estimate_set": "đã đặt ước tính ban đầu thành {value}",
+      "original_estimate_removed": "đã xóa ước tính ban đầu",
+      "remaining_estimate_set": "đã đặt ước tính còn lại thành {value}",
+      "remaining_estimate_removed": "đã xóa ước tính còn lại"
+    }
+  }
+}

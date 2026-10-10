@@ -25,6 +25,10 @@ from plane.utils.uuid import convert_uuid_to_integer
 from .description import Description
 from .state import StateGroup
 
+# Jira-parity priorities, ordered highest -> lowest. Shared by Issue, IssueVersion and DraftIssue.
+# Single source of truth lives in plane.utils.priority; re-exported here for model/draft imports.
+from plane.utils.priority import PRIORITY_CHOICES, PRIORITY_ORDER, DEFAULT_PRIORITY  # noqa: E402,F401
+
 
 def get_default_properties():
     return {
@@ -104,13 +108,7 @@ class IssueManager(SoftDeletionManager):
 class Issue(ChangeTrackerMixin, ProjectBaseModel):
     TRACKED_FIELDS = ["state_id"]
 
-    PRIORITY_CHOICES = (
-        ("urgent", "Urgent"),
-        ("high", "High"),
-        ("medium", "Medium"),
-        ("low", "Low"),
-        ("none", "None"),
-    )
+    PRIORITY_CHOICES = PRIORITY_CHOICES
     parent = models.ForeignKey(
         "self",
         on_delete=models.CASCADE,
@@ -142,7 +140,7 @@ class Issue(ChangeTrackerMixin, ProjectBaseModel):
         max_length=30,
         choices=PRIORITY_CHOICES,
         verbose_name="Issue Priority",
-        default="none",
+        default=DEFAULT_PRIORITY,
     )
     start_date = models.DateField(null=True, blank=True)
     target_date = models.DateField(null=True, blank=True)
@@ -168,6 +166,9 @@ class Issue(ChangeTrackerMixin, ProjectBaseModel):
         null=True,
         blank=True,
     )
+    # Jira-parity time tracking, in minutes (Jira "Original estimate" / "Remaining Estimate")
+    original_estimate = models.PositiveIntegerField(null=True, blank=True)
+    remaining_estimate = models.PositiveIntegerField(null=True, blank=True)
 
     issue_objects = IssueManager()
 
@@ -179,6 +180,7 @@ class Issue(ChangeTrackerMixin, ProjectBaseModel):
 
     def save(self, *args, **kwargs):
         self._ensure_default_state()
+        self._ensure_default_type()
         kwargs = self._sync_completed_at(kwargs)
 
         if self._state.adding:
@@ -236,6 +238,14 @@ class Issue(ChangeTrackerMixin, ProjectBaseModel):
             self.state = default_state or State.objects.filter(~models.Q(is_triage=True), project=self.project).first()
         except ImportError as e:
             log_exception(e)
+
+    def _ensure_default_type(self):
+        """Jira-parity: a new work item without a type gets the workspace default type (Task)."""
+        if self.type_id is not None or not self._state.adding:
+            return
+        from plane.utils.work_item_types import get_default_type
+
+        self.type = get_default_type(self.project.workspace_id)
 
     def _sync_completed_at(self, kwargs):
         """Update completed_at when state changes. Returns kwargs."""
@@ -675,13 +685,7 @@ class IssueVote(ProjectBaseModel):
 
 
 class IssueVersion(ProjectBaseModel):
-    PRIORITY_CHOICES = (
-        ("urgent", "Urgent"),
-        ("high", "High"),
-        ("medium", "Medium"),
-        ("low", "Low"),
-        ("none", "None"),
-    )
+    PRIORITY_CHOICES = PRIORITY_CHOICES
 
     parent = models.UUIDField(blank=True, null=True)
     state = models.UUIDField(blank=True, null=True)
@@ -691,7 +695,7 @@ class IssueVersion(ProjectBaseModel):
         max_length=30,
         choices=PRIORITY_CHOICES,
         verbose_name="Issue Priority",
-        default="none",
+        default=DEFAULT_PRIORITY,
     )
     start_date = models.DateField(null=True, blank=True)
     target_date = models.DateField(null=True, blank=True)

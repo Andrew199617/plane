@@ -123,8 +123,13 @@ export const KanbanGroup = observer(function KanbanGroup(props: IKanbanGroup) {
   );
   const [isDraggingOverColumn, setIsDraggingOverColumn] = useState(false);
 
-  const { workflowDisabledSource, isWorkflowDropDisabled, handleWorkFlowState, getIsWorkflowWorkItemCreationDisabled } =
-    useWorkFlowFDragNDrop(group_by, sub_group_by);
+  const {
+    workflowDisabledSource,
+    isWorkflowDropDisabled,
+    handleWorkFlowState,
+    getIsWorkflowWorkItemCreationDisabled,
+    isWorkflowDropAllowed,
+  } = useWorkFlowFDragNDrop(group_by, sub_group_by);
 
   // Enable Kanban Columns as Drop Targets
   useEffect(() => {
@@ -141,7 +146,7 @@ export const KanbanGroup = observer(function KanbanGroup(props: IKanbanGroup) {
           setIsDraggingOverColumn(true);
           // handle if dragging a workflowState
           if (source) {
-            handleWorkFlowState(source?.groupId, groupId, source?.subGroupId, sub_group_id);
+            handleWorkFlowState(source?.groupId, groupId, source?.subGroupId, sub_group_id, source?.id);
           }
         },
         onDragLeave: () => {
@@ -152,7 +157,7 @@ export const KanbanGroup = observer(function KanbanGroup(props: IKanbanGroup) {
           setIsDraggingOverColumn(true);
           // handle if dragging a workflowState
           if (source) {
-            handleWorkFlowState(source?.groupId, groupId, source?.subGroupId, sub_group_id);
+            handleWorkFlowState(source?.groupId, groupId, source?.subGroupId, sub_group_id, source?.id);
           }
         },
         onDrop: (payload) => {
@@ -161,6 +166,26 @@ export const KanbanGroup = observer(function KanbanGroup(props: IKanbanGroup) {
           const destination = getDestinationFromDropPayload(payload);
 
           if (!source || !destination) return;
+
+          // jira-parity: block drops the workflow does not allow (checked against the store at drop time)
+          if (
+            !isWorkflowDropAllowed(
+              source.id,
+              source.groupId,
+              destination.groupId,
+              source.subGroupId,
+              destination.subGroupId
+            )
+          ) {
+            // dropping back into the same column (an agent's reorder) is silently ignored
+            if (source.groupId !== destination.groupId || source.subGroupId !== destination.subGroupId)
+              setToast({
+                type: "warning",
+                title: t("common.warning"),
+                message: t("workflows.workflow_disabled.title"),
+              });
+            return;
+          }
 
           if ((isWorkflowDropDisabled || isDropDisabled) && dropErrorMessage) {
             setToast({
@@ -194,6 +219,7 @@ export const KanbanGroup = observer(function KanbanGroup(props: IKanbanGroup) {
     isWorkflowDropDisabled,
     dropErrorMessage,
     handleOnDrop,
+    isWorkflowDropAllowed,
   ]);
 
   const prePopulateQuickAddData = (

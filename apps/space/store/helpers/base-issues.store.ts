@@ -1,3 +1,4 @@
+// oxlint-disable no-shadow
 /**
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
@@ -67,6 +68,10 @@ export const ISSUE_FILTER_DEFAULT_DATA: Record<TIssueDisplayFilterOptions, keyof
   created_by: "created_by",
   assignees: "assignee_ids",
   target_date: "target_date",
+  // jira-parity (project-categories master boards; not offered in space)
+  state__name: "state_id",
+  // jira-parity (work item types; not offered in space)
+  issue_type: "type_id" as keyof IIssue,
 };
 
 export abstract class BaseIssuesStore implements IBaseIssuesStore {

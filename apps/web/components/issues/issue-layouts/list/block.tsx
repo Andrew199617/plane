@@ -24,9 +24,11 @@ import { cn, generateWorkItemLink } from "@plane/utils";
 import { MultipleSelectEntityAction } from "@/components/core/multiple-select";
 import { IssueProperties } from "@/components/issues/issue-layouts/properties";
 import { IssueIdentifier } from "@/components/issues/issue-detail/issue-identifier";
+import { JP_WORK_ITEM_TYPE_IDENTIFIER_ICON_WIDTH } from "@/components/jira-parity/work-item-types/identifier-icon";
 // hooks
 import { useAppTheme } from "@/hooks/store/use-app-theme";
 import { useIssueDetail } from "@/hooks/store/use-issue-detail";
+import { useIsAgent } from "@/hooks/store/jira-parity/use-is-agent";
 import { useProject } from "@/hooks/store/use-project";
 import type { TSelectionHelper } from "@/hooks/use-multiple-select";
 import { usePlatformOS } from "@/hooks/use-platform-os";
@@ -105,7 +107,9 @@ export const IssueBlock = observer(function IssueBlock(props: IssueBlockProps) {
   const issue = issuesMap[issueId];
   const subIssuesCount = issue?.sub_issues_count ?? 0;
   const canEditIssueProperties = canEditProperties(issue?.project_id ?? undefined);
-  const isDraggingAllowed = canDrag && canEditIssueProperties;
+  // jira-parity: agents may drag to change the state; the workflow drop gating blocks everything else
+  const isAgent = useIsAgent(issue?.project_id);
+  const isDraggingAllowed = canDrag && (canEditIssueProperties || (isAgent && !issue?.archived_at));
 
   const { isMobile } = usePlatformOS();
 
@@ -157,7 +161,9 @@ export const IssueBlock = observer(function IssueBlock(props: IssueBlockProps) {
   // Use next_work_item_sequence from backend (static value from project endpoint)
   const maxSequenceId = currentProjectNextSequenceId ?? 1;
   const keyMinWidth = displayProperties?.key
-    ? calculateIdentifierWidth(projectIdentifier?.length ?? 0, maxSequenceId)
+    ? calculateIdentifierWidth(projectIdentifier?.length ?? 0, maxSequenceId) +
+      // jira-parity: room for the work item type icon rendered before the key
+      (displayProperties.issue_type !== false ? JP_WORK_ITEM_TYPE_IDENTIFIER_ICON_WIDTH : 0)
     : 0;
 
   const workItemLink = generateWorkItemLink({

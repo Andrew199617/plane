@@ -20,6 +20,7 @@ import { Tooltip } from "@makeplane/propel/components/tooltip";
 import WorkSpaceNotAvailable from "@/app/assets/workspace/workspace-not-available.png?url";
 // components
 import { LogoSpinner } from "@/components/common/logo-spinner";
+import { JiraParityWorkspaceDataLoader } from "@/components/jira-parity/data-loaders";
 // constants
 import {
   WORKSPACE_MEMBERS,
@@ -235,5 +236,12 @@ export const WorkspaceAuthWrapper = observer(function WorkspaceAuthWrapper(props
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      {workspaceSlug && (
+        <JiraParityWorkspaceDataLoader key={workspaceSlug.toString()} workspaceSlug={workspaceSlug.toString()} />
+      )}
+      {children}
+    </>
+  );
 });

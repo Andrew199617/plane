@@ -9,6 +9,7 @@ import { useParams } from "next/navigation";
 import { EUserPermissions, EUserPermissionsLevel, LOGIN_MEDIUM_LABELS } from "@plane/constants";
 import { useTranslation } from "@plane/i18n";
 import { renderFormattedDate } from "@plane/utils";
+import { MemberTeamBadges } from "@/components/jira-parity/teams/member-team-badges";
 import { MemberHeaderColumn } from "@/components/project/member-header-column";
 import type { RowData } from "@/components/workspace/settings/member-columns";
 import { AccountTypeColumn, NameColumn } from "@/components/workspace/settings/member-columns";
@@ -106,6 +107,13 @@ export const useMemberColumns = () => {
         />
       ),
       tdRender: (rowData: RowData) => <AccountTypeColumn rowData={rowData} workspaceSlug={workspaceSlug} />,
+    },
+
+    // Jira-parity teams: the member's teams
+    {
+      key: "Teams",
+      content: t("jp_teams.badges.heading"),
+      tdRender: (rowData: RowData) => <MemberTeamBadges userId={rowData.member.id} className="w-40" />,
     },
 
     {

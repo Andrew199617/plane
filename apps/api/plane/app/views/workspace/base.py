@@ -134,6 +134,11 @@ class WorkSpaceViewSet(BaseViewSet):
                 data["total_members"] = total_members
                 data["role"] = 20
 
+                # Jira-parity: standard work item types (Task, Story, Bug, Sub-task, Epic) before seed data
+                from plane.utils.work_item_types import seed_new_workspace_work_item_types
+
+                seed_new_workspace_work_item_types(serializer.data["id"])
+
                 workspace_seed.delay(serializer.data["id"])
 
                 return Response(data, status=status.HTTP_201_CREATED)

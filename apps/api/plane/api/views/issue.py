@@ -80,6 +80,9 @@ from plane.db.models import (
 )
 from plane.settings.storage import S3Storage
 from plane.utils.path_validator import sanitize_filename
+from plane.utils.priority import PRIORITY_ORDER
+from plane.utils.workflow import assert_create_state_allowed, assert_state_change_allowed  # Jira-parity workflows
+from plane.utils.work_item_types import filter_issues_by_work_item_type  # Jira-parity work item types
 from plane.utils.order_queryset import (
     ACTIVITY_ORDER_BY_ALLOWLIST,
     ISSUE_ORDER_BY_ALLOWLIST,
@@ -348,7 +351,7 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
             )
 
         # Custom ordering for priority and state
-        priority_order = ["urgent", "high", "medium", "low", "none"]
+        priority_order = list(PRIORITY_ORDER)  # Jira-parity: highest -> lowest
         state_order = ["backlog", "unstarted", "started", "completed", "cancelled"]
 
         # Reject any field not in the allowlist before it reaches .order_by().
@@ -385,6 +388,10 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
         )
 
         total_issue_queryset = Issue.issue_objects.filter(project_id=project_id, workspace__slug=slug)
+
+        # Jira-parity: ?type_id= / ?type= (name) / ?type_name= work item type filters
+        issue_queryset = filter_issues_by_work_item_type(issue_queryset, request.GET)
+        total_issue_queryset = filter_issues_by_work_item_type(total_issue_queryset, request.GET)
 
         # Priority Ordering
         if order_by_param == "priority" or order_by_param == "-priority":
@@ -492,6 +499,10 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
                     status=status.HTTP_409_CONFLICT,
                 )
 
+            # Jira-parity: creating in a state = moving there from the default state
+            assert_create_state_allowed(
+                project_id=project_id, validated_data=serializer.validated_data, user=request.user
+            )
             serializer.save()
             # Refetch the issue
             issue = Issue.objects.filter(workspace__slug=slug, project_id=project_id, pk=serializer.data["id"]).first()
@@ -807,6 +818,8 @@ class IssueDetailAPIEndpoint(BaseAPIView):
                     status=status.HTTP_409_CONFLICT,
                 )
 
+            # Jira-parity: role-based state transitions (HTTP 403 STATE_TRANSITION_NOT_ALLOWED)
+            assert_state_change_allowed(issue=issue, validated_data=serializer.validated_data, user=request.user)
             serializer.save()
             issue_activity.delay(
                 type="issue.activity.updated",

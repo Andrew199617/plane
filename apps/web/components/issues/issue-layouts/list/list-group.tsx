@@ -113,8 +113,13 @@ export const ListGroup = observer(function ListGroup(props: Props) {
 
   const [intersectionElement, setIntersectionElement] = useState<HTMLDivElement | null>(null);
 
-  const { workflowDisabledSource, isWorkflowDropDisabled, handleWorkFlowState, getIsWorkflowWorkItemCreationDisabled } =
-    useWorkFlowFDragNDrop(group_by);
+  const {
+    workflowDisabledSource,
+    isWorkflowDropDisabled,
+    handleWorkFlowState,
+    getIsWorkflowWorkItemCreationDisabled,
+    isWorkflowDropAllowed,
+  } = useWorkFlowFDragNDrop(group_by);
   const isWorkflowIssueCreationDisabled = getIsWorkflowWorkItemCreationDisabled(group.id);
 
   const groupIssueCount = getGroupIssueCount(group.id, undefined, false) ?? 0;
@@ -199,7 +204,8 @@ export const ListGroup = observer(function ListGroup(props: Props) {
           const currentGroupId = group.id;
 
           // oxlint-disable-next-line no-unused-expressions
-          sourceGroupId && handleWorkFlowState(sourceGroupId, currentGroupId);
+          sourceGroupId &&
+            handleWorkFlowState(sourceGroupId, currentGroupId, undefined, undefined, source?.data?.id as string);
 
           const sourceIndex = getGroupIndex(sourceGroupId);
           const currentIndex = getGroupIndex(currentGroupId);
@@ -216,6 +222,18 @@ export const ListGroup = observer(function ListGroup(props: Props) {
           const destination = getDestinationFromDropPayload(payload);
 
           if (!source || !destination) return;
+
+          // jira-parity: block drops the workflow does not allow (checked against the store at drop time)
+          if (!isWorkflowDropAllowed(source.id, source.groupId, destination.groupId)) {
+            // dropping back into the same group (an agent's reorder) is silently ignored
+            if (source.groupId !== destination.groupId)
+              setToast({
+                type: "warning",
+                title: t("common.warning"),
+                message: t("workflows.workflow_disabled.title"),
+              });
+            return;
+          }
 
           if (isWorkflowDropDisabled || group.isDropDisabled) {
             if (group.dropErrorMessage)
@@ -246,6 +264,7 @@ export const ListGroup = observer(function ListGroup(props: Props) {
     setDragColumnOrientation,
     setIsDraggingOverColumn,
     isWorkflowDropDisabled,
+    isWorkflowDropAllowed,
   ]);
 
   const isDragAllowed = group_by ? DRAG_ALLOWED_GROUPS.includes(group_by) : true;

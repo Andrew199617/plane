@@ -13,6 +13,7 @@ import { EUserPermissions, EUserPermissionsLevel } from "@plane/constants";
 import { GANTT_TIMELINE_TYPE } from "@plane/types";
 // components
 import { ProjectAccessRestriction } from "@/components/auth-screens/project/project-access-restriction";
+import { JiraParityProjectDataLoader } from "@/components/jira-parity/data-loaders";
 import {
   PROJECT_DETAILS,
   PROJECT_ME_INFORMATION,
@@ -50,7 +51,8 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
   // states
   const [isJoiningProject, setIsJoiningProject] = useState(false);
   // store hooks
-  const { fetchUserProjectInfo, allowPermissions, getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
+  const { fetchUserProjectInfo, allowPermissions, allowReadPermissions, getProjectRoleByWorkspaceSlugAndProjectId } =
+    useUserPermissions();
   const { fetchProjectDetails } = useProject();
   const { joinProject } = useUserPermissions();
   const { fetchAllCycles } = useCycle();
@@ -65,7 +67,7 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
   const { fetchProjectLabels } = useLabel();
   const { getProjectEstimates } = useProjectEstimates();
   // derived values
-  const hasPermissionToCurrentProject = allowPermissions(
+  const hasPermissionToCurrentProject = allowReadPermissions(
     [EUserPermissions.ADMIN, EUserPermissions.MEMBER, EUserPermissions.GUEST],
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
@@ -157,5 +159,10 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
     );
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <JiraParityProjectDataLoader key={projectId} workspaceSlug={workspaceSlug} projectId={projectId} />
+      {children}
+    </>
+  );
 });

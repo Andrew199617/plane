@@ -90,3 +90,11 @@ from .device import Device, DeviceSession
 from .sticky import Sticky
 
 from .description import Description, DescriptionVersion
+
+# Jira-parity models
+from .issue_type import ProjectIssueType
+from .project import ROLE, ROLE_CHOICES
+from .workspace import Team
+from .team import TeamMember, TeamProject
+from .workflow import StateTransition
+from .project_category import ProjectCategory

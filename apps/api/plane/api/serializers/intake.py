@@ -6,6 +6,8 @@
 from .base import BaseSerializer
 from .issue import IssueExpandSerializer
 from plane.db.models import IntakeIssue, Issue, State, StateGroup
+from plane.utils.priority import DEFAULT_PRIORITY
+from plane.utils.priority_field import PriorityField
 from rest_framework import serializers
 
 
@@ -167,4 +169,4 @@ class IssueDataSerializer(serializers.Serializer):
 
     name = serializers.CharField(max_length=255, help_text="Issue name")
     description_html = serializers.CharField(required=False, allow_null=True, help_text="Issue description HTML")
-    priority = serializers.ChoiceField(choices=Issue.PRIORITY_CHOICES, default="none", help_text="Issue priority")
+    priority = PriorityField(default=DEFAULT_PRIORITY, help_text="Issue priority")

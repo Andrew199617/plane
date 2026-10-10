@@ -1,0 +1,9 @@
+{
+  "jp_priorities": {
+    "highest": "Hoogste",
+    "high": "Hoog",
+    "medium": "Gemiddeld",
+    "low": "Laag",
+    "lowest": "Laagste"
+  }
+}

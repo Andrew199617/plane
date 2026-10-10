@@ -40,6 +40,8 @@ export enum EIssuesStoreType {
   WORKSPACE_DRAFT = "WORKSPACE_DRAFT",
   EPIC = "EPIC",
   TEAM_PROJECT_WORK_ITEMS = "TEAM_PROJECT_WORK_ITEMS",
+  // jira-parity: master board of a project category (/:workspaceSlug/boards/:categoryId)
+  CATEGORY_BOARD = "CATEGORY_BOARD",
 }
 
 export type TBaseIssue = {
@@ -63,6 +65,9 @@ export type TBaseIssue = {
   cycle_id: string | null;
   module_ids: string[] | null;
   type_id: string | null;
+  // jira-parity (time tracking, minutes)
+  original_estimate?: number | null;
+  remaining_estimate?: number | null;
 
   created_at: string;
   updated_at: string;

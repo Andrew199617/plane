@@ -33,6 +33,15 @@ export const NAMESPACES = [
   "workflow",
   "workspace",
   "workspace-settings",
+  // jira-parity
+  "jp-common",
+  "jp-work-item-types",
+  "jp-agents",
+  "jp-workflows",
+  "jp-teams",
+  "jp-project-categories",
+  "jp-time-tracking",
+  "jp-priorities",
 ] as const;
 
 export type TNamespace = (typeof NAMESPACES)[number];

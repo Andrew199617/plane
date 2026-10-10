@@ -13,7 +13,7 @@ from plane.authentication.provider.credentials.email import EmailProvider
 from plane.authentication.utils.login import user_login
 from plane.authentication.rate_limit import throttle_auth_redirect
 from plane.license.models import Instance
-from plane.authentication.utils.host import base_host
+from plane.authentication.utils.host import redirect_host
 from plane.authentication.utils.redirection_path import get_redirection_path
 from plane.authentication.utils.user_auth_workflow import post_user_auth_workflow
 from plane.db.models import User
@@ -42,7 +42,7 @@ class SignInAuthEndpoint(View):
             params = exc.get_error_dict()
             # Base URL join
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -63,7 +63,7 @@ class SignInAuthEndpoint(View):
             params = exc.get_error_dict()
             # Next path
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -81,7 +81,7 @@ class SignInAuthEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -97,7 +97,7 @@ class SignInAuthEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -122,7 +122,7 @@ class SignInAuthEndpoint(View):
 
             # Get the safe redirect URL
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=path,
                 params={},
             )
@@ -130,7 +130,7 @@ class SignInAuthEndpoint(View):
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -151,7 +151,7 @@ class SignUpAuthEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -169,7 +169,7 @@ class SignUpAuthEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -187,7 +187,7 @@ class SignUpAuthEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -205,7 +205,7 @@ class SignUpAuthEndpoint(View):
             )
             params = exc.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )
@@ -229,7 +229,7 @@ class SignUpAuthEndpoint(View):
                 path = get_redirection_path(user=user)
 
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=path,
                 params={},
             )
@@ -237,7 +237,7 @@ class SignUpAuthEndpoint(View):
         except AuthenticationException as e:
             params = e.get_error_dict()
             url = get_safe_redirect_url(
-                base_url=base_host(request=request, is_app=True),
+                base_url=redirect_host(request=request, is_app=True),
                 next_path=next_path,
                 params=params,
             )

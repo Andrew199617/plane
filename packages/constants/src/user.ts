@@ -36,6 +36,8 @@ export type TUserPermissionsLevel = EUserPermissionsLevel;
 export enum EUserPermissions {
   ADMIN = 20,
   MEMBER = 15,
+  // Jira-parity: AI agent accounts (read-only UI except allowed state transitions and comments)
+  AGENT = 10,
   GUEST = 5,
 }
 export type TUserPermissions = EUserPermissions;

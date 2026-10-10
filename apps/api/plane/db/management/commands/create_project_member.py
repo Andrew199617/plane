@@ -14,6 +14,7 @@ from plane.db.models import (
     Project,
     ProjectUserProperty,
 )
+from plane.utils.teams import clear_team_provisioning
 
 
 class Command(BaseCommand):
@@ -51,15 +52,13 @@ class Command(BaseCommand):
             if not WorkspaceMember.objects.filter(workspace=project.workspace, member=user, is_active=True).exists():
                 raise CommandError("User not member in workspace")
 
-
             if ProjectMember.objects.filter(project=project, member=user).exists():
                 # Update the project member
-                ProjectMember.objects.filter(project=project, member=user).update(
-                    is_active=True, role=role
-                )
+                ProjectMember.objects.filter(project=project, member=user).update(is_active=True, role=role)
             else:
                 # Create the project member
                 ProjectMember.objects.create(project=project, member=user, role=role)
+            clear_team_provisioning(project.id, [user.id])
 
             # Issue Property
             ProjectUserProperty.objects.get_or_create(user=user, project=project)

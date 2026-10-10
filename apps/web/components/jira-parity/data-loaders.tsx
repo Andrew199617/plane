@@ -1,0 +1,66 @@
+/**
+ * Copyright (c) 2023-present Plane Software, Inc. and contributors
+ * SPDX-License-Identifier: AGPL-3.0-only
+ * See the LICENSE file for details.
+ */
+
+// Jira-parity data loaders (scaffold-owned). They render nothing and only call each feature's
+// bootstrap hooks (components/jira-parity/<feature>/bootstrap.ts), which are owned by the features.
+import { observer } from "mobx-react";
+// local imports
+import { useAgentsProjectBootstrap, useAgentsWorkspaceBootstrap } from "./agents/bootstrap";
+import { usePrioritiesProjectBootstrap, usePrioritiesWorkspaceBootstrap } from "./priorities/bootstrap";
+import {
+  useProjectCategoriesProjectBootstrap,
+  useProjectCategoriesWorkspaceBootstrap,
+} from "./project-categories/bootstrap";
+import { useTeamsProjectBootstrap, useTeamsWorkspaceBootstrap } from "./teams/bootstrap";
+import { useTimeTrackingProjectBootstrap, useTimeTrackingWorkspaceBootstrap } from "./time-tracking/bootstrap";
+import { useWorkItemTypesProjectBootstrap, useWorkItemTypesWorkspaceBootstrap } from "./work-item-types/bootstrap";
+import { useWorkflowsProjectBootstrap, useWorkflowsWorkspaceBootstrap } from "./workflows/bootstrap";
+
+type TJiraParityWorkspaceDataLoaderProps = {
+  workspaceSlug: string;
+};
+
+/**
+ * Mounted in layouts/auth-layout/workspace-wrapper.tsx after the workspace is loaded, keyed by workspace slug so a
+ * workspace switch remounts it and the bootstraps load the new workspace.
+ */
+export const JiraParityWorkspaceDataLoader = observer(function JiraParityWorkspaceDataLoader(
+  props: TJiraParityWorkspaceDataLoaderProps
+) {
+  const { workspaceSlug } = props;
+
+  useWorkItemTypesWorkspaceBootstrap(workspaceSlug);
+  useAgentsWorkspaceBootstrap(workspaceSlug);
+  useWorkflowsWorkspaceBootstrap(workspaceSlug);
+  useTeamsWorkspaceBootstrap(workspaceSlug);
+  useProjectCategoriesWorkspaceBootstrap(workspaceSlug);
+  useTimeTrackingWorkspaceBootstrap(workspaceSlug);
+  usePrioritiesWorkspaceBootstrap(workspaceSlug);
+
+  return null;
+});
+
+type TJiraParityProjectDataLoaderProps = {
+  workspaceSlug: string;
+  projectId: string;
+};
+
+/** Mounted in layouts/auth-layout/project-wrapper.tsx when the project is accessible, keyed by project id. */
+export const JiraParityProjectDataLoader = observer(function JiraParityProjectDataLoader(
+  props: TJiraParityProjectDataLoaderProps
+) {
+  const { workspaceSlug, projectId } = props;
+
+  useWorkItemTypesProjectBootstrap(workspaceSlug, projectId);
+  useAgentsProjectBootstrap(workspaceSlug, projectId);
+  useWorkflowsProjectBootstrap(workspaceSlug, projectId);
+  useTeamsProjectBootstrap(workspaceSlug, projectId);
+  useProjectCategoriesProjectBootstrap(workspaceSlug, projectId);
+  useTimeTrackingProjectBootstrap(workspaceSlug, projectId);
+  usePrioritiesProjectBootstrap(workspaceSlug, projectId);
+
+  return null;
+});
